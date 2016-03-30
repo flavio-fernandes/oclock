@@ -1,0 +1,11 @@
+
+# http://wiringpi.com/examples/quick2wire-and-wiringpi/install-and-testing/
+
+
+gcc -o blink blink.c -lwiringPi
+
+if [ "$?" = "0" ]; then
+   sudo chown root:root blink
+   sudo chmod u+s blink
+fi
+

@@ -1,0 +1,5 @@
+*~
+*.o
+oclock
+log/pulsar.log
+

@@ -1,0 +1,15 @@
+V=1 make
+
+make clean
+
+D=1 make
+time valgrind --leak-check=full --show-reachable=yes ./oclock
+
+
+wget -q -O - http://localhost:9090/
+sudo killall --signal SIGINT oclock
+
+ps auxww | grep oclock
+kill -SIGINT $PID
+
+

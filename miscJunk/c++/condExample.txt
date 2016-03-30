@@ -1,0 +1,2 @@
+g++ condExample.cpp -std=gnu++11 -lpthread
+
