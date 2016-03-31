@@ -468,7 +468,10 @@ HandleRequestReply WebHandler::parsePost(const RequestInfo& requestInfo,
     }
 
     // add final value from body of post
-    if (gettingValuePortion) postValues[ currKey ] = currValue;
+    if (gettingValuePortion && *currKey != 0) {
+      tmpBuffer[tmpBufferOffset] = 0;  // terminate value c str
+      postValues[ currKey ] = currValue;
+    }
     
     return replyOk;
 }
