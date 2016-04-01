@@ -21,7 +21,8 @@ public:
 
   // call-ins from other threads that add async requests to the display thread
   void enqueueMsgModePost(StringMap& postValues);
-
+  void enqueueImgBackgroundPost(StringMap& postValues);
+  
   const char* getInternalDisplayMode();
 
 private:
@@ -31,6 +32,7 @@ private:
   DisplayTodos displayTodos;
 
   void checkTodoList();
+  void enqueueDisplayTodo(DisplayTodo* displayTodo);
   const DisplayTodo* dequeueDisplayTodo();
   
   // gpio pins used by display thread

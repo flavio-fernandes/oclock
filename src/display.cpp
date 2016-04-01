@@ -21,6 +21,7 @@ const int Display::pinCLK = 26;
 
 typedef enum {
   displayTodoTypeHandleMsgModePost,
+  displayTodoTypeHandleImgBackgroundPost,
 } DisplayTodoType; 
 
 class DisplayTodo {
@@ -64,14 +65,18 @@ void Display::shutdown() {
   instance = 0;
 }
 
-void Display::enqueueMsgModePost(StringMap& postValues) {
+void Display::enqueueDisplayTodo(DisplayTodo* displayTodo) {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
+  if (displayTodo == nullptr) throw std::runtime_error("asked to enqueue DisplayTodo that is a nullptr");
+  else displayTodos.push_back(displayTodo);
+}
 
-  // alloc DisplayTodo
-  DisplayTodo* const displayTodo =
-    new DisplayTodo(displayTodoTypeHandleMsgModePost, std::move(postValues));
+void Display::enqueueMsgModePost(StringMap& postValues) {
+  enqueueDisplayTodo( new DisplayTodo(displayTodoTypeHandleMsgModePost, std::move(postValues)) ); // alloc DisplayTodo
+}
 
-  displayTodos.push_back(displayTodo);
+void Display::enqueueImgBackgroundPost(StringMap& postValues) {
+  enqueueDisplayTodo( new DisplayTodo(displayTodoTypeHandleImgBackgroundPost, std::move(postValues)) ); // alloc DisplayTodo
 }
 
 const char* Display::getInternalDisplayMode() {
@@ -94,6 +99,9 @@ void Display::checkTodoList() {
   switch (displayTodo->displayTodoType) {
   case displayTodoTypeHandleMsgModePost:
     internal->doHandleMsgModePost(displayTodo->postValues);
+    break;
+  case displayTodoTypeHandleImgBackgroundPost:
+    internal->doHandleImgBackgroundPost(displayTodo->postValues);
     break;
 
   default:

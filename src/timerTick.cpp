@@ -1,6 +1,4 @@
 
-#include <list>
-
 #include "threadsMain.h"
 #include "timerTick.h"
 #include "inbox.h"
@@ -58,8 +56,6 @@ bool TimerTick::startTimerTickService(TimerTickId cookie) {
 }
 
 bool TimerTick::_startTimerTickService2(TimerTickService& timerTickService) {
-  // may or may not have lock guard... not needed
-  
   if (timerTickService.interval >= 0) {
     timerTickService.ticksLeft = 1 + timerTickService.interval / millisPerTick;
   } else {
@@ -116,17 +112,11 @@ void TimerTick::runThreadLoop() {
 
   while (true) {
     if (inbox.getMessage(msg)) {
-      if (msg.inboxMsgType == inboxMsgTypeTerminate) {
-	for (auto& entry : timerTickServices) {
-	  TimerTickService& timerTickService = *(entry.second);
-	  timerTickService.terminate();
-	}
-	break;
-      }
+      if (msg.inboxMsgType == inboxMsgTypeTerminate) break;
     }
 
     std::this_thread::sleep_for(sleepInterval);  // sleep for a tick
-    std::list<TimerTickService*> expiredEntries;
+
     {
       std::lock_guard<std::recursive_mutex> guard(instanceMutex);
       
@@ -134,20 +124,16 @@ void TimerTick::runThreadLoop() {
 	TimerTickService& timerTickService = *(entry.second);
 	if (timerTickService.ticksLeft > 0) {
 	  --timerTickService.ticksLeft;
+
+	  // invoke callback on expired entries
 	  if (timerTickService.ticksLeft == 0) {
-	    expiredEntries.push_back(entry.second);
+	    timerTickService.expireTrigger();
+	    if (timerTickService.periodic && timerTickService.getIsRegistered()) _startTimerTickService2(timerTickService);
 	  }
 	}
-      }
-    }
-
-    // w/out holding lock, invoke callback on expired entries
-    for (auto& entry : expiredEntries) {
-      TimerTickService& timerTickService = *entry;
-      timerTickService.expireTrigger();
-      if (timerTickService.periodic && timerTickService.getIsRegistered()) _startTimerTickService2(timerTickService);
-    }
-  }
+      } // for
+    } // scope
+  } // while
 }
 
 TimerTick& TimerTick::bind() {

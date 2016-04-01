@@ -71,7 +71,60 @@ static void modeManualInit(LedStripInternalInfo& info) {
   // What we need to do is to parse the "rawFormat" and "getPixelColorParam" info.params
 }
 
-static const Mode modeManual = { ledStripModeManual, "manual", modeManualInit /*init*/, 0 /*1sec*/, 0 /*10sec*/, 0 /*1min*/};
+static const Mode modeManual = { ledStripModeManual, "manual", modeManualInit /*init*/, 0 /*fast*/, 0 /*1sec*/, 0 /*10sec*/, 0 /*1min*/};
+
+// ledStripModePastel
+
+static void modePastelMain(LedStripInternalInfo& info) {
+  static const int pastelShiftPixels = 1;
+  static int currPixel = 0;
+
+  Int8U r=63, g=63, b=127;
+  int repeat = 0;
+  LPD8806& lpd8806 = info.lpd8806;
+  for (Int16U i=0; i < lpd8806.numPixels(); i++) {
+    if (repeat < 63) {
+      ++r;
+    } else if (repeat < 63 * 2) {
+      --b;
+    } else if (repeat < 63 * 3) {
+      ++g;
+    } else {
+      r=63; g=63; b=127;
+      repeat = -1;
+    }
+    lpd8806.setPixelColor(currPixel, r, g, b);
+    ++repeat;
+
+    // wrap around
+    if (++currPixel >= lpd8806.numPixels()) currPixel = 0;
+  }
+  
+  lpd8806.show();
+
+  // next time, start in a different location
+  currPixel += pastelShiftPixels;
+  if (currPixel >= lpd8806.numPixels()) currPixel = 0;
+}
+
+static void modePastelFast(LedStripInternalInfo& info) {
+  if (isParamSet(info.params, ledStripParamExtra, "fast")) modePastelMain(info);
+}
+
+static void modePastel1Sec(LedStripInternalInfo& info) {
+  if (isParamSet(info.params, ledStripParamExtra, "1sec")) modePastelMain(info);
+}
+
+static void modePastel10Sec(LedStripInternalInfo& info) {
+  if (isParamSet(info.params, ledStripParamExtra, "10sec")) modePastelMain(info);
+}
+
+static void modePastel1Min(LedStripInternalInfo& info) {
+  if (isParamSet(info.params, ledStripParamExtra, "1min")) modePastelMain(info);
+}
+
+static const Mode modePastel = { ledStripModePastel, "pastel", modePastelMain /*init*/,
+				 modePastelFast /*fast*/, modePastel1Sec /*1sec*/, modePastel10Sec /*10sec*/, modePastel1Min /*1min*/};
 
 // ledStripModeFill
 
@@ -79,11 +132,14 @@ static void modeFillInit(LedStripInternalInfo& info) {
   Int32U color =
     getPixelColorParam(info.params) == LPD8806::nullColor ? getRandomNumber(0x00fffffe) + 1 : getPixelColorParam(info.params);
   LPD8806& lpd8806 = info.lpd8806;
-  for (Int16U i=0; i < lpd8806.numPixels(); i++) lpd8806.setPixelColor(i, color);
+  for (Int16U i=0; i < lpd8806.numPixels(); i++) {
+    lpd8806.setPixelColor(i, color);
+    if (isParamSet(info.params, ledStripParamExtra, "randomColor")) color = getRandomNumber(0x00fffffe) + 1;
+  }
   lpd8806.show();
 }
 
-static const Mode modeFill = { ledStripModeFill, "fill", modeFillInit /*init*/, 0 /*1sec*/, 0 /*10sec*/, 0 /*1min*/};
+static const Mode modeFill = { ledStripModeFill, "fill", modeFillInit /*init*/, 0 /*fast*/, 0 /*1sec*/, 0 /*10sec*/, 0 /*1min*/};
 
 // ledStripModeRainbow
 
@@ -109,8 +165,7 @@ static const Mode modeRainbow = {ledStripModeRainbow, "rainbow", 0 /*init*/, mod
 // ledStripModeScan
 
 static void modeScanMain(LedStripInternalInfo& info) {
-  const Int32U c =
-    getPixelColorParam(info.params) == LPD8806::nullColor ? getRandomNumber(0x00fffffe) + 1 : getPixelColorParam(info.params);
+  static Int32U color;
   static int i = 0;
   static int i_increment = 1;
   static const int ledsVisitedPerFrame = 11;
@@ -118,8 +173,13 @@ static void modeScanMain(LedStripInternalInfo& info) {
   LPD8806& lpd8806 = info.lpd8806; 
   
   int ledsVisited = 0;
+
+  if (i == 0) {
+    color = getPixelColorParam(info.params) == LPD8806::nullColor ? getRandomNumber(0x00fffffe) + 1 : getPixelColorParam(info.params);
+  }
+  
   while (true) {
-      lpd8806.setPixelColor(i, c); // set one pixel
+      lpd8806.setPixelColor(i, color); // set one pixel
       lpd8806.show();              // refresh led strip
       lpd8806.setPixelColor(i, 0); // erase pixel (but don't refresh yet)
 
@@ -138,7 +198,23 @@ static void modeScanMain(LedStripInternalInfo& info) {
   }
 }
 
-static const Mode modeScan = {ledStripModeScan, "scan", 0 /*init*/, modeScanMain /*fast*/, 0 /*1sec*/, 0 /*10sec*/, 0 /*1min*/};
+static void modeScanFast(LedStripInternalInfo& info) {
+  if (isParamSet(info.params, ledStripParamExtra, "")) modeScanMain(info);
+}
+
+static void modeScan1Sec(LedStripInternalInfo& info) {
+  if (isParamSet(info.params, ledStripParamExtra, "1sec")) modeScanMain(info);
+}
+
+static void modeScan10Sec(LedStripInternalInfo& info) {
+  if (isParamSet(info.params, ledStripParamExtra, "10sec")) modeScanMain(info);
+}
+
+static void modeScan1Min(LedStripInternalInfo& info) {
+  if (isParamSet(info.params, ledStripParamExtra, "1min")) modeScanMain(info);
+}
+
+static const Mode modeScan = {ledStripModeScan, "scan", 0 /*init*/, modeScanFast /*fast*/, modeScan1Sec /*1sec*/, modeScan10Sec /*10sec*/, modeScan1Min /*1min*/};
 
 
 // ======================================================================
@@ -201,7 +277,7 @@ static void checkIfModeTimedOut(LedStripInternalInfo& info) {
 
 // ======================================================================
 
-static const Mode allModes[] = { modeManual, modeFill, modeRainbow, modeScan };
+static const Mode allModes[] = { modeManual, modePastel, modeFill, modeRainbow, modeScan };
 static const int allModesCount = sizeof(allModes) / sizeof(allModes[0]);
 
 static LedStripMode getLedStripMode(const LedStripInternalInfo& info) {
@@ -294,6 +370,13 @@ void LedStripInternal::doHandleModePost(const StringMap& postValues) {
 
 const char* LedStripInternal::getLedStripModeStr() const {
   return allModes[ info->currModeIndex ].ledStripModeStr;
+}
+
+const char* LedStripInternal::getLedStripModeStr(LedStripMode ledStripMode) const {
+  for (int i=0; i < allModesCount; ++i) {
+    if (allModes[i].ledStripMode == ledStripMode) return allModes[i].ledStripModeStr;
+  }
+  return ""; // not found
 }
 
 LedStripInternal::LedStripInternal(LPD8806& lpd8806) {

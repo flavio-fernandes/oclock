@@ -8,6 +8,7 @@
 
 #include "stdTypes.h"
 #include "commonTypes.h"
+#include "ledStripTypes.h"
 
 class LedStripTodo;  // FWD
 class LedStripInternal;  // FWD
@@ -25,8 +26,9 @@ public:
   // call-ins from other threads that add async requests to the ledStrip thread
   void enqueueMsgModePost(StringMap& postValues);
 
-  const char* getInternalLedStripMode();
-
+  const char* getInternalLedStripMode(); // current ledStrip mode
+  const char* getLedStripModeStr(LedStripMode ledStripMode);  // enum to string
+  
 private:
   static std::thread::id mainThreadId; // http://en.cppreference.com/w/cpp/thread/thread/id
 

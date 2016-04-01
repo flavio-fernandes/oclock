@@ -19,6 +19,7 @@ public:
   
   void doHandleModePost(const StringMap& postValues);
   const char* getLedStripModeStr() const;
+  const char* getLedStripModeStr(LedStripMode ledStripMode) const;  // enum to string
 
 private:
   LedStripInternal(LPD8806& lpd8806);

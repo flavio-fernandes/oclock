@@ -28,7 +28,6 @@ public:
 
 protected:
   virtual void expireTrigger() = 0;  // callback
-  virtual void terminate() = 0;  // callback
 
 private:
   TimerTickId cookie;
@@ -47,7 +46,6 @@ class TimerTickServiceBool : public TimerTickService
 public:
   TimerTickServiceBool(int interval, bool periodic = true) : TimerTickService(interval, periodic), expired(false) {}
   virtual void expireTrigger() override final { expired = true; }
-  virtual void terminate() override final {}
   bool getAndResetExpired() { if (expired) { expired = false; return true; } return false; }
 private:
   std::atomic_bool expired;
@@ -56,14 +54,12 @@ private:
 class TimerTickServiceCv : public TimerTickService
 {
 public:
-  TimerTickServiceCv(int interval, bool periodic = true) : TimerTickService(interval, periodic), mtx(), cv(), enabled(true) {}
+  TimerTickServiceCv(int interval, bool periodic = true) : TimerTickService(interval, periodic), mtx(), cv() {}
   virtual void expireTrigger() override { std::unique_lock<std::mutex> lck(mtx); cv.notify_all(); }
-  virtual void terminate() override final { enabled = false; expireTrigger(); }
-  void wait() { std::unique_lock<std::mutex> lck(mtx); if (enabled) cv.wait(lck); }
+  void wait() { std::unique_lock<std::mutex> lck(mtx); if (getIsRegistered()) cv.wait(lck); }
 private:
   std::mutex mtx;
   std::condition_variable cv;
-  bool enabled;
 };
 
 // ======================================================================

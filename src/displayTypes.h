@@ -22,6 +22,16 @@ typedef enum {
 } Font;
 
 typedef enum {
+  animationStepNone = 0,
+  animationStepFast,
+  animationStep250ms,
+  animationStep500ms,
+  animationStep1sec,
+  animationStep5sec,
+  animationStep10sec,
+} AnimationStep;
+
+typedef enum {
   imgArtSmiley, // 0 izaArt.h
   imgArtWink,   // 1
   imgArtBigHeart,  // 2
@@ -40,7 +50,7 @@ typedef enum {
 #define MESSAGE_MAX_SIZE 4096
 #define BACKGROUND_MESSAGE_MSG_SIZE 25
 #define BACKGROUND_MESSAGE_COUNT 16
-#define BACKGROUND_IMG_COUNT 24
+#define BACKGROUND_IMG_COUNT 100
 #define BACKGROUND_MESSAGE_MSG_SIZE 25
 #define BACKGROUND_MESSAGE_COUNT 16
 

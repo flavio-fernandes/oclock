@@ -85,6 +85,8 @@ protected:
 
   // output common piece of HTML form used for selecting font
   static void addFormFont(std::string& buff);
+
+  static void addFormColor(std::string& buff, bool includeAlternate);
   
   static void addBody(RequestOutput& requestOutput, const std::string& buffer);
 

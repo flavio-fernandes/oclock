@@ -44,16 +44,6 @@ typedef enum {
   displayModeMessage
 } DisplayMode;
 
-typedef enum {
-  animationStepNone = 0,
-  animationStepFast,
-  animationStep250ms,
-  animationStep500ms,
-  animationStep1sec,
-  animationStep5sec,
-  animationStep10sec,
-} AnimationStep;
-
 typedef struct {
   AnimationStep animationStep;
   Int8U animationStepPhase;
@@ -783,7 +773,7 @@ static Font getNextFont(Font font) {
 
 static void checkHT1632(HT1632Class& ht1632) {
   static int checkCount = 0;
-  static const int checkCountMax = 12;  // TWEAK ME
+  static const int checkCountMax = 13;  // TWEAK ME
 
   if (++checkCount < checkCountMax && getDisplayMode() != displayModeMessage) return;
 
@@ -820,6 +810,7 @@ void DisplayInternal::displayTick250ms() {
 }
 
 void DisplayInternal::displayTick500ms() {
+  checkHT1632(info->ht1632);
   ++animationStepTicker500ms;
   if (allModes[currModeIndex].handlerTick500ms != nullptr) (*(allModes[currModeIndex].handlerTick500ms))(*info);
 }
@@ -832,8 +823,6 @@ void DisplayInternal::displayTick1sec() {
 }
 
 void DisplayInternal::displayTick5sec() {
-  checkHT1632(info->ht1632);
-
   ++animationStepTicker5sec;
   if (allModes[currModeIndex].handlerTick5Sec != nullptr) (*(allModes[currModeIndex].handlerTick5Sec))(*info);
 }
@@ -898,6 +887,49 @@ void DisplayInternal::doHandleMsgModePost(const StringMap& postValues) {
     }
   } // for
   changeDisplayMode(displayModeMessage, *info);
+}
+
+void DisplayInternal::doHandleImgBackgroundPost(const StringMap& postValues) {
+  int backgroundImgIndex = 0;
+  BackgroundImg img;
+
+  memset(&img, 0, sizeof(img));
+  for (auto& kvp : postValues) {
+    const std::string& k = kvp.first;
+    const std::string& v = kvp.second;
+    const char* const key = k.c_str();
+    const char* const value = v.c_str(); 
+
+    if (strncasecmp(key, "index", strlen(key)) == 0) {
+      backgroundImgIndex = strtoul(value, NULL, 10);
+      if (backgroundImgIndex < 0 || backgroundImgIndex >= BACKGROUND_IMG_COUNT) {
+	backgroundImgIndex = 0;
+      }
+    } else if (strncasecmp(key, "enabled", strlen(key)) == 0) {
+      img.enabled = true;
+    } else if (strncasecmp(key, "clearAll", strlen(key)) == 0) {
+      for (int i=0; i < BACKGROUND_IMG_COUNT; ++i) initBackgroundImg(i);
+    } else if (strncasecmp(key, "imgArt", strlen(key)) == 0) {
+      img.imgArt = (ImgArt) strtoul(value, NULL, 10);
+      if (img.imgArt < 0 || img.imgArt >= imgArtLast) {
+	img.imgArt = (ImgArt) 0;
+      }
+    } else if (strncasecmp(key, "x", strlen(key)) == 0) {
+      img.x = strtoul(value, NULL, 10);
+    } else if (strncasecmp(key, "y", strlen(key)) == 0) {
+      img.y = strtoul(value, NULL, 10);
+    } else if (strncasecmp(key, "color", strlen(key)) == 0) {
+      img.displayColor = (DisplayColor) strtoul(value, NULL, 10);
+    } else if (strncasecmp(key, "animationStep", strlen(key)) == 0) {
+      img.animation.animationStep = (AnimationStep) strtoul(value, NULL, 10);
+    } else if (strncasecmp(key, "animationPhase", strlen(key)) == 0) {
+      img.animation.animationStepPhase = (uint8_t) strtoul(value, NULL, 10);
+    } else if (strncasecmp(key, "animationPhaseValue", strlen(key)) == 0) {
+      img.animation.animationStepPhaseValue = (uint8_t) strtoul(value, NULL, 10);
+    }
+  } // for
+
+  backgroundImg[backgroundImgIndex] = img;
 }
 
 const char* DisplayInternal::getDisplayModeStr() const {

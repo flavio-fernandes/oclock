@@ -78,6 +78,11 @@ const char* LedStrip::getInternalLedStripMode() {
   return internal->getLedStripModeStr();
 }
 
+const char* LedStrip::getLedStripModeStr(LedStripMode ledStripMode) {
+  std::lock_guard<std::recursive_mutex> guard(instanceMutex);
+  return internal->getLedStripModeStr(ledStripMode);
+}
+
 const LedStripTodo* LedStrip::dequeueLedStripTodo() {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
 

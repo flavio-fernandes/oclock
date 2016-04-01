@@ -20,8 +20,7 @@
 
 // Important: make sure you change the number of sure electronics DE-DP14112
 // to represent how many units are daisy chainned together
-#define XXX_NUM_OF_BICOLOR_UNITS_WANTED 4
-#define NUM_OF_BICOLOR_UNITS 3
+#define NUM_OF_BICOLOR_UNITS 4
 
 #define COM_SIZE 16   /* max_number_of_y */
 #define OUT_SIZE (32 * NUM_OF_BICOLOR_UNITS)  /* max_number_of_x */
