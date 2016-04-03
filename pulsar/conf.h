@@ -11,6 +11,9 @@
 #include "logger.h"
 #include "common.h"
 
+#define WEBSERVER_DEFAULT_PORT     80
+#define WEBSERVER_DEFAULT_WORKERS  4
+
 struct _conf {
 	char *ip;
 	unsigned short port;

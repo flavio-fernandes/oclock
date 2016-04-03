@@ -31,27 +31,39 @@ typedef enum {
   animationStep10sec,
 } AnimationStep;
 
-typedef enum {
-  imgArtSmiley, // 0 izaArt.h
-  imgArtWink,   // 1
-  imgArtBigHeart,  // 2
-  imgArtCat,   // 3
-  imgArtOwls,  // 4
-  imgArtMail,  // 5 images.h
-  imgArtMusic,      // 6
-  imgArtMusicNote,  // 7
-  imgArtHeart,      // 8
-  imgArtSpeakerA,   // 9
-  imgArtSpeakerB,   // 10
+#define IMAGES_LIST \
+    X(imgArtSmiley),    \
+    X(imgArtWink),      \
+    X(imgArtBigHeart),  \
+    X(imgArtCat),       \
+    X(imgArtOwls),      \
+    X(imgArtMail),      \
+    X(imgArtMusic),	\
+    X(imgArtMusicNote), \
+    X(imgArtHeart),	\
+    X(imgArtSpeakerA),	\
+    X(imgArtSpeakerB),	\
+    X(imgArt8x8),	\
+    X(imgArtLast)
 
-  imgArtLast
+
+static const int imgArtStrUniqueOffset = 6;  // imgArtABC
+
+#define X(x) x
+typedef enum {
+    IMAGES_LIST
 } ImgArt;
+#undef X
+
+#define X(x) #x
+const char* imgArtStr[] = {
+    IMAGES_LIST
+};
+#undef X
 
 #define MESSAGE_MAX_SIZE 4096
-#define BACKGROUND_MESSAGE_MSG_SIZE 25
-#define BACKGROUND_MESSAGE_COUNT 16
 #define BACKGROUND_IMG_COUNT 100
-#define BACKGROUND_MESSAGE_MSG_SIZE 25
-#define BACKGROUND_MESSAGE_COUNT 16
+#define BACKGROUND_MESSAGE_MSG_SIZE 120
+#define BACKGROUND_MESSAGE_COUNT 100
 
 #endif // _DISPLAY_TYPES_H

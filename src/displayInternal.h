@@ -23,6 +23,7 @@ public:
 
   void doHandleMsgModePost(const StringMap& postValues);
   void doHandleImgBackgroundPost(const StringMap& postValues);
+  void doHandleMsgBackgroundPost(const StringMap& postValues);
   const char* getDisplayModeStr() const;
 
 private:

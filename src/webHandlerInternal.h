@@ -83,10 +83,11 @@ protected:
   static void addCheckBox(std::string& buff, const char* name, const char* val,
 		       const char* label, bool selected);
 
-  // output common piece of HTML form used for selecting font
+  // output common piece of HTML helper functions
   static void addFormFont(std::string& buff);
-
   static void addFormColor(std::string& buff, bool includeAlternate);
+  static void addXYCoordinatesInput(std::string& buff);
+  static void addAnimationStepInput(std::string& buff);
   
   static void addBody(RequestOutput& requestOutput, const std::string& buffer);
 

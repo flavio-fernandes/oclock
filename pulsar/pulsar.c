@@ -37,7 +37,7 @@ pulsar_main(int argc, char *argv[]) {
 
 	/* defaults */
 	pulsarServerInfo.log = log_new("log/pulsar.log", PULSAR_DEBUG);
-	pulsarServerInfo.cfg = conf_new(strdup("0.0.0.0"), 9090, 4);
+	pulsarServerInfo.cfg = conf_new(strdup("0.0.0.0"), WEBSERVER_DEFAULT_PORT, WEBSERVER_DEFAULT_WORKERS);
 
 	/* read input options */
 	while((opt = getopt(argc,argv,"p:w:v:l:h")) != -1) {

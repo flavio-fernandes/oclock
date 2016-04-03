@@ -66,4 +66,9 @@ const char IMG_OWLS [] = {0b0000, 0b1100, 0b0000, 0b1111, 0b1101, 0b0000, 0b0010
 #define IMG_OWLS_WIDTH 19
 #define IMG_OWLS_HEIGHT 9
 
+// solidblock
+const char IMG_8X8 [] { 0b1111, 0b1111, 0b1111, 0b1111, 0b1111, 0b1111, 0b1111, 0b1111, 0b1111, 0b1111, 0b1111, 0b1111, 0b1111, 0b1111, 0b1111, 0b1111 };
+#define IMG_8X8_WIDTH 8
+#define IMG_8X8_HEIGHT 8
+
 #endif // __IMAGES_H

@@ -22,6 +22,7 @@ const int Display::pinCLK = 26;
 typedef enum {
   displayTodoTypeHandleMsgModePost,
   displayTodoTypeHandleImgBackgroundPost,
+  displayTodoTypeHandleMsgBackgroundPost,
 } DisplayTodoType; 
 
 class DisplayTodo {
@@ -79,6 +80,10 @@ void Display::enqueueImgBackgroundPost(StringMap& postValues) {
   enqueueDisplayTodo( new DisplayTodo(displayTodoTypeHandleImgBackgroundPost, std::move(postValues)) ); // alloc DisplayTodo
 }
 
+void Display::enqueueMsgBackgroundPost(StringMap& postValues) {
+  enqueueDisplayTodo( new DisplayTodo(displayTodoTypeHandleMsgBackgroundPost, std::move(postValues)) ); // alloc DisplayTodo
+}
+
 const char* Display::getInternalDisplayMode() {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
   return internal->getDisplayModeStr();
@@ -102,6 +107,9 @@ void Display::checkTodoList() {
     break;
   case displayTodoTypeHandleImgBackgroundPost:
     internal->doHandleImgBackgroundPost(displayTodo->postValues);
+    break;
+  case displayTodoTypeHandleMsgBackgroundPost:
+    internal->doHandleMsgBackgroundPost(displayTodo->postValues);
     break;
 
   default:

@@ -702,6 +702,9 @@ static ImgArtInfo getImgArtInfo(ImgArt imgArt) {
   case imgArtHeart:     GET_ART_INFO(HEART); break;
   case imgArtSpeakerA:  GET_ART_INFO(SPEAKER_A); break;
   case imgArtSpeakerB:  GET_ART_INFO(SPEAKER_B); break;
+  //
+  case imgArt8x8:      GET_ART_INFO(8X8); break;
+
   default: GET_ART_INFO(SMILEY); break;
   }
   return imgArtInfo;
@@ -930,6 +933,48 @@ void DisplayInternal::doHandleImgBackgroundPost(const StringMap& postValues) {
   } // for
 
   backgroundImg[backgroundImgIndex] = img;
+}
+
+void DisplayInternal::doHandleMsgBackgroundPost(const StringMap& postValues) {
+  int msgIndex = 0;
+  BackgroundMessage msg;
+
+  memset(&msg, 0, sizeof(msg));
+  for (auto& kvp : postValues) {
+    const std::string& k = kvp.first;
+    const std::string& v = kvp.second;
+    const char* const key = k.c_str();
+    const char* const value = v.c_str(); 
+
+    if (strncasecmp(key, "index", strlen(key)) == 0) {
+      msgIndex = strtoul(value, NULL, 10);
+      if (msgIndex < 0 || msgIndex >= BACKGROUND_MESSAGE_COUNT) {
+	msgIndex = 0;
+      }
+    } else if (strncasecmp(key, "msg", strlen(key)) == 0) {
+      strncpy(msg.msg, value, sizeof(msg.msg));
+    } else if (strncasecmp(key, "enabled", strlen(key)) == 0) {
+      msg.enabled = true;
+    } else if (strncasecmp(key, "clearAll", strlen(key)) == 0) {
+      for (int i=0; i < BACKGROUND_MESSAGE_COUNT; ++i) initBackgroundMessage(i);
+    } else if (strncasecmp(key, "font", strlen(key)) == 0) {
+      msg.font = (Font) strtoul(value, NULL, 10);
+    } else if (strncasecmp(key, "x", strlen(key)) == 0) {
+      msg.x = strtoul(value, NULL, 10);
+    } else if (strncasecmp(key, "y", strlen(key)) == 0) {
+      msg.y = strtoul(value, NULL, 10);
+    } else if (strncasecmp(key, "color", strlen(key)) == 0) {
+      msg.displayColor = (DisplayColor) strtoul(value, NULL, 10);
+    } else if (strncasecmp(key, "animationStep", strlen(key)) == 0) {
+      msg.animation.animationStep = (AnimationStep) strtoul(value, NULL, 10);
+    } else if (strncasecmp(key, "animationPhase", strlen(key)) == 0) {
+      msg.animation.animationStepPhase = (uint8_t) strtoul(value, NULL, 10);
+    } else if (strncasecmp(key, "animationPhaseValue", strlen(key)) == 0) {
+      msg.animation.animationStepPhaseValue = (uint8_t) strtoul(value, NULL, 10);
+    }
+  } // for
+
+  backgroundMessage[msgIndex] = msg;
 }
 
 const char* DisplayInternal::getDisplayModeStr() const {

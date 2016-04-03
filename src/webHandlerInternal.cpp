@@ -157,7 +157,7 @@ void WebHandler::addCheckboxOrRadio(std::string& buff, const char* element,
 
 void WebHandler::addFormFont(std::string& buff) {
   buff << "<br/>Font: ";
-  addRadioButton(buff, "font", font5x4, "5x4", false);
+  addRadioButton(buff, "font", font5x4, "5x4", true);
   addRadioButton(buff, "font", font8x4, "8x4", false);
   addRadioButton(buff, "font", font7x5, "7x5", false);
   addRadioButton(buff, "font", font8x6, "8x6", false);
@@ -170,6 +170,32 @@ void WebHandler::addFormColor(std::string& buff, bool includeAlternate) {
     addRadioButton(buff, "color", displayColorRed, "red", false);
     addRadioButton(buff, "color", displayColorYellow, "yellow", false);
     if (includeAlternate)  addRadioButton(buff, "color", displayColorAlternate, "alternate", true);
+}
+
+void WebHandler::addXYCoordinatesInput(std::string& buff) {
+    buff << "<br/>X (0-";
+    INT2BUFF(OUT_SIZE - 1);
+    buff << "): <input type='range' size='3' min='0' max='";
+    INT2BUFF(OUT_SIZE - 1);
+    buff << "' value='0' name='x'>";
+    buff << "  Y (0-";
+    INT2BUFF(COM_SIZE - 1);
+    buff << "): <input type='range' size='2' min='0' max='";
+    INT2BUFF(COM_SIZE - 1);
+    buff << "' value=0 name='y'>";
+}
+
+void WebHandler::addAnimationStepInput(std::string& buff) {
+    buff << "<br/>Animation: ";
+    addRadioButton(buff, "animationStep", animationStepNone, "none", true);  
+    addRadioButton(buff, "animationStep", animationStepFast, "fast", false);
+    addRadioButton(buff, "animationStep", animationStep250ms, "250ms", false);
+    addRadioButton(buff, "animationStep", animationStep500ms, "500ms", false);
+    addRadioButton(buff, "animationStep", animationStep1sec, "1sec", false);
+    addRadioButton(buff, "animationStep", animationStep5sec, "5sec", false);
+    
+    buff << "<br/>phase (0-255): <input type='range' size=3 min=0 max=255 value=2 name='animationPhase'>"
+	 << " value (0-254): <input type='range' size=3 min=0 max=254 value=0 name='animationPhaseValue'>";
 }
 
 // ======================================================================
@@ -364,44 +390,30 @@ public:
 
     buff << "<br/>Index (0-";
     INT2BUFF(BACKGROUND_IMG_COUNT - 1);
-    buff << "): <input type='range' size=1 min=0 max=";
+    buff << "): <input type='range' min='0' max='";
     INT2BUFF(BACKGROUND_IMG_COUNT - 1);
-    buff << " value=0 name='index'>";
+    buff << "' value=0 name='index'>";
 
-    buff << "<br/>ImgArt Number (0-";
-    INT2BUFF(imgArtLast - 1);
-    buff << "): <input type='range' size=1 min=0 max=";
-    INT2BUFF(imgArtLast - 1);
-    buff << "value=0 name='imgArt'>";
-
+#ifdef BG_IMG_ART_SELECT_BY_NUMBER
+    buff << "<br/>ImgArt Number (0-"; INT2BUFF(imgArtLast - 1);
+    buff << "): <input type='range' min='0' max='"; INT2BUFF(imgArtLast - 1);
+    buff << "' value=0 name='imgArt'>";
+#else   // ifdef BG_IMG_ART_SELECT_BY_NUMBER
+    buff << "<br/>ImgArt Name: ";
+    addRadioButton(buff, "imgArt", -1, "default", true);
+    for (int i=0; i < imgArtLast; ++i) {
+      addRadioButton(buff, "imgArt", i, imgArtStr[i] + imgArtStrUniqueOffset, false);
+    }
+#endif  // ifdef BG_IMG_ART_SELECT_BY_NUMBER
+    
     buff << "<br/>Enabled: ";
     addCheckBox(buff, "enabled", "1", "", true);
     buff << "  Clear all: ";
     addCheckBox(buff, "clearAll", "1", "", false);
 
     addFormColor(buff, false /*includeAlternate*/);
-
-    buff << "<br/>X (0-";
-    INT2BUFF(OUT_SIZE - 1);
-    buff << "): <input type='range' size=3 min=0 max=";
-    INT2BUFF(OUT_SIZE - 1);
-    buff <<  "value=0 name='x'>"
-	 << "  Y (0-";
-    INT2BUFF(COM_SIZE - 1);
-    buff << "): <input type='range' size=2 min=0 max=";
-    INT2BUFF(COM_SIZE - 1);
-    buff << " value=0 name='y'>";
-
-    buff << "<br/>Animation: ";
-    addRadioButton(buff, "animationStep", animationStepNone, "none", true);  
-    addRadioButton(buff, "animationStep", animationStepFast, "fast", false);
-    addRadioButton(buff, "animationStep", animationStep250ms, "250ms", false);
-    addRadioButton(buff, "animationStep", animationStep500ms, "500ms", false);
-    addRadioButton(buff, "animationStep", animationStep1sec, "1sec", false);
-    addRadioButton(buff, "animationStep", animationStep5sec, "5sec", false);
-    
-    buff << "<br/>phase (0-255): <input type='range' size=3 min=0 max=255 value=2 name='animationPhase'>"
-	 << " value (0-254): <input type='range' size=3 min=0 max=254 value=0 name='animationPhaseValue'>";
+    addXYCoordinatesInput(buff);
+    addAnimationStepInput(buff);
     
     buff << "</p><input type='submit' value='Submit'/></imgBackground>";
 
@@ -419,6 +431,54 @@ public:
     const HandleRequestReply handleRequestReply = parsePost(requestInfo, requestOutput, postValues);
     if (handleRequestReply.code != HTTP_OK) return handleRequestReply;
     display.enqueueImgBackgroundPost(postValues);
+    return replyNoContent;
+  }
+private:
+  Display& display;
+};
+
+class WebHandlerMsgBackground : public WebHandler {
+public:
+  virtual HandleRequestReply process(const RequestInfo& requestInfo, RequestOutput& requestOutput) {
+    std::string buff(contentStart);
+
+    buff << "<form action='/msgBackground' method='post'>"
+	 << "<h1>Background Message</h1><p>";
+
+    buff << "<br/>Index (0-";
+    INT2BUFF(BACKGROUND_MESSAGE_COUNT - 1);
+    buff << "): <input type='range' min='0' max='";
+    INT2BUFF(BACKGROUND_MESSAGE_COUNT - 1);
+    buff << "' value=0 name='index'>";
+
+    buff << "<br/>Msg: <input type='text' size='16' name='msg'>";
+
+    buff << "<br/>Enabled: ";
+    addCheckBox(buff, "enabled", "1", "", true);
+    buff << "  Clear all: ";
+    addCheckBox(buff, "clearAll", "1", "", false);
+
+    addFormFont(buff);
+    addFormColor(buff, false /*includeAlternate*/);
+    addXYCoordinatesInput(buff);
+    addAnimationStepInput(buff);
+    
+    buff << "</p><input type='submit' value='Submit'/></msgBackground>";
+
+    ADD_BODY(buff + contentStop);
+    return replyOk;
+  }
+};
+
+class WebHandlerMsgBackgroundPost : public WebHandler {
+public:
+  WebHandlerMsgBackgroundPost() : WebHandler(), display(Display::bind()) { }
+  virtual ~WebHandlerMsgBackgroundPost() {}
+  virtual HandleRequestReply process(const RequestInfo& requestInfo, RequestOutput& requestOutput) {
+    StringMap postValues;
+    const HandleRequestReply handleRequestReply = parsePost(requestInfo, requestOutput, postValues);
+    if (handleRequestReply.code != HTTP_OK) return handleRequestReply;
+    display.enqueueMsgBackgroundPost(postValues);
     return replyNoContent;
   }
 private:
@@ -465,8 +525,7 @@ public:
     addRadioButton(buff, "timeout", "60", "60", true);
     addRadioButton(buff, "timeout", "300", "300", false);
     
-    buff << "<br/>X (0-127): <input type='range' size=3 min=0 max=127 value=0 name='x'>";
-    buff << "  Y (0-15): <input type='range' size=2 min=0 max=15 value=0 name='y'>";
+    addXYCoordinatesInput(buff);
 
     buff << "</p><input type='submit' value='Submit'/></msgMode>";
 
@@ -489,9 +548,15 @@ HandleRequestReply WebHandler::parsePost(const RequestInfo& requestInfo,
       RETURN_ERROR(errMsg);
     }
 
-    char data[bodyLen];
+    char data[bodyLen + 1];
     evbuffer_copyout(requestInfo.requestBody, data, bodyLen);
-
+ 
+#if 0
+    // DEBUG!!!
+    data[bodyLen] = 0;
+    printf("%s: %s\n", requestInfo.uriPath, data);
+#endif
+    
     bool gettingValuePortion = false;  // state of what is being assembled (key vs value)
     char tmpBuffer[bodyLen + 1] = {0};
     int tmpBufferOffset = 0;
@@ -576,8 +641,6 @@ public:
     buff << "<form action='/ledStrip' method='post'>"
 	 << "<h1>Led Strip Config</h1><p>";
 
-
-    // FIXME: TODO: implement me!
     buff << "Pixels (0 to "; INT2BUFF(LedStrip::numberOfLeds - 1);
     buff << ") formatting:" << "<input type='text' size='";
     INT2BUFF(FORM_MSG_BOX_LEN);  // not the max len of content, just size of form
@@ -658,7 +721,9 @@ public:
     buff << "<br/><a href='status'>status</a>"
 	 << "<br/><a href='msgMode'>msg mode</a>"
 	 << "<br/><a href='imgBackground'>image background</a>"
+	 << "<br/><a href='msgBackground'>message background</a>"
 	 << "<br/><a href='ledStrip'>led strip</a>"
+         << "<br/><a href='sound'>sound</a>"
 	 << "<br/><a href='stop'>stop</a> (careful!)"
       ; // buff
     
@@ -683,6 +748,9 @@ void WebHandlerInternal::_start() {
   webHandlers[ WebHandlerKey("/imgBackground") ] = new WebHandlerImgBackground;
   webHandlers[ WebHandlerKey(EVHTTP_REQ_POST, "/imgBackground") ] = new WebHandlerImgBackgroundPost;
   
+  webHandlers[ WebHandlerKey("/msgBackground") ] = new WebHandlerMsgBackground;
+  webHandlers[ WebHandlerKey(EVHTTP_REQ_POST, "/msgBackground") ] = new WebHandlerMsgBackgroundPost;
+
   webHandlers[ WebHandlerKey("/ledStrip") ] = new WebHandlerLedStrip;
   webHandlers[ WebHandlerKey(EVHTTP_REQ_POST, "/ledStrip") ] = new WebHandlerLedStripPost;
 

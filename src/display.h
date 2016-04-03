@@ -22,6 +22,7 @@ public:
   // call-ins from other threads that add async requests to the display thread
   void enqueueMsgModePost(StringMap& postValues);
   void enqueueImgBackgroundPost(StringMap& postValues);
+  void enqueueMsgBackgroundPost(StringMap& postValues);
   
   const char* getInternalDisplayMode();
 
