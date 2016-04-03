@@ -680,6 +680,12 @@ static void drawBackgroundImgs(DisplayInternalInfo& displayInternalInfo) {
 
 // ======================================================================
 
+#define X(x) #x
+/*extern*/ const char* imgArtStr[] = {
+    IMG_ART_LIST
+};
+#undef X
+
 #define IMG_CONCATENATE_DETAIL(a, b) a##b
 #define IMG_CONCATENATE(a, b) IMG_CONCATENATE_DETAIL(a, b)
 #define GET_ART_INFO(x) do { imgArtInfo.img = IMG_CONCATENATE(IMG_, x); \

@@ -31,7 +31,7 @@ typedef enum {
   animationStep10sec,
 } AnimationStep;
 
-#define IMAGES_LIST \
+#define IMG_ART_LIST \
     X(imgArtSmiley),    \
     X(imgArtWink),      \
     X(imgArtBigHeart),  \
@@ -46,20 +46,14 @@ typedef enum {
     X(imgArt8x8),	\
     X(imgArtLast)
 
-
-static const int imgArtStrUniqueOffset = 6;  // imgArtABC
-
 #define X(x) x
 typedef enum {
-    IMAGES_LIST
+    IMG_ART_LIST
 } ImgArt;
 #undef X
 
-#define X(x) #x
-const char* imgArtStr[] = {
-    IMAGES_LIST
-};
-#undef X
+static const int imgArtStrUniqueOffset = 6;  // imgArtABC
+extern const char* imgArtStr[];
 
 #define MESSAGE_MAX_SIZE 4096
 #define BACKGROUND_IMG_COUNT 100
