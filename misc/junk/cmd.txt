@@ -12,4 +12,9 @@ sudo killall --signal SIGINT oclock
 ps auxww | grep oclock
 kill -SIGINT $PID
 
+==
+
+curl --request POST 'http://localhost/msgMode' --data 'msg=hello&noScroll=1&bounce=1&timeout=5'
+
+curl --request POST 'http://localhost/ledStrip' --data 'ledStripMode=3&timeout=-1'
 

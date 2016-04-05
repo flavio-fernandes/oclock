@@ -1,4 +1,0 @@
-
-wget -O spidev_test.c \
-https://gist.githubusercontent.com/mcauser/02442041c1b0987976b9/raw/b91600f0a59c6e24c25ec7187906743ae472cd34/gistfile1.txt
-

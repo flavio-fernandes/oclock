@@ -14,8 +14,8 @@ const int LightSensor::pinDigitalOut = 27;
 const int LightSensor::pinDigitalIn = 22;
 const int LightSensor::pinChipSelect = 4;
 
-const Int32U LightSensor::darkRoomThresholdLowWaterMark = 350;  // TWEAK ME!
-const Int32U LightSensor::darkRoomThresholdHighWaterMark = 480; // TWEAK ME!
+const Int32U LightSensor::darkRoomThresholdLowWaterMark = 400;  // TWEAK ME!
+const Int32U LightSensor::darkRoomThresholdHighWaterMark = 500; // TWEAK ME!
 
 LightSensor::LightSensor() : lightValues() {
 }

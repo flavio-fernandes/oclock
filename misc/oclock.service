@@ -1,0 +1,14 @@
+[Unit]
+Description=Office Clock Display Service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/oclock.git
+ExecStart=/home/pi/oclock.git/oclock
+StandardOutput=null
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+Alias=oclock.service
