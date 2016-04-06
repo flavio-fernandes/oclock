@@ -44,6 +44,10 @@ typedef enum {
     X(imgArtSpeakerA),	\
     X(imgArtSpeakerB),	\
     X(imgArt8x8),	\
+    X(imgArtStickMan1), \
+    X(imgArtStickMan2), \
+    X(imgArtStickMan3), \
+    X(imgArtStickMan4), \
     X(imgArtLast)
 
 #define X(x) x

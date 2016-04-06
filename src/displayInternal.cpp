@@ -709,7 +709,11 @@ static ImgArtInfo getImgArtInfo(ImgArt imgArt) {
   case imgArtSpeakerA:  GET_ART_INFO(SPEAKER_A); break;
   case imgArtSpeakerB:  GET_ART_INFO(SPEAKER_B); break;
   //
-  case imgArt8x8:      GET_ART_INFO(8X8); break;
+  case imgArt8x8:       GET_ART_INFO(8X8); break;
+  case imgArtStickMan1: GET_ART_INFO(STICKMAN1); break;
+  case imgArtStickMan2: GET_ART_INFO(STICKMAN2); break;
+  case imgArtStickMan3: GET_ART_INFO(STICKMAN3); break;
+  case imgArtStickMan4: GET_ART_INFO(STICKMAN4); break;
 
   default: GET_ART_INFO(SMILEY); break;
   }
