@@ -8,13 +8,13 @@
 std::thread::id LightSensor::mainThreadId;  // default 'invalid' value 
 std::recursive_mutex LightSensor::instanceMutex;
 LightSensor* LightSensor::instance = 0;
-const size_t LightSensor::maxLightValuesSize = 13;
+const size_t LightSensor::maxLightValuesSize = 10;
 const int LightSensor::pinClock = 17;
 const int LightSensor::pinDigitalOut = 27;
 const int LightSensor::pinDigitalIn = 22;
 const int LightSensor::pinChipSelect = 4;
 
-const Int32U LightSensor::darkRoomThresholdLowWaterMark = 400;  // TWEAK ME!
+const Int32U LightSensor::darkRoomThresholdLowWaterMark = 360;  // TWEAK ME!
 const Int32U LightSensor::darkRoomThresholdHighWaterMark = 500; // TWEAK ME!
 
 LightSensor::LightSensor() : lightValues() {
