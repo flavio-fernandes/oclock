@@ -1,0 +1,1378 @@
+{
+	"id": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+	"name": "officeClock",
+	"description": "This collection gives you a set of POST\ncommands that you can use to interface with the\noffice clock program, described at\nhttp://www.flaviof.com/blog/hacks/office-clock-part2.html\n",
+	"order": [
+		"c0250da8-df5f-60d7-9398-e9780b564935",
+		"3fc50668-11a7-5bad-4726-983af179c3b2",
+		"2dd9cf06-f5c2-446f-48c4-b47840adf97b",
+		"3109e6bf-557f-b0b5-7adb-a7e494b4b901",
+		"81a19195-bf21-286c-35cb-002eb37c3cc7",
+		"3872efd4-4e2f-7778-6942-4c20103d0992",
+		"df95fe4c-3b53-a416-eaf9-1717b04a2340"
+	],
+	"folders": [
+		{
+			"id": "b1dbac7e-a6e2-5c56-854b-fc055a2fe451",
+			"name": "backgroundImage",
+			"description": "",
+			"order": [
+				"51c55d11-3fa8-9e77-d3d3-21db2f121a1b",
+				"91bfd93f-db73-aab1-fe94-77dd30a6d100",
+				"e12d8601-052c-9e2f-c366-faf397c96e7d",
+				"17ef5fd1-3ddc-79c7-d129-242ea30950ef"
+			],
+			"owner": "36017",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d"
+		},
+		{
+			"id": "aff3ab4a-19dd-52c0-ed74-3a292e2503cd",
+			"name": "backgroundMessage",
+			"description": "",
+			"order": [
+				"b062355f-217d-fe96-6fdf-b7437a6f7880",
+				"d88f8911-f5e4-1a9b-d528-3917436c69b1",
+				"82c8270a-f92e-7b15-2001-a8a3dd4acebe",
+				"f6bae984-2686-21cf-b401-de4dcf41d49c",
+				"1ec5ae26-a4e1-00a7-70b5-99e20c1332ff"
+			],
+			"owner": "36017",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d"
+		},
+		{
+			"id": "bfefb321-8f74-461e-5af3-291cf5b7da82",
+			"name": "ledStrip",
+			"description": "",
+			"order": [
+				"589f4087-3b42-063c-d3cb-a7e5898bbb17",
+				"03e063f4-c48a-51f9-df02-f396a3e2b4a0",
+				"a820640e-6406-f79b-7f2d-48a24a11decc",
+				"81e43b97-603f-bb15-59b7-3c5bd000f5d9",
+				"c36a40dc-cad4-ced3-97f4-c69690d01691"
+			],
+			"owner": "36017",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d"
+		},
+		{
+			"id": "3365452c-f973-8528-3345-e47984014335",
+			"name": "messageMode",
+			"description": "",
+			"order": [
+				"8b8ffe1b-e4be-4abd-74ec-b83ed99d6f13",
+				"4b50fa1b-b2d0-3711-ef91-c958a50e07f5",
+				"b52a2c95-67ec-4614-2821-7b3f22f1955b",
+				"c7e20fd6-c93c-e51f-eb72-d47ab3d0dedf",
+				"d89c9c9f-a220-005d-d00a-6f48bee45baa",
+				"ae860ef9-4390-b981-a271-4ffb172b6914",
+				"7fb00f63-32c9-b84c-d967-1c66f79d66f1"
+			],
+			"owner": "36017"
+		}
+	],
+	"timestamp": 1460045617109,
+	"owner": "36017",
+	"remoteLink": "https://www.getpostman.com/collections/f3117dd8a2924ede21cb",
+	"public": false,
+	"requests": [
+		{
+			"id": "03e063f4-c48a-51f9-df02-f396a3e2b4a0",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/ledStrip",
+			"preRequestScript": null,
+			"pathVariables": {},
+			"method": "POST",
+			"data": [
+				{
+					"key": "extraParam",
+					"value": "10sec",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "ledStripMode",
+					"value": "1",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "timeout",
+					"value": "300",
+					"type": "text",
+					"enabled": true
+				}
+			],
+			"dataMode": "urlencoded",
+			"version": 2,
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {},
+			"time": 1460058670082,
+			"name": "Start pastel mode",
+			"description": "enter led strip pastel mode for 5 minutes\nhttps://github.com/flavio-fernandes/oclock/blob/rpi-0.1.y/src/ledStripTypes.h\n",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"responses": []
+		},
+		{
+			"id": "17ef5fd1-3ddc-79c7-d129-242ea30950ef",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/imgBackground",
+			"preRequestScript": null,
+			"pathVariables": {},
+			"method": "POST",
+			"data": [
+				{
+					"key": "index",
+					"value": "10",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "imgArt",
+					"value": "0",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "color",
+					"value": "1",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "x",
+					"value": "37",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "y",
+					"value": "1",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "enabled",
+					"value": "yes",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "animationStep",
+					"value": "2",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "animationPhase",
+					"value": "2",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "animationPhaseValue",
+					"value": "0",
+					"type": "text",
+					"enabled": true
+				}
+			],
+			"dataMode": "urlencoded",
+			"version": 2,
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {},
+			"time": 1460055477766,
+			"name": "bg msg animate 2 of 2",
+			"description": "basic animation of background image\nFor encoding of font, color, etc, see:\nhttps://github.com/flavio-fernandes/oclock/blob/rpi-0.1.y/src/displayTypes.h\n\n",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"responses": []
+		},
+		{
+			"id": "1ec5ae26-a4e1-00a7-70b5-99e20c1332ff",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/msgBackground",
+			"preRequestScript": null,
+			"pathVariables": {},
+			"method": "POST",
+			"data": [
+				{
+					"key": "index",
+					"value": "12",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "msg",
+					"value": "fun",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "color",
+					"value": "1",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "x",
+					"value": "5",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "y",
+					"value": "4",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "font",
+					"value": "3",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "enabled",
+					"value": "yes",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "animationStep",
+					"value": "3",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "animationPhase",
+					"value": "3",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "animationPhaseValue",
+					"value": "2",
+					"type": "text",
+					"enabled": true
+				}
+			],
+			"dataMode": "urlencoded",
+			"version": 2,
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {},
+			"time": 1460054557204,
+			"name": "bg msg animate 3 of 3",
+			"description": "basic animation of background message\nFor encoding of font, color, etc, see:\nhttps://github.com/flavio-fernandes/oclock/blob/rpi-0.1.y/src/displayTypes.h\n\n",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"responses": []
+		},
+		{
+			"id": "2dd9cf06-f5c2-446f-48c4-b47840adf97b",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/index.html",
+			"preRequestScript": null,
+			"pathVariables": {},
+			"method": "GET",
+			"data": [],
+			"dataMode": "params",
+			"version": 2,
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {},
+			"time": 1460056167061,
+			"name": "Get index.html",
+			"description": "get /index.html",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"responses": []
+		},
+		{
+			"id": "3109e6bf-557f-b0b5-7adb-a7e494b4b901",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/status",
+			"pathVariables": {},
+			"preRequestScript": null,
+			"method": "GET",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"data": [],
+			"dataMode": "params",
+			"name": "Get status",
+			"description": "get device status and stats",
+			"descriptionFormat": "html",
+			"time": 1460045947128,
+			"version": 2,
+			"responses": [],
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {}
+		},
+		{
+			"id": "3872efd4-4e2f-7778-6942-4c20103d0992",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/msgMode",
+			"preRequestScript": null,
+			"pathVariables": {},
+			"method": "POST",
+			"data": [
+				{
+					"key": "timeout",
+					"value": "300",
+					"type": "text",
+					"enabled": true
+				}
+			],
+			"dataMode": "urlencoded",
+			"version": 2,
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {},
+			"time": 1460054863406,
+			"name": "Start message mode",
+			"description": "enter message mode for 5 minutes\nhttp://www.flaviof.com/blog/hacks/office-clock-part2.html\n\n",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"responses": []
+		},
+		{
+			"id": "3fc50668-11a7-5bad-4726-983af179c3b2",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/blablabla",
+			"preRequestScript": null,
+			"pathVariables": {},
+			"method": "GET",
+			"data": [],
+			"dataMode": "params",
+			"version": 2,
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {},
+			"time": 1460055818415,
+			"name": "Get page not found",
+			"description": "get a 404",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"responses": []
+		},
+		{
+			"id": "4b50fa1b-b2d0-3711-ef91-c958a50e07f5",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/msgMode",
+			"preRequestScript": null,
+			"pathVariables": {},
+			"method": "POST",
+			"data": [
+				{
+					"key": "msg",
+					"value": "#cookie13",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "repeats",
+					"value": "0",
+					"type": "text",
+					"enabled": true
+				}
+			],
+			"dataMode": "urlencoded",
+			"version": 2,
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {},
+			"time": 1460049351752,
+			"name": "fortune #13",
+			"description": "fortune telling message #13\nFor encoding of fortunes, see:\nhttps://github.com/flavio-fernandes/oclock/blob/rpi-0.1.y/src/fortunes.h\n",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"responses": [],
+			"folder": "3365452c-f973-8528-3345-e47984014335"
+		},
+		{
+			"id": "51c55d11-3fa8-9e77-d3d3-21db2f121a1b",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/imgBackground",
+			"preRequestScript": null,
+			"pathVariables": {},
+			"method": "POST",
+			"data": [
+				{
+					"key": "clearAll",
+					"value": "yes",
+					"type": "text",
+					"enabled": true
+				}
+			],
+			"dataMode": "urlencoded",
+			"version": 2,
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {},
+			"time": 1460055013796,
+			"name": "clear all background images",
+			"description": "clear all background images\n\n",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"responses": []
+		},
+		{
+			"id": "589f4087-3b42-063c-d3cb-a7e5898bbb17",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/ledStrip",
+			"preRequestScript": null,
+			"pathVariables": {},
+			"method": "POST",
+			"data": [
+				{
+					"key": "rawFormat",
+					"value": "",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "extraParam",
+					"value": "",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "clearPixels",
+					"value": "true",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "ledStripMode",
+					"value": "0",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "red",
+					"value": "0",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "green",
+					"value": "0",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "blue",
+					"value": "0",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "timeout",
+					"value": "-1",
+					"type": "text",
+					"enabled": true
+				}
+			],
+			"dataMode": "urlencoded",
+			"version": 2,
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {},
+			"time": 1460058802431,
+			"name": "Start manual mode",
+			"description": "enter led strip scan mode forever\nhttps://github.com/flavio-fernandes/oclock/blob/rpi-0.1.y/src/ledStripTypes.h\n",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"responses": []
+		},
+		{
+			"id": "7fb00f63-32c9-b84c-d967-1c66f79d66f1",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/msgMode",
+			"preRequestScript": null,
+			"pathVariables": {},
+			"method": "POST",
+			"data": [
+				{
+					"key": "timeout",
+					"value": "0",
+					"type": "text",
+					"enabled": true
+				}
+			],
+			"dataMode": "urlencoded",
+			"version": 2,
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {},
+			"time": 1460054880539,
+			"name": "blank forever",
+			"description": "no message and no expiration\nhttp://www.flaviof.com/blog/hacks/office-clock-part2.html\n\n",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"responses": []
+		},
+		{
+			"id": "81a19195-bf21-286c-35cb-002eb37c3cc7",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/",
+			"preRequestScript": null,
+			"pathVariables": {},
+			"method": "HEAD",
+			"data": [],
+			"dataMode": "params",
+			"version": 2,
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {},
+			"time": 1460055755945,
+			"name": "Get head",
+			"description": "get http head from device",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"responses": []
+		},
+		{
+			"id": "81e43b97-603f-bb15-59b7-3c5bd000f5d9",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/ledStrip",
+			"preRequestScript": null,
+			"pathVariables": {},
+			"method": "POST",
+			"data": [
+				{
+					"key": "ledStripMode",
+					"value": "3",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "timeout",
+					"value": "300",
+					"type": "text",
+					"enabled": true
+				}
+			],
+			"dataMode": "urlencoded",
+			"version": 2,
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {},
+			"time": 1460058034810,
+			"name": "Start rainbow mode",
+			"description": "enter led strip rainbow mode for 5 minutes\nhttps://github.com/flavio-fernandes/oclock/blob/rpi-0.1.y/src/ledStripTypes.h\n",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"responses": []
+		},
+		{
+			"id": "82c8270a-f92e-7b15-2001-a8a3dd4acebe",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/msgBackground",
+			"preRequestScript": null,
+			"pathVariables": {},
+			"method": "POST",
+			"data": [
+				{
+					"key": "index",
+					"value": "10",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "msg",
+					"value": "this",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "color",
+					"value": "0",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "x",
+					"value": "1",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "y",
+					"value": "0",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "font",
+					"value": "0",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "enabled",
+					"value": "yes",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "animationStep",
+					"value": "3",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "animationPhase",
+					"value": "3",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "animationPhaseValue",
+					"value": "0",
+					"type": "text",
+					"enabled": true
+				}
+			],
+			"dataMode": "urlencoded",
+			"version": 2,
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {},
+			"time": 1460054302867,
+			"name": "bg msg animate 1 of 3",
+			"description": "basic animation of background message\nFor encoding of font, color, etc, see:\nhttps://github.com/flavio-fernandes/oclock/blob/rpi-0.1.y/src/displayTypes.h\n\n",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"responses": []
+		},
+		{
+			"id": "8b8ffe1b-e4be-4abd-74ec-b83ed99d6f13",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/msgMode",
+			"preRequestScript": null,
+			"pathVariables": {},
+			"method": "POST",
+			"data": [
+				{
+					"key": "msg",
+					"value": "hello world!",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "color",
+					"value": "0",
+					"type": "text",
+					"enabled": true
+				}
+			],
+			"dataMode": "urlencoded",
+			"version": 2,
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {},
+			"time": 1460049716665,
+			"name": "helloWorld",
+			"description": "basic hello world message, using green color\nFor encoding of color, see:\nhttps://github.com/flavio-fernandes/oclock/blob/rpi-0.1.y/src/displayTypes.h#L7\n",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"responses": [],
+			"folder": "3365452c-f973-8528-3345-e47984014335"
+		},
+		{
+			"id": "91bfd93f-db73-aab1-fe94-77dd30a6d100",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/imgBackground",
+			"preRequestScript": null,
+			"pathVariables": {},
+			"method": "POST",
+			"data": [
+				{
+					"key": "index",
+					"value": "0",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "imgArt",
+					"value": "3",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "color",
+					"value": "2",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "x",
+					"value": "26",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "y",
+					"value": "3",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "enabled",
+					"value": "yes",
+					"type": "text",
+					"enabled": true
+				}
+			],
+			"dataMode": "urlencoded",
+			"version": 2,
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {},
+			"time": 1460055188351,
+			"name": "background image -- cat",
+			"description": "basic background image\nFor encoding of font, color, etc, see:\nhttps://github.com/flavio-fernandes/oclock/blob/rpi-0.1.y/src/displayTypes.h\n",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"responses": []
+		},
+		{
+			"id": "a820640e-6406-f79b-7f2d-48a24a11decc",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/ledStrip",
+			"preRequestScript": null,
+			"pathVariables": {},
+			"method": "POST",
+			"data": [
+				{
+					"key": "rawFormat",
+					"value": "",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "extraParam",
+					"value": "randomColor",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "ledStripMode",
+					"value": "2",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "red",
+					"value": "0",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "green",
+					"value": "0",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "blue",
+					"value": "0",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "timeout",
+					"value": "300",
+					"type": "text",
+					"enabled": true
+				}
+			],
+			"dataMode": "urlencoded",
+			"version": 2,
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {},
+			"time": 1460057860718,
+			"name": "Start fill mode",
+			"description": "enter led strip fill mode for 5 minutes\nhttps://github.com/flavio-fernandes/oclock/blob/rpi-0.1.y/src/ledStripTypes.h\n",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"responses": []
+		},
+		{
+			"id": "ae860ef9-4390-b981-a271-4ffb172b6914",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/msgMode",
+			"preRequestScript": null,
+			"pathVariables": {},
+			"method": "POST",
+			"data": [
+				{
+					"key": "msg",
+					"value": "bla bla#%^&bla?#",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "font",
+					"value": "2",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "alternateFont",
+					"value": "yes",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "confetti",
+					"value": "21",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "bounce",
+					"value": "no",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "color",
+					"value": "3",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "noScroll",
+					"value": "yes",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "blink",
+					"value": "no",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "x",
+					"value": "5",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "y",
+					"value": "8",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "timeout",
+					"value": "5",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "repeats",
+					"value": "3",
+					"type": "text",
+					"enabled": true
+				}
+			],
+			"dataMode": "urlencoded",
+			"version": 2,
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {},
+			"time": 1460049668143,
+			"name": "msgModeAllAttributes",
+			"description": "example message where all attributes are exposed\nFor encodings, see:\nhttps://github.com/flavio-fernandes/oclock/blob/rpi-0.1.y/src/displayTypes.h\nhttp://www.flaviof.com/blog/hacks/office-clock-part2.html\n\n",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"responses": [],
+			"folder": "3365452c-f973-8528-3345-e47984014335"
+		},
+		{
+			"id": "b062355f-217d-fe96-6fdf-b7437a6f7880",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/msgBackground",
+			"preRequestScript": null,
+			"pathVariables": {},
+			"method": "POST",
+			"data": [
+				{
+					"key": "clearAll",
+					"value": "yes",
+					"type": "text",
+					"enabled": true
+				}
+			],
+			"dataMode": "urlencoded",
+			"version": 2,
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {},
+			"time": 1460054624796,
+			"name": "clear all background messages",
+			"description": "clear all background messages\n\n",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"responses": []
+		},
+		{
+			"id": "b52a2c95-67ec-4614-2821-7b3f22f1955b",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/msgMode",
+			"preRequestScript": null,
+			"pathVariables": {},
+			"method": "POST",
+			"data": [
+				{
+					"key": "msg",
+					"value": "#cookie",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "color",
+					"value": "1",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "y",
+					"value": "9",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "repeats",
+					"value": "0",
+					"type": "text",
+					"enabled": true
+				}
+			],
+			"dataMode": "urlencoded",
+			"version": 2,
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {},
+			"time": 1460049195593,
+			"name": "random fortune",
+			"description": "basic fortune telling message, using red color\nFor encoding of color, see:\nhttps://github.com/flavio-fernandes/oclock/blob/rpi-0.1.y/src/displayTypes.h#L7\n\nFor encoding of fortunes, see: https://github.com/flavio-fernandes/oclock/blob/rpi-0.1.y/src/fortunes.h\n",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"responses": [],
+			"folder": "3365452c-f973-8528-3345-e47984014335"
+		},
+		{
+			"id": "c0250da8-df5f-60d7-9398-e9780b564935",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/stop",
+			"preRequestScript": null,
+			"pathVariables": {},
+			"method": "GET",
+			"data": [],
+			"dataMode": "params",
+			"version": 2,
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {},
+			"time": 1460055901686,
+			"name": "Stop the program",
+			"description": "stop running the application -- CAREFUL!",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"responses": []
+		},
+		{
+			"id": "c36a40dc-cad4-ced3-97f4-c69690d01691",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/ledStrip",
+			"preRequestScript": null,
+			"pathVariables": {},
+			"method": "POST",
+			"data": [
+				{
+					"key": "ledStripMode",
+					"value": "4",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "timeout",
+					"value": "300",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "red",
+					"value": "",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "green",
+					"value": "",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "blue",
+					"value": "",
+					"type": "text",
+					"enabled": true
+				}
+			],
+			"dataMode": "urlencoded",
+			"version": 2,
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {},
+			"time": 1460058027962,
+			"name": "Start scan mode",
+			"description": "enter led strip scan mode for 5 minutes\nhttps://github.com/flavio-fernandes/oclock/blob/rpi-0.1.y/src/ledStripTypes.h\n\n",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"responses": []
+		},
+		{
+			"id": "c7e20fd6-c93c-e51f-eb72-d47ab3d0dedf",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/msgMode",
+			"preRequestScript": null,
+			"pathVariables": {},
+			"method": "POST",
+			"data": [
+				{
+					"key": "msg",
+					"value": "up & down",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "color",
+					"value": "3",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "noScroll",
+					"value": "yes",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "bounce",
+					"value": "1",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "x",
+					"value": "5",
+					"type": "text",
+					"enabled": true
+				}
+			],
+			"dataMode": "urlencoded",
+			"version": 2,
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {},
+			"time": 1460049374217,
+			"name": "bounce message",
+			"description": "basic bounce message, using alternating color\nFor encoding of color, see:\nhttps://github.com/flavio-fernandes/oclock/blob/rpi-0.1.y/src/displayTypes.h#L7\n\n",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"responses": [],
+			"folder": "3365452c-f973-8528-3345-e47984014335"
+		},
+		{
+			"id": "d88f8911-f5e4-1a9b-d528-3917436c69b1",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/msgBackground",
+			"preRequestScript": null,
+			"pathVariables": {},
+			"method": "POST",
+			"data": [
+				{
+					"key": "index",
+					"value": "0",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "msg",
+					"value": "background txt",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "color",
+					"value": "2",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "x",
+					"value": "15",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "y",
+					"value": "2",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "font",
+					"value": "1",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "enabled",
+					"value": "yes",
+					"type": "text",
+					"enabled": true
+				}
+			],
+			"dataMode": "urlencoded",
+			"version": 2,
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {},
+			"time": 1460054011368,
+			"name": "basic background message",
+			"description": "basic background message\nFor encoding of font, color, etc, see:\nhttps://github.com/flavio-fernandes/oclock/blob/rpi-0.1.y/src/displayTypes.h\n\n",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"responses": []
+		},
+		{
+			"id": "d89c9c9f-a220-005d-d00a-6f48bee45baa",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/msgMode",
+			"preRequestScript": null,
+			"pathVariables": {},
+			"method": "POST",
+			"data": [
+				{
+					"key": "msg",
+					"value": "go big",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "color",
+					"value": "2",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "noScroll",
+					"value": "yes",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "x",
+					"value": "5",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "y",
+					"value": "0",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "font",
+					"value": "4",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "blink",
+					"value": "yes",
+					"type": "text",
+					"enabled": true
+				}
+			],
+			"dataMode": "urlencoded",
+			"version": 2,
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {},
+			"time": 1460048612900,
+			"name": "big font",
+			"description": "big font message\nFor encoding of font, see:\nhttps://github.com/flavio-fernandes/oclock/blob/rpi-0.1.y/src/displayTypes.h#L14\n\n",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"responses": [],
+			"folder": "3365452c-f973-8528-3345-e47984014335"
+		},
+		{
+			"id": "df95fe4c-3b53-a416-eaf9-1717b04a2340",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/msgMode",
+			"preRequestScript": null,
+			"pathVariables": {},
+			"method": "POST",
+			"data": [
+				{
+					"key": "timeout",
+					"value": "1",
+					"type": "text",
+					"enabled": true
+				}
+			],
+			"dataMode": "urlencoded",
+			"version": 2,
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {},
+			"time": 1460056041769,
+			"name": "End message mode",
+			"description": "leave message mode\nhttp://www.flaviof.com/blog/hacks/office-clock-part2.html\n\n",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"responses": []
+		},
+		{
+			"id": "e12d8601-052c-9e2f-c366-faf397c96e7d",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/imgBackground",
+			"preRequestScript": null,
+			"pathVariables": {},
+			"method": "POST",
+			"data": [
+				{
+					"key": "index",
+					"value": "11",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "imgArt",
+					"value": "1",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "color",
+					"value": "0",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "x",
+					"value": "37",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "y",
+					"value": "1",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "enabled",
+					"value": "yes",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "animationStep",
+					"value": "2",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "animationPhase",
+					"value": "2",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "animationPhaseValue",
+					"value": "1",
+					"type": "text",
+					"enabled": true
+				}
+			],
+			"dataMode": "urlencoded",
+			"version": 2,
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {},
+			"time": 1460055571411,
+			"name": "bg msg animate 1 of 2",
+			"description": "basic animation of background image\nFor encoding of font, color, etc, see:\nhttps://github.com/flavio-fernandes/oclock/blob/rpi-0.1.y/src/displayTypes.h\n\n",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"responses": []
+		},
+		{
+			"id": "f6bae984-2686-21cf-b401-de4dcf41d49c",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/msgBackground",
+			"preRequestScript": null,
+			"pathVariables": {},
+			"method": "POST",
+			"data": [
+				{
+					"key": "index",
+					"value": "11",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "msg",
+					"value": "is",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "color",
+					"value": "2",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "x",
+					"value": "2",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "y",
+					"value": "1",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "font",
+					"value": "2",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "enabled",
+					"value": "yes",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "animationStep",
+					"value": "3",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "animationPhase",
+					"value": "3",
+					"type": "text",
+					"enabled": true
+				},
+				{
+					"key": "animationPhaseValue",
+					"value": "1",
+					"type": "text",
+					"enabled": true
+				}
+			],
+			"dataMode": "urlencoded",
+			"version": 2,
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {},
+			"time": 1460054445921,
+			"name": "bg msg animate 2 of 3",
+			"description": "basic animation of background message\nFor encoding of font, color, etc, see:\nhttps://github.com/flavio-fernandes/oclock/blob/rpi-0.1.y/src/displayTypes.h\n\n",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"responses": []
+		}
+	]
+}
