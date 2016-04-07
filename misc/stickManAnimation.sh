@@ -38,9 +38,9 @@ function main()
     curl --request POST  ${urlMsgMode} --data 'timeout=0&confetti=2'
 
     y=0
-    imgBase=12
-    color=1
-    animationSpeed=2   ; # 1=fastest
+    imgBase=12         ; # enumerated in /src/displayTypes.h
+    color=1            ; # also enumerated
+    animationSpeed=2   ; # also enumerated; 1=fastest
     animationFrames=6
     animationInfo="animationStep=${animationSpeed}&animationPhase=${animationFrames}"
     while : ; do
@@ -72,7 +72,7 @@ function main()
 	       "index=${idx}&imgArt=$((imgBase+1))&enabled=1&color=${color}&x=${x}&y=${y}&${animationInfo}&animationPhaseValue=$((idx % animationFrames))"
 	  idx=$((idx + 1))
 
-	  idx=$((idx + 2))  ; # skip some idx to make dancers out of sync from each other
+	  idx=$((idx + 2))  ; # skip some idx to make dancers out of sync from each other, via the animationPhaseValue attribute
           x=$((x + 12))     ; # update x for spot where next dancer will be
 	  color=$((color + 1)) ; color=$((color % 3)) ; # make next dancer with different color
 
@@ -82,5 +82,5 @@ function main()
     done
 }
 
+# invoke main function
 main
-

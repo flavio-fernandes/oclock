@@ -882,15 +882,15 @@ void DisplayInternal::doHandleMsgModePost(const StringMap& postValues) {
     } else if (strncasecmp(key, "font", strlen(key)) == 0) {
       modeMessageData.font = (Font) strtoul(value, NULL, 10);
     } else if (strncasecmp(key, "alternateFont", strlen(key)) == 0) {
-      modeMessageData.alternateFont = true;
+      modeMessageData.alternateFont = parseBooleanValue(value);
     } else if (strncasecmp(key, "confetti", strlen(key)) == 0) {
       modeMessageData.confetti = strtoul(value, NULL, 10);
     } else if (strncasecmp(key, "bounce", strlen(key)) == 0) {
-      modeMessageData.incrementY = INCREMENT_Y_VALUE;
-      } else if (strncasecmp(key, "noScroll", strlen(key)) == 0) {
-      modeMessageData.incrementX = false;
+      modeMessageData.incrementY = parseBooleanValue(value) ? INCREMENT_Y_VALUE : 0;
+    } else if (strncasecmp(key, "noScroll", strlen(key)) == 0) {
+      modeMessageData.incrementX = parseBooleanValue(value) ? false : true;
     } else if (strncasecmp(key, "blink", strlen(key)) == 0) {
-      modeMessageData.blink = true;
+      modeMessageData.blink = parseBooleanValue(value);
     } else if (strncasecmp(key, "color", strlen(key)) == 0) {
       modeMessageData.displayColor = (DisplayColor) strtoul(value, NULL, 10);
     } else if (strncasecmp(key, "repeats", strlen(key)) == 0) {
@@ -919,7 +919,7 @@ void DisplayInternal::doHandleImgBackgroundPost(const StringMap& postValues) {
 	backgroundImgIndex = 0;
       }
     } else if (strncasecmp(key, "enabled", strlen(key)) == 0) {
-      img.enabled = true;
+      img.enabled = parseBooleanValue(value);
     } else if (strncasecmp(key, "clearAll", strlen(key)) == 0) {
       for (int i=0; i < BACKGROUND_IMG_COUNT; ++i) initBackgroundImg(i);
     } else if (strncasecmp(key, "imgArt", strlen(key)) == 0) {
@@ -964,7 +964,7 @@ void DisplayInternal::doHandleMsgBackgroundPost(const StringMap& postValues) {
     } else if (strncasecmp(key, "msg", strlen(key)) == 0) {
       strncpy(msg.msg, value, sizeof(msg.msg));
     } else if (strncasecmp(key, "enabled", strlen(key)) == 0) {
-      msg.enabled = true;
+      msg.enabled = parseBooleanValue(value);
     } else if (strncasecmp(key, "clearAll", strlen(key)) == 0) {
       for (int i=0; i < BACKGROUND_MESSAGE_COUNT; ++i) initBackgroundMessage(i);
     } else if (strncasecmp(key, "font", strlen(key)) == 0) {

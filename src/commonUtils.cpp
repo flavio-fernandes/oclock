@@ -1,4 +1,6 @@
 #include <random>
+#include <stdlib.h>
+#include <strings.h>
 
 #include "commonUtils.h"
 
@@ -15,4 +17,13 @@ Int32U getRandomNumber(Int32U upperBound) {
 int netNotifyEvent(const Int8U* buffer, size_t size) {
   // FIXME: implement this!!!
   return 0;
+}
+
+bool parseBooleanValue(const char* valueStr) {
+  if (valueStr == nullptr) return false;
+  if (strncasecmp(valueStr, "n", 1) == 0) return false;
+  if (strncasecmp(valueStr, "y", 1) == 0) return true;
+  if (strcasecmp(valueStr, "false") == 0) return false;
+  if (strcasecmp(valueStr, "true") == 0) return true;
+  return strtoul(valueStr, NULL /*endptr*/, 0 /*base*/) != 0;
 }
