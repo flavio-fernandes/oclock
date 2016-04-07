@@ -500,7 +500,7 @@ public:
     addCheckBox(buff, "alternateFont", "1", "", false);
 
     buff << "<br/>Confetti: ";
-    addCheckBox(buff, "confetti", "1", "", false);
+    addCheckBox(buff, "confetti", "15", "", false);
 
     buff << "<br/>Bounce: ";
     addCheckBox(buff, "bounce", "1", "", false);

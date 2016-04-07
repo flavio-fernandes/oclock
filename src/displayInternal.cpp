@@ -884,7 +884,7 @@ void DisplayInternal::doHandleMsgModePost(const StringMap& postValues) {
     } else if (strncasecmp(key, "alternateFont", strlen(key)) == 0) {
       modeMessageData.alternateFont = true;
     } else if (strncasecmp(key, "confetti", strlen(key)) == 0) {
-      modeMessageData.confetti = 15;
+      modeMessageData.confetti = strtoul(value, NULL, 10);
     } else if (strncasecmp(key, "bounce", strlen(key)) == 0) {
       modeMessageData.incrementY = INCREMENT_Y_VALUE;
       } else if (strncasecmp(key, "noScroll", strlen(key)) == 0) {
