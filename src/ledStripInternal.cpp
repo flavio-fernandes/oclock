@@ -301,7 +301,7 @@ static void changeLedStripMode(LedStripMode wantedLedStripMode, LedStripInternal
 	// ref: http://www.cplusplus.com/reference/string/stoi/
 	try {
 	  ledStripInternalInfo.secsUntilGoingToManualMode = std::stoi(timeOutValue, nullptr, 0 /*auto*/);
-	} catch(std::invalid_argument) {
+	} catch(...) {
 	  ledStripInternalInfo.secsUntilGoingToManualMode = 0;  // bad value: less than a second
 	}
       } else {
@@ -331,7 +331,7 @@ static Int32U getPixelColorParam(const StringMap& params) {
     const Int8U blue = (Int8U) std::stoi(wantedBlueStr, nullptr, 0 /*auto*/);
 
     return LPD8806::Color(red, green, blue);
-  } catch(std::invalid_argument) { }
+  } catch(...) { }
   return LPD8806::nullColor;;
 }
 
@@ -374,7 +374,7 @@ void LedStripInternal::doHandleModePost(const StringMap& postValues) {
   try {
     const LedStripMode ledStripMode = (LedStripMode) std::stoi(wantedModeStr, nullptr, 10);
     changeLedStripMode(ledStripMode, *info, postValues);
-  } catch(std::invalid_argument) { }
+  } catch(...) { }
 }
 
 const char* LedStripInternal::getLedStripModeStr() const {
