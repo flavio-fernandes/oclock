@@ -22,11 +22,11 @@ void
 print_usage(char *exe) {
 	printf("Usage: %s [-p port] [-w workers] [-h]\n\n"
 			"Options:\n"
-			"  -p port        : tcp port number to listen on (default: 9090)\n"
-			"  -w workers     : number of worker threads to start for accepting connections (default: 4)\n"
+			"  -p port        : tcp port number to listen on (default: %d)\n"
+			"  -w workers     : number of worker threads to start for accepting connections (default: %d)\n"
 			"  -v verbosity   : 0 <= verbosity <= 4 (default: 4)\n"
 			"  -l logfile     : file to log into (default: stderr)\n"
-			"  -h             : display this help message\n", exe);
+			"  -h             : display this help message\n", exe, WEBSERVER_DEFAULT_PORT, WEBSERVER_DEFAULT_WORKERS);
 }
 
 static PulsarServerInfo pulsarServerInfo = {0};
