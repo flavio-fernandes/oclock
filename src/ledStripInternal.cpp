@@ -217,6 +217,53 @@ static void modeScan1Min(LedStripInternalInfo& info) {
 static const Mode modeScan = {ledStripModeScan, "scan", 0 /*init*/, modeScanFast /*fast*/, modeScan1Sec /*1sec*/, modeScan10Sec /*10sec*/, modeScan1Min /*1min*/};
 
 
+// ledStripModeBinaryCounter
+
+static void modeBinaryCounterMain(LedStripInternalInfo& info) {
+  static Int64U currentCounterValue = 0;
+
+  LPD8806& lpd8806 = info.lpd8806;
+
+  // check and see if largest pixel is 'off'. We use that to determine if we need to reset
+  // the value of static currentCounterValue or not. The trick here is based on the fact that
+  // all pixels are cleared when the led strip 'mode' changes, so we will use that to our
+  // advantage.
+  const Int32U currentLastPixelColor = lpd8806.getPixelColor( lpd8806.numPixels() - 1 );
+  if (currentLastPixelColor == 0) {
+    currentCounterValue = 0;
+
+    // if an extra param was given, try to use it as starting value
+    try {
+      std::string initialValueStr;
+      if (getParamValue(info.params, ledStripParamExtra, initialValueStr)) {
+	currentCounterValue = std::stoll(initialValueStr, nullptr, 0 /*auto*/);
+      }
+    } catch(...) { }
+  } else {
+    // if we made it here, then we know that largest pixel is set, and we can keep counting up
+    ++currentCounterValue;
+  }
+
+  const Int32U color = getPixelColorParam(info.params) == LPD8806::nullColor ? getRandomNumber(0x00fffffe) + 1 : getPixelColorParam(info.params);
+  Int64U tmpCounterValue = currentCounterValue;
+
+  // clear all pixels AND set largest pixel to indicate counter should not reset in the next iteration
+  lpd8806.clearPixelColors();
+  lpd8806.setPixelColor(lpd8806.numPixels() - 1, LPD8806::Color(1,1,1));
+
+  // visit all pixels (except for the last one) as bits in the value of our counter
+  for (Int16U pixel=0; pixel < (lpd8806.numPixels() - 1) && tmpCounterValue; ++pixel) {
+    if ( (tmpCounterValue & 0x1) ) {
+      lpd8806.setPixelColor(pixel, color);  // bit represented by this pixel needs to be set
+    }
+    tmpCounterValue >>= 1; // shift bits of temporary value (same as dividing it's value by 2)
+  }
+
+  lpd8806.show();
+}
+
+static const Mode modeBinaryCounter = {ledStripModeBinaryCounter, "binCnt", 0 /*init*/, 0 /*fast*/, modeBinaryCounterMain /*1sec*/, 0 /*10sec*/, 0 /*1min*/};
+
 // ======================================================================
 
 static Int32U wheel(LPD8806& lpd8806, Int16U wheelPos) {
@@ -277,7 +324,7 @@ static void checkIfModeTimedOut(LedStripInternalInfo& info) {
 
 // ======================================================================
 
-static const Mode allModes[] = { modeManual, modePastel, modeFill, modeRainbow, modeScan };
+static const Mode allModes[] = { modeManual, modePastel, modeFill, modeRainbow, modeScan, modeBinaryCounter };
 static const int allModesCount = sizeof(allModes) / sizeof(allModes[0]);
 
 static LedStripMode getLedStripMode(const LedStripInternalInfo& info) {

@@ -16,6 +16,7 @@ typedef enum {
   ledStripModeFill,
   ledStripModeRainbow,
   ledStripModeScan,
+  ledStripModeBinaryCounter,
   ledStripModeCount  // last one
 } LedStripMode;
 
