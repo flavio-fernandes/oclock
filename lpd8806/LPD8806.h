@@ -32,7 +32,7 @@ class LPD8806 {
   Int16U largestChangedLed; // last LED changed after show().
   
   Int8U
-    *pixels,    // Holds LED color values (3 bytes each) + latch bytes
+    *pixels,    // Holds LED color values (3 bytes each)
     clkpin, datapin;     // Clock & data pin numbers
 
   void startBitbang() const;

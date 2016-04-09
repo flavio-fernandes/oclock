@@ -145,7 +145,7 @@ void LedStrip::runThreadLoop(std::recursive_mutex* gpioLockMutexP) {
       if (msg.inboxMsgType == inboxMsgTypeTerminate) break;
     }
 
-    // wait for fastr tick...
+    // wait for fast tick...
     ledStripFastTick.wait();
 
     {
