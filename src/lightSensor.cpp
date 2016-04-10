@@ -70,7 +70,7 @@ void LightSensor::doSensorRead(const Mcp3002& mcp) {
     // add new entry
     lightValues.push_back( (currRead0 + currRead1) / 2 );
   }
-  // printf("light: %d  %d\n", currRead0, currRead1);  // FIXME
+  // printf("light: %d  %d\n", currRead0, currRead1);  // DEBUG
 }
 
 Int32U LightSensor::getLightValue() const {
