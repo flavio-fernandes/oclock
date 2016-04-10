@@ -18,7 +18,7 @@ TimerTickService::~TimerTickService() {
 
 /*static*/ std::recursive_mutex TimerTick::instanceMutex;
 /*static*/ TimerTick* TimerTick::instance = 0;
-/*static*/ const int TimerTick::millisPerTick = 15;
+/*static*/ const int TimerTick::millisPerTick = 12;
 /*static*/ std::thread::id TimerTick::timerTickMainThread;  // default 'invalid' value
 
 TimerTickId TimerTick::registerTimerTickService(TimerTickService& timerTickService, bool start) {

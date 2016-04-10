@@ -13,6 +13,7 @@ public:
   ~DisplayInternal();
   
   void displayTickFast();
+  void displayTick100ms();
   void displayTick250ms();
   void displayTick500ms();
   void displayTick1sec();

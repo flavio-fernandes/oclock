@@ -144,6 +144,7 @@ static ModeMessageData modeMessageData;
 static int currModeIndex = 0;
 
 static Int8U animationStepTickerFast = 0;
+static Int8U animationStepTicker100ms = 0;
 static Int8U animationStepTicker250ms = 0;
 static Int8U animationStepTicker500ms = 0;
 static Int8U animationStepTicker1sec = 0;
@@ -155,6 +156,7 @@ struct Mode {
   const char* const displayModeStr;
   modeFunctionParamPtr handlerInit;
   modeFunctionPtr handlerTickFast;
+  modeFunctionPtr handlerTick100ms;
   modeFunctionPtr handlerTick250ms;
   modeFunctionPtr handlerTick500ms;
   modeFunctionPtr handlerTick1Sec;
@@ -173,6 +175,8 @@ static bool willAnimate(const Animation* animation) {
        return true;
      case animationStepFast:
        return animationStepTickerFast % animation->animationStepPhase == animation->animationStepPhaseValue; 
+     case animationStep100ms:
+       return animationStepTicker100ms % animation->animationStepPhase == animation->animationStepPhaseValue;
      case animationStep250ms:
        return animationStepTicker250ms % animation->animationStepPhase == animation->animationStepPhaseValue; 
      case animationStep500ms:
@@ -316,7 +320,7 @@ static void modeBasicClockInit(DisplayInternalInfo& displayInternalInfo, const v
 }
 
 static const Mode modeBasicClock = {displayModeBasicClock, "basicClock",
-				    modeBasicClockInit /*init*/, 0 /*fast*/, 0 /*250ms*/, 0 /*500ms*/,
+				    modeBasicClockInit /*init*/, 0 /*fast*/, 0 /*100ms*/, 0 /*250ms*/, 0 /*500ms*/,
 				    modeBasicClockCommon /*1sec*/, 0 /*5sec*/,
 				    modeBasicClockMain /*10sec*/, 0 /*25sec*/, 0 /*1min*/};
 
@@ -483,7 +487,7 @@ static void modeMessageCheckTimeout(DisplayInternalInfo& displayInternalInfo) {
 }
 
 static const Mode modeMessage = {displayModeMessage, "message",
-				 modeMessageInit /*init*/, modeMessageFast /*fast*/,
+				 modeMessageInit /*init*/, modeMessageFast /*fast*/, 0 /*100ms*/,
 				 modeMessageCheckBlink /*250ms*/, 0 /*500ms*/, modeMessageCheckTimeout /*1sec*/,
 				 0 /*5sec*/, 0 /*10sec*/, 0 /*25sec*/, 0 /*1min*/};
 
@@ -520,7 +524,7 @@ static void modeNothingCheckMotion(DisplayInternalInfo& displayInternalInfo) {
 }
 
 static const Mode modeNothing = {displayModeNothing, "nothing",
-				 modeNothingInit /*init*/, 0 /*fast*/, 0 /*250ms*/, 0 /*500ms*/,
+				 modeNothingInit /*init*/, 0 /*fast*/, 0 /*100ms*/, 0 /*250ms*/, 0 /*500ms*/,
 				 modeNothingCheckMotion /*1sec*/, 0 /*5sec*/, 0 /*10sec*/, 0 /*25sec*/, 0 /*1min*/};
 
 // ----------------------------------------
@@ -715,6 +719,16 @@ static ImgArtInfo getImgArtInfo(ImgArt imgArt) {
   case imgArtStickMan3: GET_ART_INFO(STICKMAN3); break;
   case imgArtStickMan4: GET_ART_INFO(STICKMAN4); break;
 
+  case imgArtWave1:     GET_ART_INFO(WAVE1); break;
+  case imgArtWave2:     GET_ART_INFO(WAVE2); break;
+  case imgArtWave3:     GET_ART_INFO(WAVE3); break;
+  case imgArtWave4:     GET_ART_INFO(WAVE4); break;
+
+  case imgArtJump1:     GET_ART_INFO(JUMP1); break;
+  case imgArtJump2:     GET_ART_INFO(JUMP2); break;
+  case imgArtJump3:     GET_ART_INFO(JUMP3); break;
+  case imgArtJump4:     GET_ART_INFO(JUMP4); break;
+
   default: GET_ART_INFO(SMILEY); break;
   }
   return imgArtInfo;
@@ -815,6 +829,11 @@ DisplayInternalInfo::~DisplayInternalInfo() {
 void DisplayInternal::displayTickFast() {
   ++animationStepTickerFast;
   if (allModes[currModeIndex].handlerTickFast != nullptr) (*(allModes[currModeIndex].handlerTickFast))(*info);
+}
+
+void DisplayInternal::displayTick100ms() {
+  ++animationStepTicker100ms;
+  if (allModes[currModeIndex].handlerTick100ms != nullptr) (*(allModes[currModeIndex].handlerTick100ms))(*info);
 }
 
 void DisplayInternal::displayTick250ms() {

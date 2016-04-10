@@ -86,7 +86,11 @@ void LPD8806::show() {
   std::lock_guard<std::recursive_mutex> guard(gpioLockMutex);
 
   Int8U  *ptr = pixels;
+#if 0
   Int16U i    = (largestChangedLed + 1) * BYTES_PER_LED;
+#else
+  Int16U i    = numPixels() * BYTES_PER_LED;
+#endif
   Int8U p, bit;
   int currDatapinValue = ~0;
 

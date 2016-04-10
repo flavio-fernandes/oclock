@@ -135,6 +135,7 @@ void Display::registerMainThread() {
 
 void Display::runThreadLoop(std::recursive_mutex* gpioLockMutexP) {
   TimerTickServiceCv displayFastTick(TimerTick::millisPerTick);
+  TimerTickServiceBool display100msTick(100);
   TimerTickServiceBool display250msTick(250);
   TimerTickServiceBool display500msTick(500);
   TimerTickServiceBool display1secTick(1000);
@@ -145,6 +146,7 @@ void Display::runThreadLoop(std::recursive_mutex* gpioLockMutexP) {
 
   TimerTick& timerTick = TimerTick::bind();
   timerTick.registerTimerTickService(displayFastTick);
+  timerTick.registerTimerTickService(display100msTick);
   timerTick.registerTimerTickService(display250msTick);
   timerTick.registerTimerTickService(display500msTick);
   timerTick.registerTimerTickService(display1secTick);
@@ -174,6 +176,7 @@ void Display::runThreadLoop(std::recursive_mutex* gpioLockMutexP) {
 
       checkTodoList();
       internal->displayTickFast();
+      if (display100msTick.getAndResetExpired()) { internal->displayTick100ms(); }
       if (display250msTick.getAndResetExpired()) { internal->displayTick250ms(); }
       if (display500msTick.getAndResetExpired()) { internal->displayTick500ms(); }
       if (display1secTick.getAndResetExpired()) { internal->displayTick1sec(); }
@@ -187,6 +190,7 @@ void Display::runThreadLoop(std::recursive_mutex* gpioLockMutexP) {
   delete internal; internal = 0;
   
   timerTick.unregisterTimerTickService(displayFastTick.getCookie());
+  timerTick.unregisterTimerTickService(display100msTick.getCookie());
   timerTick.unregisterTimerTickService(display250msTick.getCookie());
   timerTick.unregisterTimerTickService(display500msTick.getCookie());
   timerTick.unregisterTimerTickService(display1secTick.getCookie());

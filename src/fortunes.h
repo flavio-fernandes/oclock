@@ -40,10 +40,10 @@ const char modeMessageMsgFortunate33[] = "Watch your thoughts -- they become wor
 const char modeMessageMsgFortunate34[] = "Everyone is a genius at least once a year. The real geniuses simply have their bright ideas closer together";
 const char modeMessageMsgFortunate35[] = "What we think, or what we know, or what we believe is, in the end, of little consequence. The only consequence is what we do";
 const char modeMessageMsgFortunate36[] = "The real voyage of discovery consists not in seeking new lands but seeing with new eyes";
-const char modeMessageMsgFortunate37[] = "Work like you don’t need money, love like you’ve never been hurt, and dance like no one’s watching";
-const char modeMessageMsgFortunate38[] = "Try a thing you haven’t done three times. Once, to get over the fear of doing it. Twice, to learn how to do it. And a third time, to figure out whether you like it or not";
-const char modeMessageMsgFortunate39[] = "Even if you’re on the right track, you’ll get run over if you just sit there";
-const char modeMessageMsgFortunate40[] = "People often say that motivation doesn’t last. Well, neither does bathing -- that’s why we recommend it daily";
+const char modeMessageMsgFortunate37[] = "Work like you don't need money, love like you've never been hurt, and dance like no one's watching";
+const char modeMessageMsgFortunate38[] = "Try a thing you haven't done three times. Once, to get over the fear of doing it. Twice, to learn how to do it. And a third time, to figure out whether you like it or not";
+const char modeMessageMsgFortunate39[] = "Even if you're on the right track, you'll get run over if you just sit there";
+const char modeMessageMsgFortunate40[] = "People often say that motivation doesn't last. Well, neither does bathing -- that's why we recommend it daily";
 
 const char modeMessageMsgFortunate41[] = "The real meaning of enlightenment is to gaze with undimmed eyes on all undimmed";
 const char modeMessageMsgFortunate42[] = "A journey of 1,000 miles must begin with a single step";

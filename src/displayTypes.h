@@ -24,6 +24,7 @@ typedef enum {
 typedef enum {
   animationStepNone = 0,
   animationStepFast,
+  animationStep100ms,
   animationStep250ms,
   animationStep500ms,
   animationStep1sec,
@@ -32,22 +33,30 @@ typedef enum {
 } AnimationStep;
 
 #define IMG_ART_LIST \
-    X(imgArtSmiley),    \
-    X(imgArtWink),      \
-    X(imgArtBigHeart),  \
-    X(imgArtCat),       \
-    X(imgArtOwls),      \
-    X(imgArtMail),      \
-    X(imgArtMusic),	\
-    X(imgArtMusicNote), \
-    X(imgArtHeart),	\
-    X(imgArtSpeakerA),	\
-    X(imgArtSpeakerB),	\
-    X(imgArt8x8),	\
-    X(imgArtStickMan1), \
-    X(imgArtStickMan2), \
-    X(imgArtStickMan3), \
-    X(imgArtStickMan4), \
+    X(imgArtSmiley),     /* 0*/  \
+    X(imgArtWink),       /* 1*/  \
+    X(imgArtBigHeart),   /* 2*/  \
+    X(imgArtCat),        /* 3*/  \
+    X(imgArtOwls),       /* 4*/  \
+    X(imgArtMail),       /* 5*/  \
+    X(imgArtMusic),      /* 6*/  \
+    X(imgArtMusicNote),  /* 7*/  \
+    X(imgArtHeart),      /* 8*/  \
+    X(imgArtSpeakerA),   /* 9*/  \
+    X(imgArtSpeakerB),   /*10*/  \
+    X(imgArt8x8),        /*11*/  \
+    X(imgArtStickMan1),  /*12*/  \
+    X(imgArtStickMan2),  /*13*/  \
+    X(imgArtStickMan3),  /*14*/  \
+    X(imgArtStickMan4),  /*15*/  \
+    X(imgArtWave1),      /*16*/  \
+    X(imgArtWave2),      /*17*/  \
+    X(imgArtWave3),      /*18*/  \
+    X(imgArtWave4),      /*19*/  \
+    X(imgArtJump1),      /*20*/  \
+    X(imgArtJump2),      /*21*/  \
+    X(imgArtJump3),      /*22*/  \
+    X(imgArtJump4),      /*23*/  \
     X(imgArtLast)
 
 #define X(x) x
