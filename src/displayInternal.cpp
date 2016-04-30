@@ -940,7 +940,9 @@ void DisplayInternal::doHandleImgBackgroundPost(const StringMap& postValues) {
     } else if (strncasecmp(key, "enabled", strlen(key)) == 0) {
       img.enabled = parseBooleanValue(value);
     } else if (strncasecmp(key, "clearAll", strlen(key)) == 0) {
-      for (int i=0; i < BACKGROUND_IMG_COUNT; ++i) initBackgroundImg(i);
+      if (parseBooleanValue(value)) {
+	for (int i=0; i < BACKGROUND_IMG_COUNT; ++i) initBackgroundImg(i);
+      }
     } else if (strncasecmp(key, "imgArt", strlen(key)) == 0) {
       img.imgArt = (ImgArt) strtoul(value, NULL, 10);
       if (img.imgArt < 0 || img.imgArt >= imgArtLast) {
@@ -985,7 +987,9 @@ void DisplayInternal::doHandleMsgBackgroundPost(const StringMap& postValues) {
     } else if (strncasecmp(key, "enabled", strlen(key)) == 0) {
       msg.enabled = parseBooleanValue(value);
     } else if (strncasecmp(key, "clearAll", strlen(key)) == 0) {
-      for (int i=0; i < BACKGROUND_MESSAGE_COUNT; ++i) initBackgroundMessage(i);
+      if (parseBooleanValue(value)) {
+	for (int i=0; i < BACKGROUND_MESSAGE_COUNT; ++i) initBackgroundMessage(i);
+      }
     } else if (strncasecmp(key, "font", strlen(key)) == 0) {
       msg.font = (Font) strtoul(value, NULL, 10);
     } else if (strncasecmp(key, "x", strlen(key)) == 0) {

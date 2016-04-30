@@ -358,7 +358,7 @@ public:
 
     MotionInfo motionInfo;
     motionSensor.getMotionValue(&motionInfo);
-    buff << "motion: " << (motionInfo.currMotionDetected ? "1" : "0") << "\n";
+    buff << "motion: " << (motionInfo.currMotionDetected ? "y" : "n") << "\n";
     buff << "motion_last_change: ";
     INT2BUFF(motionInfo.lastChangedHour); buff << ":";
     INT2BUFF(motionInfo.lastChangedMin); buff << ":";
@@ -407,9 +407,9 @@ public:
 #endif  // ifdef BG_IMG_ART_SELECT_BY_NUMBER
     
     buff << "<br/>Enabled: ";
-    addCheckBox(buff, "enabled", "1", "", true);
+    addCheckBox(buff, "enabled", "yes", "", true);
     buff << "  Clear all: ";
-    addCheckBox(buff, "clearAll", "1", "", false);
+    addCheckBox(buff, "clearAll", "yes", "", false);
 
     addFormColor(buff, false /*includeAlternate*/);
     addXYCoordinatesInput(buff);
@@ -454,9 +454,9 @@ public:
     buff << "<br/>Msg: <input type='text' size='16' name='msg'>";
 
     buff << "<br/>Enabled: ";
-    addCheckBox(buff, "enabled", "1", "", true);
+    addCheckBox(buff, "enabled", "yes", "", true);
     buff << "  Clear all: ";
-    addCheckBox(buff, "clearAll", "1", "", false);
+    addCheckBox(buff, "clearAll", "yes", "", false);
 
     addFormFont(buff);
     addFormColor(buff, false /*includeAlternate*/);
@@ -497,19 +497,19 @@ public:
     buff << "' name='msg'><br/>";
     addFormFont(buff);
     buff << "<br/>Alternate font: ";
-    addCheckBox(buff, "alternateFont", "1", "", false);
+    addCheckBox(buff, "alternateFont", "yes", "", false);
 
     buff << "<br/>Confetti: ";
     addCheckBox(buff, "confetti", "15", "", false);
 
     buff << "<br/>Bounce: ";
-    addCheckBox(buff, "bounce", "1", "", false);
+    addCheckBox(buff, "bounce", "yes", "", false);
 
     buff << "<br/>NoScroll: ";
-    addCheckBox(buff, "noScroll", "1", "", false);
+    addCheckBox(buff, "noScroll", "yes", "", false);
 
     buff << "<br/>Blink: ";
-    addCheckBox(buff, "blink", "1", "", false);
+    addCheckBox(buff, "blink", "yes", "", false);
 
     addFormColor(buff, true /*includeAlternate*/);
     
@@ -649,7 +649,7 @@ public:
     buff << "<br/>Extra Param: <input type='text' size='5' name='" << ledStripParamExtra << "'>";
 
     buff << "<br/>Clear all Pixels: ";
-    addCheckBox(buff, ledStripParamClearAllPixels, ledStripParamEnabled, "", false);
+    addCheckBox(buff, ledStripParamClearAllPixels, "yes", "", false);
 
     buff << "<br/> Mode: ";
     LedStrip& ledStrip = LedStrip::bind();

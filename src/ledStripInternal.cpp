@@ -159,7 +159,11 @@ static void modeRainbowMain(LedStripInternalInfo& info) {
   if (++j >= 384) j = 0;
 }
 
-static const Mode modeRainbow = {ledStripModeRainbow, "rainbow", 0 /*init*/, modeRainbowMain /*fast*/, 0 /*1sec*/, 0 /*10sec*/, 0 /*1min*/};
+static void modeRainbowFast(LedStripInternalInfo& info) {
+  if (isParamSet(info.params, ledStripParamExtra, "fast")) modeRainbowMain(info);
+}
+
+static const Mode modeRainbow = {ledStripModeRainbow, "rainbow", 0 /*init*/, modeRainbowFast /*fast*/, modeRainbowMain /*1sec*/, 0 /*10sec*/, 0 /*1min*/};
 
 
 // ledStripModeScan
@@ -239,6 +243,10 @@ static void modeBinaryCounterMain(LedStripInternalInfo& info) {
 	currentCounterValue = std::stoll(initialValueStr, nullptr, 0 /*auto*/);
       }
     } catch(...) { }
+
+    // set largest pixel to indicate counter should not reset in the next iteration
+    lpd8806.clearPixelColors();
+    lpd8806.setPixelColor(lpd8806.numPixels() - 1, LPD8806::Color(1,1,1));
   } else {
     // if we made it here, then we know that largest pixel is set, and we can keep counting up
     ++currentCounterValue;
@@ -247,14 +255,12 @@ static void modeBinaryCounterMain(LedStripInternalInfo& info) {
   const Int32U color = getPixelColorParam(info.params) == LPD8806::nullColor ? getRandomNumber(0x00fffffe) + 1 : getPixelColorParam(info.params);
   Int64U tmpCounterValue = currentCounterValue;
 
-  // clear all pixels AND set largest pixel to indicate counter should not reset in the next iteration
-  lpd8806.clearPixelColors();
-  lpd8806.setPixelColor(lpd8806.numPixels() - 1, LPD8806::Color(1,1,1));
-
   // visit all pixels (except for the last one) as bits in the value of our counter
   for (Int16U pixel=0; pixel < (lpd8806.numPixels() - 1) && tmpCounterValue; ++pixel) {
     if ( (tmpCounterValue & 0x1) ) {
       lpd8806.setPixelColor(pixel, color);  // bit represented by this pixel needs to be set
+    } else {
+      lpd8806.setPixelColor(pixel, 0);  // bit represented by this pixel needs to be cleared
     }
     tmpCounterValue >>= 1; // shift bits of temporary value (same as dividing it's value by 2)
   }
@@ -262,7 +268,13 @@ static void modeBinaryCounterMain(LedStripInternalInfo& info) {
   lpd8806.show();
 }
 
-static const Mode modeBinaryCounter = {ledStripModeBinaryCounter, "binCnt", 0 /*init*/, 0 /*fast*/, modeBinaryCounterMain /*1sec*/, 0 /*10sec*/, 0 /*1min*/};
+static void modeBinaryCounterFast(LedStripInternalInfo& info) {
+  if (isParamSet(info.params, ledStripParamExtra, "fast")) modeBinaryCounterMain(info);
+}
+
+static const Mode modeBinaryCounter = {ledStripModeBinaryCounter, "binCnt", 0 /*init*/,
+				       modeBinaryCounterFast /*fast*/,
+				       modeBinaryCounterMain /*1sec*/, 0 /*10sec*/, 0 /*1min*/};
 
 // ======================================================================
 
@@ -316,7 +328,7 @@ static void checkIfModeTimedOut(LedStripInternalInfo& info) {
   if (--info.secsUntilGoingToManualMode < 0) {
     // mode hit timeout: go to manual and explictly request all leds to be turned off
     StringMap params;
-    params[ledStripParamClearAllPixels] = ledStripParamEnabled;
+    params[ledStripParamClearAllPixels] = "yes";
     changeLedStripMode(ledStripModeManual, info, params);
   }
 }
@@ -337,8 +349,14 @@ static void changeLedStripMode(LedStripMode wantedLedStripMode, LedStripInternal
   for (int i=0; i < allModesCount; ++i) {
     if (allModes[i].ledStripMode == wantedLedStripMode) {
 
+      std::string clearAlPixelsValue;
+      const bool shouldClearAlPixels =
+	getParamValue(params, ledStripParamClearAllPixels, clearAlPixelsValue) &&
+	!clearAlPixelsValue.empty() &&
+	parseBooleanValue(clearAlPixelsValue.c_str());
+
       // Clear strip only if mode is changing, or we were explicitly asked to do so
-      if (currentLedStripMode != wantedLedStripMode || isParamSet(params, ledStripParamClearAllPixels, ledStripParamEnabled)) {
+      if (currentLedStripMode != wantedLedStripMode || shouldClearAlPixels) {
 	LPD8806& lpd8806 = ledStripInternalInfo.lpd8806;
 	clearPixelColorsAndShow(lpd8806);
       }
