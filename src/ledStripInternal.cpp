@@ -163,7 +163,17 @@ static void modeRainbowFast(LedStripInternalInfo& info) {
   if (isParamSet(info.params, ledStripParamExtra, "fast")) modeRainbowMain(info);
 }
 
-static const Mode modeRainbow = {ledStripModeRainbow, "rainbow", 0 /*init*/, modeRainbowFast /*fast*/, modeRainbowMain /*1sec*/, 0 /*10sec*/, 0 /*1min*/};
+static void modeRainbow1sec(LedStripInternalInfo& info) {
+  if (isParamSet(info.params, ledStripParamExtra, "1sec")) modeRainbowMain(info);
+}
+
+static void modeRainbow10sec(LedStripInternalInfo& info) {
+  if (isParamSet(info.params, ledStripParamExtra, "10sec")) modeRainbowMain(info);
+}
+
+static const Mode modeRainbow = {ledStripModeRainbow, "rainbow", modeRainbowMain /*init*/,
+				 modeRainbowFast, modeRainbow1sec , modeRainbow10sec,
+				 modeRainbowMain /*1min*/};
 
 
 // ledStripModeScan

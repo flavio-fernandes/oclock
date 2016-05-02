@@ -15,6 +15,7 @@
 #include "motionSensor.h"
 #include "lightSensor.h"
 
+#include <cassert>
 #include <time.h>
 #include <string.h>
 
@@ -204,27 +205,6 @@ static struct tm* getTimeInfo(struct tm& timeInfo) {
 
 // modeBasicClock
 
-static void modeBasicClockMain(DisplayInternalInfo& displayInternalInfo) {
-  HT1632Class& HT1632 = displayInternalInfo.ht1632;
-  char localDisplayBuffer[MESSAGE_MAX_SIZE];
-  struct tm timeInfo;
-
-  getTimeInfo(timeInfo);
-  const bool isPm = timeInfo.tm_hour > 11;
-  int hour = timeInfo.tm_hour - (timeInfo.tm_hour > 12 ? 12 : 0);
-  if (hour == 0) hour = 12; // midnight
-
-  HT1632.drawTarget(BUFFER_BOARD(1)); HT1632.clear();
-
-  snprintf(localDisplayBuffer, sizeof(localDisplayBuffer), "%2d:%02d", hour, timeInfo.tm_min);
-  HT1632.drawText(localDisplayBuffer, 0 /*x*/, 0 /*y*/, FONT_16X8, FONT_16X8_WIDTH, FONT_16X8_HEIGHT, FONT_16X8_STEP_GLYPH);
-
-  snprintf(localDisplayBuffer, sizeof(localDisplayBuffer), "%s", isPm ? "pm":"am");
-  HT1632.drawText(localDisplayBuffer, 39 /*x*/, 10 /*y*/, FONT_5X4, FONT_5X4_WIDTH, FONT_5X4_HEIGHT, FONT_5X4_STEP_GLYPH);
-
-  updateMotionDetectedPixel(displayInternalInfo);
-}
-
 const char daySun[] = "Sunday"; const char dayMon[] = "Monday"; const char dayTue[] = "Tuesday";
 const char dayWed[] = "Wednesday"; const char dayThu[] = "Thursday"; const char dayFri[] = "Friday";
 const char daySat[] = "Saturday";
@@ -233,20 +213,9 @@ static const char* const daysOfWeek[] = {daySun, dayMon, dayTue, dayWed, dayThu,
 const char monthJan[] = "January"; const char monthFeb[] = "February"; const char monthMar[] = "March";
 const char monthApr[] = "April";   const char monthMay[] = "May";      const char monthJun[] = "June";
 const char monthJul[] = "July";    const char monthAug[] = "August";   const char monthSep[] = "September";
-const char monthOct[] = "October"; const char monthNov[] = "November"; const char monthDec[] = "Dec";
+const char monthOct[] = "October"; const char monthNov[] = "November"; const char monthDec[] = "December";
 static const char* const months[] = {monthJan, monthFeb, monthMar, monthApr, monthMay, monthJun, monthJul,
 				     monthAug, monthSep, monthOct, monthNov, monthDec};
-
-static void modeBasicClockCheckIdle(DisplayInternalInfo& displayInternalInfo) {
-  MotionInfo motionInfo;
-  if (!displayInternalInfo.motionSensor.getMotionValue(&motionInfo) && 
-      (motionInfo.lastChangedMin > 15 || motionInfo.lastChangedHour > 0)) {
-    changeDisplayMode(displayModeNothing, displayInternalInfo);
-    return;
-  }
-
-  updateMotionDetectedPixel(displayInternalInfo);
-}
 
 static char* getDayOfMonthStr(int day, char* const bufferOut, size_t bufferOutSize) {
   if (day == 1) {
@@ -269,60 +238,128 @@ static char* getDayOfMonthStr(int day, char* const bufferOut, size_t bufferOutSi
   return bufferOut;
 }
 
-static void modeBasicClockDate(DisplayInternalInfo& displayInternalInfo) {
-  static Int8U phaseCounter = 0;
-  struct tm timeInfo = {0};
-  const Int8U currPhase = phaseCounter % 6;
-  char localDisplayBuffer[MESSAGE_MAX_SIZE];
+static void modeBasicClockSlow(DisplayInternalInfo& displayInternalInfo) {
   HT1632Class& HT1632 = displayInternalInfo.ht1632;
+  char localDisplayBuffer[MESSAGE_MAX_SIZE];
+  struct tm timeInfo;
+  static const int clockBaseX = 0;
+  
+  getTimeInfo(timeInfo);
 
-  ++phaseCounter;
+  const bool isPm = timeInfo.tm_hour > 11;
+  int hour = timeInfo.tm_hour - (timeInfo.tm_hour > 12 ? 12 : 0);
+  if (hour == 0) hour = 12; // midnight
 
-  if (currPhase == 0) {
-    getTimeInfo(timeInfo);
-    const char* const weekDayStr =
-      (timeInfo.tm_wday >=0 && timeInfo.tm_wday <= 6) ? daysOfWeek[timeInfo.tm_wday] : "DDD";
-    strncpy(localDisplayBuffer, weekDayStr, sizeof(localDisplayBuffer));
-  } else if (currPhase == 3) {
-    getTimeInfo(timeInfo);
-    const char* const monthStr =
-      (timeInfo.tm_mon >=0 && timeInfo.tm_mon <= 11) ? months[timeInfo.tm_mon] : "MMM";
-    strncpy(localDisplayBuffer, monthStr, sizeof(localDisplayBuffer));
-  } else {
-    return;  // leave it be (do nothing here in this phase)
-  }
+  // part 1
+  HT1632.drawTarget(BUFFER_BOARD(1)); HT1632.clear();
+
+  snprintf(localDisplayBuffer, sizeof(localDisplayBuffer), "%2d:%02d", hour, timeInfo.tm_min);
+  HT1632.drawText(localDisplayBuffer, clockBaseX + 0 /*x*/, 0 /*y*/, FONT_16X8, FONT_16X8_WIDTH, FONT_16X8_HEIGHT, FONT_16X8_STEP_GLYPH);
+
+  snprintf(localDisplayBuffer, sizeof(localDisplayBuffer), "%s", isPm ? "pm":"am");
+  HT1632.drawText(localDisplayBuffer, clockBaseX + 39 /*x*/, 10 /*y*/, FONT_5X4, FONT_5X4_WIDTH, FONT_5X4_HEIGHT, FONT_5X4_STEP_GLYPH);
+
+#if 0
+  // DEBUG hack day
+  timeInfo.tm_wday = 3;
+  timeInfo.tm_mon = 8;
+  timeInfo.tm_mday = 22;
+#endif
+  
+  // part 2
+  const char* const weekDayStr =
+    (timeInfo.tm_wday >=0 && timeInfo.tm_wday <= 6) ? daysOfWeek[timeInfo.tm_wday] : "DDD";
+  strncpy(localDisplayBuffer, weekDayStr, sizeof(localDisplayBuffer));
 
   HT1632.drawTarget(BUFFER_BOARD(2));
   HT1632.clear();
-  // HT1632.drawText(localDisplayBuffer, 39 /*x*/, 2 /*y*/, FONT_5X4, FONT_5X4_WIDTH, FONT_5X4_HEIGHT, FONT_5X4_STEP_GLYPH);
-  HT1632.drawText(localDisplayBuffer, 39 /*x*/, 1 /*y*/, FONT_7X5, FONT_7X5_WIDTH, FONT_7X5_HEIGHT, FONT_7X5_STEP_GLYPH);
+  // HT1632.drawText(localDisplayBuffer, clockBaseX + 39 /*x*/, 1 /*y*/, FONT_7X5, FONT_7X5_WIDTH, FONT_7X5_HEIGHT, FONT_7X5_STEP_GLYPH);
+  HT1632.drawText(localDisplayBuffer, clockBaseX + 51 /*x*/, 1 /*y*/, FONT_7X5, FONT_7X5_WIDTH, FONT_7X5_HEIGHT, FONT_7X5_STEP_GLYPH);
   
-#if 0
-  // FIXME: grab temperature from web?
-  snprintf(localDisplayBuffer, sizeof(localDisplayBuffer), "%02d F", getCachedTemperatureValue());
-  HT1632.drawText(localDisplayBuffer, 45 /*x*/, 10 /*y*/, FONT_5X4, FONT_5X4_WIDTH, FONT_5X4_HEIGHT, FONT_5X4_STEP_GLYPH);
-#else
-  getDayOfMonthStr(timeInfo.tm_mday, localDisplayBuffer, sizeof(localDisplayBuffer));
-  HT1632.drawText(localDisplayBuffer, 51 /*x*/, 10 /*y*/, FONT_5X4, FONT_5X4_WIDTH, FONT_5X4_HEIGHT, FONT_5X4_STEP_GLYPH);
-#endif
+  // put first 3 characthers of the month, followed by the day into a string
+  assert(sizeof(localDisplayBuffer) >= 6);
+
+  const char* const monthStr =
+    (timeInfo.tm_mon >=0 && timeInfo.tm_mon <= 11) ? months[timeInfo.tm_mon] : "MMM";
+  strncpy(localDisplayBuffer, monthStr, 4 /*sizeof(localDisplayBuffer)*/);
+  localDisplayBuffer[3] = ' ';
+
+  getDayOfMonthStr(timeInfo.tm_mday, (char*) (localDisplayBuffer + 4), sizeof(localDisplayBuffer) - 4);
+  HT1632.drawText(localDisplayBuffer, clockBaseX + 51 /*x*/, 10 /*y*/, FONT_5X4, FONT_5X4_WIDTH, FONT_5X4_HEIGHT, FONT_5X4_STEP_GLYPH);
+
+  // HT1632.renderAll();  // already expected to be invoked by updateMotionDetectedPixel
+}
+
+static void modeBasicClockShowSeconds(DisplayInternalInfo& displayInternalInfo) {
+    HT1632Class& HT1632 = displayInternalInfo.ht1632;
+  struct tm timeInfo;
   
+  getTimeInfo(timeInfo);
+
+  // explicitly invoke slow refresh if this is a minute update
+  if (timeInfo.tm_sec == 0) modeBasicClockSlow(displayInternalInfo); 
+
+# ifdef BASIC_CLOCK_SECONDS_BOX
+  static const int initialX = 39;
+  static const int initialY = 2;
+  static const int dotsPerRow = 10;
+
+  // 1 ->green  2->red 
+  for (int currColor = 1; currColor <= 2; ++currColor) {
+    displayInternalInfo.ht1632.drawTarget(BUFFER_BOARD(currColor));
+    for (int currSec = 1; currSec <= 60; ++currSec) {
+      const int currSecX = ((currSec - 1) % dotsPerRow) + initialX;
+      const int currSecY = ((currSec - 1) / dotsPerRow) + initialY;
+
+      // turn on pixel that represents the current seconds?
+      bool setPixel;
+      if (currSec == timeInfo.tm_sec) {
+	setPixel = currColor == 2;
+      } else if (currSec < timeInfo.tm_sec) {
+	const int activeY = ((timeInfo.tm_sec - 1) / dotsPerRow) + initialY;
+	setPixel = currColor == 2 || (currColor == 1 && currSecY != activeY);
+      } else {
+	setPixel = currColor == 1;
+      }
+
+      displayInternalInfo.ht1632.setPixel(currSecX, currSecY, setPixel);
+    }
+  }
+#else  // ifdef BASIC_CLOCK_SECONDS_BOX  
+  static const int initialX = 39;
+  static const int initialY = 2;
+  char localDisplayBuffer[10];
+  
+  HT1632.drawTarget(BUFFER_BOARD(1));
+  snprintf(localDisplayBuffer, sizeof(localDisplayBuffer), "%02d   ", timeInfo.tm_sec);
+  HT1632.drawText(localDisplayBuffer, initialX /*x*/, initialY /*y*/, FONT_5X4, FONT_5X4_WIDTH, FONT_5X4_HEIGHT, FONT_5X4_STEP_GLYPH);
+#endif // ifdef BASIC_CLOCK_SECONDS_BOX  
+  
+  // HT1632.renderAll();  // already expected to be invoked by updateMotionDetectedPixel
+}
+
+static void modeBasicClockFast(DisplayInternalInfo& displayInternalInfo) {
+  MotionInfo motionInfo;
+
+  // leave clock mode if there is no motion detected for a while 
+  if (!displayInternalInfo.motionSensor.getMotionValue(&motionInfo) && 
+      (motionInfo.lastChangedMin > 15 || motionInfo.lastChangedHour > 0)) {
+    changeDisplayMode(displayModeNothing, displayInternalInfo);
+    return;
+  }
+
+  modeBasicClockShowSeconds(displayInternalInfo);
   updateMotionDetectedPixel(displayInternalInfo);
 }
 
-static void modeBasicClockCommon(DisplayInternalInfo& displayInternalInfo) {
-  modeBasicClockDate(displayInternalInfo);
-  modeBasicClockCheckIdle(displayInternalInfo);
-}
-
 static void modeBasicClockInit(DisplayInternalInfo& displayInternalInfo, const void* /*param*/) {
-  modeBasicClockMain(displayInternalInfo); 
-  modeBasicClockDate(displayInternalInfo);
+  modeBasicClockSlow(displayInternalInfo); 
 }
 
 static const Mode modeBasicClock = {displayModeBasicClock, "basicClock",
-				    modeBasicClockInit /*init*/, 0 /*fast*/, 0 /*100ms*/, 0 /*250ms*/, 0 /*500ms*/,
-				    modeBasicClockCommon /*1sec*/, 0 /*5sec*/,
-				    modeBasicClockMain /*10sec*/, 0 /*25sec*/, 0 /*1min*/};
+				    modeBasicClockInit /*init*/, 0 /*fast*/, 0 /*100ms*/, 0 /*250ms*/,
+				    modeBasicClockFast /*500ms*/, 0 /*1sec*/, 0 /*5sec*/,
+				    modeBasicClockSlow /*10sec*/, 0 /*25sec*/, 0 /*1min*/};
 
 // ----------------------------------------
 
