@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <cassert>
 #include <set>
+#include <string.h>
 
 #include <event2/event.h>
 #include "server.h"
@@ -558,10 +559,12 @@ HandleRequestReply WebHandler::parsePost(const RequestInfo& requestInfo,
 #endif
     
     bool gettingValuePortion = false;  // state of what is being assembled (key vs value)
-    char tmpBuffer[bodyLen + 1] = {0};
+    char tmpBuffer[bodyLen + 1];
     int tmpBufferOffset = 0;
     const char* const currKey = tmpBuffer;
     const char* currValue = "";
+
+    memset(tmpBuffer, 0, bodyLen + 1);
 
     for (int i=0; i < (int) bodyLen; ++i) {
       char ch = data[i];
