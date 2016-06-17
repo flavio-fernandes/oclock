@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/flavio-fernandes/oclock.svg?branch=master)](https://travis-ci.org/flavio-fernandes/oclock)
+
 # oclock
 c++11 codebase to control led matrix display, running in a Raspberry Pi
 

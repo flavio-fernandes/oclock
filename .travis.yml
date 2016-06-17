@@ -1,0 +1,33 @@
+language: cpp
+
+sudo: required
+
+dist: trusty
+
+compiler:
+  - g++
+
+addons:
+  apt:
+    packages:
+      - git
+      - libevent-dev
+      - g++
+os:
+  - linux
+
+before_install:
+  - echo $LANG
+  - echo $LC_ALL
+  - ./.travis/${TRAVIS_OS_NAME}-prepare.sh
+
+env:
+  - OPTS="verbose"
+
+script: ./.travis/${TRAVIS_OS_NAME}-build.sh $OPTS
+
+notifications:
+  email:
+    recipients:
+      - flavio@flaviof.com
+
