@@ -31,6 +31,7 @@ function main()
 {
     # commands to execute on the way out
     add_on_exit curl --request POST  ${urlImgBg}  --data 'clearAll=1'
+    add_on_exit curl --request POST  ${urlMsgBg}  --data 'clearAll=1'
     add_on_exit curl --request POST  ${urlMsgMode} --data 'timeout=1'
 
     curl --request POST  ${urlImgBg}  --data 'clearAll=1'
