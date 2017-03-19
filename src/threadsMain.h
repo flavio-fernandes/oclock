@@ -8,6 +8,7 @@ typedef enum ThreadId_t {
   threadIdLedStrip,
   threadIdLightSensor,
   threadIdMotionSensor,
+  threadIdDictionary,
   threadIdTimerTick,
   threadIdCount,  // must be last
   threadIdIgnore = threadIdCount

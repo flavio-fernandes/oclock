@@ -117,7 +117,7 @@ void MotionSensor::notifyMotionSensorChange(InboxRegistry& inboxRegistry) {
   if (sizeof(msg.payload) < sizeof(motionInfo)) {
     throw std::runtime_error( "motionInfo too big for mailbox msg payload" );
   } else {
-    msg.inboxMsgType = motionInfo.currMotionDetected ? InboxMsgTypeMotionOn : InboxMsgTypeMotionOff;
+    msg.inboxMsgType = motionInfo.currMotionDetected ? inboxMsgTypeMotionOn : inboxMsgTypeMotionOff;
     memcpy(msg.payload, &motionInfo, sizeof(motionInfo));
   }
   inboxRegistry.broadcast(msg, threadIdMotionSensor);

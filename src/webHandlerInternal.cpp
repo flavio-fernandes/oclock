@@ -10,6 +10,7 @@
 
 #include "HT1632.h"
 #include "commonTypes.h"
+#include "dictionary.h"
 #include "displayTypes.h"
 #include "display.h"
 #include "ledStrip.h"
@@ -348,7 +349,8 @@ public:
 class WebHandlerStatus : public WebHandler {
 public:
   WebHandlerStatus() : motionSensor(MotionSensor::bind()), lightSensor(LightSensor::bind()),
-		       display(Display::bind()), ledStrip(LedStrip::bind()) {}
+		       display(Display::bind()), ledStrip(LedStrip::bind()),
+		       dictionary(Dictionary::bind()) {}
   virtual HandleRequestReply process(const RequestInfo& requestInfo, RequestOutput& requestOutput) {
     std::string buff("Stats and status\n\n");
 
@@ -368,6 +370,17 @@ public:
     buff << "light_sensor: "; INT2BUFF(lightSensor.getLightValue()); buff << "\n";
     buff << "display_mode: " << display.getInternalDisplayMode() << "\n";
     buff << "led_strip_mode: " << ledStrip.getInternalLedStripMode() << "\n";
+
+    if (!dictionary.empty()) {
+      buff << "\n";
+      bool found;
+      std::string currKey;
+      std::string currData = dictionary.getFirst(currKey, &found);
+      while (found) {
+	buff << "dict: " << currKey << " => " << currData << "\n";
+	currData = dictionary.getNext(currKey, &found);
+      }
+    }
     
     setHeaderContentTypeText(requestOutput);
     ADD_BODY(buff);
@@ -379,6 +392,7 @@ private:
   LightSensor& lightSensor;
   Display& display;
   LedStrip& ledStrip;
+  Dictionary& dictionary;
 };
 
 class WebHandlerImgBackground : public WebHandler {
@@ -416,7 +430,7 @@ public:
     addXYCoordinatesInput(buff);
     addAnimationStepInput(buff);
     
-    buff << "</p><input type='submit' value='Submit'/></imgBackground>";
+    buff << "</p><input type='submit' value='Submit'/></form>";
 
     ADD_BODY(buff + contentStop);
     return replyOk;
@@ -426,7 +440,7 @@ public:
 class WebHandlerImgBackgroundPost : public WebHandler {
 public:
   WebHandlerImgBackgroundPost() : WebHandler(), display(Display::bind()) { }
-  virtual ~WebHandlerImgBackgroundPost() {}
+  virtual ~WebHandlerImgBackgroundPost() { }
   virtual HandleRequestReply process(const RequestInfo& requestInfo, RequestOutput& requestOutput) {
     StringMap postValues;
     const HandleRequestReply handleRequestReply = parsePost(requestInfo, requestOutput, postValues);
@@ -464,7 +478,7 @@ public:
     addXYCoordinatesInput(buff);
     addAnimationStepInput(buff);
     
-    buff << "</p><input type='submit' value='Submit'/></msgBackground>";
+    buff << "</p><input type='submit' value='Submit'/></form>";
 
     ADD_BODY(buff + contentStop);
     return replyOk;
@@ -474,7 +488,7 @@ public:
 class WebHandlerMsgBackgroundPost : public WebHandler {
 public:
   WebHandlerMsgBackgroundPost() : WebHandler(), display(Display::bind()) { }
-  virtual ~WebHandlerMsgBackgroundPost() {}
+  virtual ~WebHandlerMsgBackgroundPost() { }
   virtual HandleRequestReply process(const RequestInfo& requestInfo, RequestOutput& requestOutput) {
     StringMap postValues;
     const HandleRequestReply handleRequestReply = parsePost(requestInfo, requestOutput, postValues);
@@ -528,7 +542,7 @@ public:
     
     addXYCoordinatesInput(buff);
 
-    buff << "</p><input type='submit' value='Submit'/></msgMode>";
+    buff << "</p><input type='submit' value='Submit'/></form>";
 
     ADD_BODY(buff + contentStop);
     return replyOk;
@@ -623,7 +637,7 @@ HandleRequestReply WebHandler::parsePost(const RequestInfo& requestInfo,
 class WebHandlerMsgModePost : public WebHandler {
 public:
   WebHandlerMsgModePost() : WebHandler(), display(Display::bind()) { }
-  virtual ~WebHandlerMsgModePost() {}
+  virtual ~WebHandlerMsgModePost() { }
   virtual HandleRequestReply process(const RequestInfo& requestInfo, RequestOutput& requestOutput) {
     StringMap postValues;
     const HandleRequestReply handleRequestReply = parsePost(requestInfo, requestOutput, postValues);
@@ -673,7 +687,7 @@ public:
     addRadioButton(buff, ledStripParamTimeout, "300", "300", false);
     addRadioButton(buff, ledStripParamTimeout, "-1", "never", false);
 
-    buff << "</p><input type='submit' value='Submit'/></ledStrip>";
+    buff << "</p><input type='submit' value='Submit'/></form>";
     
     ADD_BODY(buff + contentStop);
     return replyOk;
@@ -684,7 +698,7 @@ public:
 class WebHandlerLedStripPost : public WebHandler {
 public:
   WebHandlerLedStripPost() : WebHandler(), ledStrip(LedStrip::bind()) { }
-  virtual ~WebHandlerLedStripPost() {}
+  virtual ~WebHandlerLedStripPost() { }
   virtual HandleRequestReply process(const RequestInfo& requestInfo, RequestOutput& requestOutput) {
     StringMap postValues;
     const HandleRequestReply handleRequestReply = parsePost(requestInfo, requestOutput, postValues);
@@ -694,6 +708,54 @@ public:
   }
 private:
   LedStrip& ledStrip;
+};
+
+
+class WebHandlerDictionary : public WebHandler {
+public:
+  virtual HandleRequestReply process(const RequestInfo& requestInfo, RequestOutput& requestOutput) {
+    std::string buff(contentStart);
+
+    buff << "<form action='/dictionary' method='post'>"
+	 << "<h1>Global Dictionary Config</h1><p>";
+
+    buff << "<br/>Operation: ";
+    addRadioButton(buff, dictionaryParamOperation, dictionaryParamOperationSet, dictionaryParamOperationSet, false);
+    addRadioButton(buff, dictionaryParamOperation, dictionaryParamOperationAdd, dictionaryParamOperationAdd, true);
+    addRadioButton(buff, dictionaryParamOperation, dictionaryParamOperationDel, dictionaryParamOperationDel, false);
+
+    buff << "<br/>Key: <input type='text' size='30' name='" << dictionaryParamKey << "'>";
+    buff << "<br/>Data: <input type='text' size='30' name='" << dictionaryParamData << "'>";
+
+    buff << "<br/>Timeout (sec): ";
+    addRadioButton(buff, dictionaryParamTimeout, "3000", "3", false);
+    addRadioButton(buff, dictionaryParamTimeout, "10000", "10", false);
+    addRadioButton(buff, dictionaryParamTimeout, "60000", "60", true);
+    addRadioButton(buff, dictionaryParamTimeout, "300000", "300", false);
+    addRadioButton(buff, dictionaryParamTimeout, "-1", "never", false);
+
+    buff << "</p><input type='submit' value='Submit'/></form>";
+
+    ADD_BODY(buff + contentStop);
+    return replyOk;
+  }
+};
+
+
+class WebHandlerDictionaryPost : public WebHandler {
+public:
+  WebHandlerDictionaryPost() : WebHandler(), dictionary(Dictionary::bind()) { }
+  virtual ~WebHandlerDictionaryPost() { }
+  virtual HandleRequestReply process(const RequestInfo& requestInfo, RequestOutput& requestOutput) {
+    StringMap postValues;
+    const HandleRequestReply handleRequestReply = parsePost(requestInfo, requestOutput, postValues);
+    std::string buff;
+    if (handleRequestReply.code != HTTP_OK) return handleRequestReply;
+    if (!dictionary.parsePostRequest(postValues)) RETURN_ERROR("Was unable to parse request on dictionary");
+    return replyNoContent;
+  }
+private:
+  Dictionary& dictionary;
 };
 
 
@@ -726,6 +788,7 @@ public:
 	 << "<br/><a href='imgBackground'>image background</a>"
 	 << "<br/><a href='msgBackground'>message background</a>"
 	 << "<br/><a href='ledStrip'>led strip</a>"
+         << "<br/><a href='dictionary'>dictionary</a>"
          << "<br/><a href='sound'>sound</a>"
 	 << "<br/><a href='stop'>stop</a> (careful!)"
       ; // buff
@@ -757,7 +820,8 @@ void WebHandlerInternal::_start() {
   webHandlers[ WebHandlerKey("/ledStrip") ] = new WebHandlerLedStrip;
   webHandlers[ WebHandlerKey(EVHTTP_REQ_POST, "/ledStrip") ] = new WebHandlerLedStripPost;
 
-  webHandlers[ WebHandlerKey("/stop") ] = new WebHandlerStop;
+  webHandlers[ WebHandlerKey("/dictionary") ] = new WebHandlerDictionary;
+  webHandlers[ WebHandlerKey(EVHTTP_REQ_POST, "/dictionary") ] = new WebHandlerDictionaryPost;
 
-  
+  webHandlers[ WebHandlerKey("/stop") ] = new WebHandlerStop;
 }

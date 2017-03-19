@@ -25,7 +25,7 @@ public:
   bool getMotionValue(MotionInfo* out = 0) const;
   
   static void registerMainThread();  // only needed by one thread
-  void runThreadLoop(std::recursive_mutex* gpioLockMutexPParam);  // to be ran by timerTickThread only
+  void runThreadLoop(std::recursive_mutex* gpioLockMutexPParam);  // to be ran by mainThread only
 
 private:
   static std::thread::id mainThreadId; // http://en.cppreference.com/w/cpp/thread/thread/id

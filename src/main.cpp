@@ -13,6 +13,7 @@
 #include "timerTick.h"
 #include "lightSensor.h"
 #include "motionSensor.h"
+#include "dictionary.h"
 #include "inbox.h"
 #include "webHandlerInternal.h"
 #include "display.h"
@@ -22,6 +23,7 @@ extern void displayMain(const ThreadParam& threadParam);
 extern void timerTickMain(const ThreadParam& threadParam);
 extern void lightSensorMain(const ThreadParam& threadParam);
 extern void motionSensorMain(const ThreadParam& threadParam);
+extern void dictionaryMain(const ThreadParam& threadParam);
 extern void ledStripMain(const ThreadParam& threadParam);
 
 extern int pulsar_main(int argc, char *argv[]);
@@ -52,6 +54,9 @@ void allocThreadInfoArray(ThreadInfo*& threadInfo) {
     case threadIdMotionSensor:
       threadInfo[i].threadMainFunction = motionSensorMain;
       break;
+    case threadIdDictionary:
+      threadInfo[i].threadMainFunction = dictionaryMain;
+      break;
     default:
 	throw std::runtime_error( "allocThreadInfoArray got bad ThreadId: " + std::to_string(i) );
         break;
@@ -65,14 +70,12 @@ void deAllocThreadInfoArray(ThreadInfo*& threadInfo) {
 }
 
 void broadcastTerminateMessage(InboxRegistry& inboxRegistry, ThreadId threadIdException) {
-  InboxMsg msg; // noop by default
-  msg.inboxMsgType = inboxMsgTypeTerminate;
+  const InboxMsg msg(inboxMsgTypeTerminate);
   inboxRegistry.broadcast(msg, threadIdException);
 }
 
 void sendTerminateMessage(InboxRegistry& inboxRegistry, ThreadId threadId) {
-  InboxMsg msg; // noop by default
-  msg.inboxMsgType = inboxMsgTypeTerminate;
+  const InboxMsg msg(inboxMsgTypeTerminate);
   inboxRegistry.getInbox(threadId).addMessage(msg);
 }
 
@@ -115,6 +118,7 @@ int main (int argc, char* argv[])
   WebHandlerInternal::shutdown();
   Display::shutdown();
   LedStrip::shutdown();
+  Dictionary::shutdown();
   TimerTick::shutdown();
   InboxRegistry::shutdown();
 

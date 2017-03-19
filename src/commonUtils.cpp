@@ -27,3 +27,20 @@ bool parseBooleanValue(const char* valueStr) {
   if (strcasecmp(valueStr, "true") == 0) return true;
   return strtoul(valueStr, NULL /*endptr*/, 0 /*base*/) != 0;
 }
+
+bool isParamSet(const StringMap& params, const char* const paramName, const char* const paramValue) {
+  StringMap::const_iterator iter = params.find(paramName);
+  if (iter == params.end()) return false;
+  if (paramValue != nullptr && iter->second != paramValue) return false;
+  return true;
+}
+
+bool getParamValue(const StringMap& params, const char* const paramName, std::string& paramValueFound) {
+  StringMap::const_iterator iter = params.find(paramName);
+  if (iter != params.end()) {
+    paramValueFound = iter->second;
+    return true;
+  }
+  return false;
+}
+

@@ -57,6 +57,27 @@ typedef enum {
     X(imgArtJump2),      /*21*/  \
     X(imgArtJump3),      /*22*/  \
     X(imgArtJump4),      /*23*/  \
+    X(imgArtUp),         /*24*/  \
+    X(imgArtDown),       /*25*/  \
+    X(imgArtUp1),        /*26*/  \
+    X(imgArtUp2),        /*27*/  \
+    X(imgArtUp3),        /*28*/  \
+    X(imgArtUp4),        /*29*/  \
+    X(imgArtDown1),      /*30*/  \
+    X(imgArtDown2),      /*31*/  \
+    X(imgArtDown3),      /*32*/  \
+    X(imgArtDown4),      /*33*/  \
+    X(imgArtUp21),       /*34*/  \
+    X(imgArtUp22),       /*35*/  \
+    X(imgArtUp23),       /*36*/  \
+    X(imgArtUp24),       /*37*/  \
+    X(imgArtDown21),     /*38*/  \
+    X(imgArtDown22),     /*39*/  \
+    X(imgArtDown23),     /*40*/  \
+    X(imgArtDown24),     /*41*/  \
+    X(imgArtCar1),       /*42*/	 \
+    X(imgArtCar2),       /*43*/	 \
+    X(imgArtBlank),      /*44*/	 \
     X(imgArtLast)
 
 #define X(x) x

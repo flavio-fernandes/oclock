@@ -39,8 +39,6 @@ private:
 
 static Int32U wheel(LPD8806& lpd8806, Int16U wheelPos);
 static void clearPixelColorsAndShow(LPD8806& lpd8806);
-static bool isParamSet(const StringMap& params, const char* const paramName, const char* const paramValue = 0);
-static bool getParamValue(const StringMap& params, const char* const paramName, std::string& paramValueFound);
 static void checkIfModeTimedOut(LedStripInternalInfo& info);
 static void changeLedStripMode(LedStripMode wantedLedStripMode, LedStripInternalInfo& ledStripInternalInfo, const StringMap& params);
 static Int32U getPixelColorParam(const StringMap& params);
@@ -314,22 +312,6 @@ static Int32U wheel(LPD8806& lpd8806, Int16U wheelPos) {
 static void clearPixelColorsAndShow(LPD8806& lpd8806) {
   lpd8806.clearPixelColors();
   lpd8806.show();
-}
-
-static bool isParamSet(const StringMap& params, const char* const paramName, const char* const paramValue) {
-  StringMap::const_iterator iter = params.find(paramName);
-  if (iter == params.end()) return false;
-  if (paramValue != nullptr && iter->second != paramValue) return false;
-  return true;
-}
-
-static bool getParamValue(const StringMap& params, const char* const paramName, std::string& paramValueFound) {
-  StringMap::const_iterator iter = params.find(paramName);
-  if (iter != params.end()) {
-    paramValueFound = iter->second;
-    return true;
-  }
-  return false;
 }
 
 static void checkIfModeTimedOut(LedStripInternalInfo& info) {

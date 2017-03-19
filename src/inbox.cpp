@@ -2,10 +2,8 @@
 
 #include "inbox.h"
 
-
 InboxMsg::InboxMsg() : inboxMsgType(inboxMsgTypeNoop) {
-  const size_t payloadSize = sizeof(payload);
-  memset(&payload, 0, payloadSize);
+  initPayload();
 }
 
 InboxMsg::InboxMsg(const InboxMsg& other) : inboxMsgType(other.inboxMsgType) {
@@ -20,6 +18,15 @@ InboxMsg& InboxMsg::operator=(const InboxMsg& other) {
 
 InboxMsg::~InboxMsg() {
   // empty
+}
+
+InboxMsg::InboxMsg(InboxMsgType inboxMsgType) : inboxMsgType(inboxMsgType) {
+  initPayload();
+}
+
+void InboxMsg::initPayload() {
+  const size_t payloadSize = sizeof(payload);
+  memset(&payload, 0, payloadSize);
 }
 
 // ----------------------------------------------------------------------

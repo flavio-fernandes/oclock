@@ -12,8 +12,9 @@
 typedef enum InboxMsgType_t {
   inboxMsgTypeNoop,
   inboxMsgTypeTerminate,
-  InboxMsgTypeMotionOn,
-  InboxMsgTypeMotionOff,
+  inboxMsgTypeMotionOn,
+  inboxMsgTypeMotionOff,
+  inboxMsgTypeTimerTickMessage,
   inboxMsgTypeCount
 } InboxMsgType;
 
@@ -24,6 +25,9 @@ public:
   InboxMsg(const InboxMsg& other);
   InboxMsg& operator=(const InboxMsg& other);
   ~InboxMsg();
+
+  InboxMsg(InboxMsgType inboxMsgType);
+  void initPayload();
   
   InboxMsgType inboxMsgType;
   static const int maxPayloadSize = 64;

@@ -29,6 +29,7 @@ SRC	= \
 	  lpd8806/LPD8806.cpp \
 	  $(addprefix src/, \
 	    webHandlerInternal.cpp \
+	    dictionary.cpp \
 	    motionSensor.cpp \
 	    lightSensor.cpp \
 	    inbox.cpp \

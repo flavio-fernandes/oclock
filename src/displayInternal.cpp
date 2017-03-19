@@ -11,6 +11,7 @@
 #include "fortunes.h"
 
 #include "commonUtils.h"
+#include "dictionary.h"
 #include "stdTypes.h"
 #include "motionSensor.h"
 #include "lightSensor.h"
@@ -27,9 +28,10 @@ public:
   ~DisplayInternalInfo();
 
   HT1632Class& ht1632;
+  Dictionary& dictionary;
   MotionSensor& motionSensor;
   LightSensor& lightSensor;
-
+  
 private:
   DisplayInternalInfo() = delete;
   DisplayInternalInfo(const DisplayInternalInfo& other) = delete;
@@ -238,6 +240,8 @@ static char* getDayOfMonthStr(int day, char* const bufferOut, size_t bufferOutSi
   return bufferOut;
 }
 
+static void modeBasicClockShowTemperature(DisplayInternalInfo& displayInternalInfo);  // FWD
+
 static void modeBasicClockSlow(DisplayInternalInfo& displayInternalInfo) {
   HT1632Class& HT1632 = displayInternalInfo.ht1632;
   char localDisplayBuffer[MESSAGE_MAX_SIZE];
@@ -257,7 +261,7 @@ static void modeBasicClockSlow(DisplayInternalInfo& displayInternalInfo) {
   HT1632.drawText(localDisplayBuffer, clockBaseX + 0 /*x*/, 0 /*y*/, FONT_16X8, FONT_16X8_WIDTH, FONT_16X8_HEIGHT, FONT_16X8_STEP_GLYPH);
 
   snprintf(localDisplayBuffer, sizeof(localDisplayBuffer), "%s", isPm ? "pm":"am");
-  HT1632.drawText(localDisplayBuffer, clockBaseX + 39 /*x*/, 10 /*y*/, FONT_5X4, FONT_5X4_WIDTH, FONT_5X4_HEIGHT, FONT_5X4_STEP_GLYPH);
+  HT1632.drawText(localDisplayBuffer, clockBaseX + 39 /*x*/, 9 /*y*/, FONT_5X4, FONT_5X4_WIDTH, FONT_5X4_HEIGHT, FONT_5X4_STEP_GLYPH);
 
 #if 0
   // DEBUG hack day
@@ -271,23 +275,48 @@ static void modeBasicClockSlow(DisplayInternalInfo& displayInternalInfo) {
     (timeInfo.tm_wday >=0 && timeInfo.tm_wday <= 6) ? daysOfWeek[timeInfo.tm_wday] : "DDD";
   strncpy(localDisplayBuffer, weekDayStr, sizeof(localDisplayBuffer));
 
-  HT1632.drawTarget(BUFFER_BOARD(2));
-  HT1632.clear();
-  // HT1632.drawText(localDisplayBuffer, clockBaseX + 39 /*x*/, 1 /*y*/, FONT_7X5, FONT_7X5_WIDTH, FONT_7X5_HEIGHT, FONT_7X5_STEP_GLYPH);
-  HT1632.drawText(localDisplayBuffer, clockBaseX + 51 /*x*/, 1 /*y*/, FONT_7X5, FONT_7X5_WIDTH, FONT_7X5_HEIGHT, FONT_7X5_STEP_GLYPH);
+  HT1632.drawTarget(BUFFER_BOARD(2)); HT1632.clear();
+  HT1632.drawText(localDisplayBuffer, clockBaseX + 49 /*x*/, 0 /*y*/, FONT_7X5, FONT_7X5_WIDTH, FONT_7X5_HEIGHT, FONT_7X5_STEP_GLYPH);
   
   // put first 3 characthers of the month, followed by the day into a string
-  assert(sizeof(localDisplayBuffer) >= 6);
-
   const char* const monthStr =
     (timeInfo.tm_mon >=0 && timeInfo.tm_mon <= 11) ? months[timeInfo.tm_mon] : "MMM";
+  assert(sizeof(localDisplayBuffer) >= 6);
   strncpy(localDisplayBuffer, monthStr, 4 /*sizeof(localDisplayBuffer)*/);
   localDisplayBuffer[3] = ' ';
-
   getDayOfMonthStr(timeInfo.tm_mday, (char*) (localDisplayBuffer + 4), sizeof(localDisplayBuffer) - 4);
-  HT1632.drawText(localDisplayBuffer, clockBaseX + 51 /*x*/, 10 /*y*/, FONT_5X4, FONT_5X4_WIDTH, FONT_5X4_HEIGHT, FONT_5X4_STEP_GLYPH);
+  for (int i=1; i < 3; ++i) {
+    HT1632.drawTarget(BUFFER_BOARD(i));
+    HT1632.drawText(localDisplayBuffer, clockBaseX + 49 /*x*/, 8 /*y*/, FONT_8X4, FONT_8X4_WIDTH, FONT_8X4_HEIGHT, FONT_8X4_STEP_GLYPH);
+  }
 
+  // part 3
+  modeBasicClockShowTemperature(displayInternalInfo);
+  
   // HT1632.renderAll();  // already expected to be invoked by updateMotionDetectedPixel
+}
+
+static void modeBasicClockShowTemperature(DisplayInternalInfo& displayInternalInfo) {
+  HT1632Class& HT1632 = displayInternalInfo.ht1632;
+  Dictionary& dictionary = displayInternalInfo.dictionary;
+  char localDisplayBuffer[MESSAGE_MAX_SIZE];
+  std::string value;
+  bool valueFound;
+  const int xPos = 109;
+  
+  HT1632.drawTarget(BUFFER_BOARD(1));
+  value = dictionary.get(dictionaryTopicTemperature, &valueFound);
+  if (valueFound) {
+    snprintf(localDisplayBuffer, sizeof(localDisplayBuffer), "%s f", value.c_str());
+    HT1632.drawText(localDisplayBuffer, xPos, 0 /*Y*/, FONT_5X4, FONT_5X4_WIDTH, FONT_5X4_HEIGHT, FONT_5X4_STEP_GLYPH);
+  }
+
+  HT1632.drawTarget(BUFFER_BOARD(2));
+  value = dictionary.get(dictionaryTopicHumidity, &valueFound);
+  if (valueFound) {
+    snprintf(localDisplayBuffer, sizeof(localDisplayBuffer), "%s %%", value.c_str());
+    HT1632.drawText(localDisplayBuffer, xPos, 6 /*Y*/, FONT_5X4, FONT_5X4_WIDTH, FONT_5X4_HEIGHT, FONT_5X4_STEP_GLYPH);
+  }
 }
 
 static void modeBasicClockShowSeconds(DisplayInternalInfo& displayInternalInfo) {
@@ -301,10 +330,10 @@ static void modeBasicClockShowSeconds(DisplayInternalInfo& displayInternalInfo) 
 
 # ifdef BASIC_CLOCK_SECONDS_BOX
   static const int initialX = 39;
-  static const int initialY = 2;
-  static const int dotsPerRow = 10;
+  static const int initialY = 1;
+  static const int dotsPerRow = 8;
 
-  // 1 ->green  2->red 
+  // 1->green  2->red 
   for (int currColor = 1; currColor <= 2; ++currColor) {
     displayInternalInfo.ht1632.drawTarget(BUFFER_BOARD(currColor));
     for (int currSec = 1; currSec <= 60; ++currSec) {
@@ -327,15 +356,105 @@ static void modeBasicClockShowSeconds(DisplayInternalInfo& displayInternalInfo) 
   }
 #else  // ifdef BASIC_CLOCK_SECONDS_BOX  
   static const int initialX = 39;
-  static const int initialY = 2;
+  static const int initialY = 0;
   char localDisplayBuffer[10];
   
   HT1632.drawTarget(BUFFER_BOARD(1));
-  snprintf(localDisplayBuffer, sizeof(localDisplayBuffer), "%02d   ", timeInfo.tm_sec);
+  // note the extra spaces to erase the fatter printouts of the previous value
+  snprintf(localDisplayBuffer, sizeof(localDisplayBuffer), "%02d ", timeInfo.tm_sec);
   HT1632.drawText(localDisplayBuffer, initialX /*x*/, initialY /*y*/, FONT_5X4, FONT_5X4_WIDTH, FONT_5X4_HEIGHT, FONT_5X4_STEP_GLYPH);
 #endif // ifdef BASIC_CLOCK_SECONDS_BOX  
   
   // HT1632.renderAll();  // already expected to be invoked by updateMotionDetectedPixel
+}
+
+static void modeBasicClockSDoUpDownAnimationTemperature(DisplayInternalInfo& displayInternalInfo) {
+  static const int xPos = 103;
+  static const int yPos = 0;
+  static int animationFrame = 0;
+  std::string value;
+  bool valueFound;
+  Dictionary& dictionary = displayInternalInfo.dictionary;
+
+  value = dictionary.get(dictionaryTopicTemperatureDir, &valueFound);
+  if (!valueFound) return;
+  if (value != dictionaryTopicDirectionUp &&
+      value != dictionaryTopicDirectionDown) return;
+  
+  const ImgArtInfo imgArtInfo = value == dictionaryTopicDirectionUp ?
+    getImgArtInfo( (ImgArt) ((int)imgArtUp21 + animationFrame) ) :
+    getImgArtInfo( (ImgArt) ((int)imgArtDown21 + animationFrame) );
+  animationFrame = (animationFrame + 1) % 4;
+  
+  HT1632Class& HT1632 = displayInternalInfo.ht1632;
+  HT1632.drawTarget(BUFFER_BOARD(1));
+  HT1632.drawImage(imgArtInfo.img, imgArtInfo.width, imgArtInfo.height, xPos, yPos);
+  HT1632.render();
+}
+
+static void modeBasicClockSDoUpDownAnimationHumidity(DisplayInternalInfo& displayInternalInfo) {
+  static const int xPos = 103;
+  static const int yPos = 6;
+  static int animationFrame = 0;
+  std::string value;
+  bool valueFound;
+  Dictionary& dictionary = displayInternalInfo.dictionary;
+
+  value = dictionary.get(dictionaryTopicHumidityDir, &valueFound);
+  if (!valueFound) return;
+  if (value != dictionaryTopicDirectionUp &&
+      value != dictionaryTopicDirectionDown) return;
+  
+  const ImgArtInfo imgArtInfo = value == dictionaryTopicDirectionUp ?
+    getImgArtInfo( (ImgArt) ((int)imgArtUp21 + animationFrame) ) :
+    getImgArtInfo( (ImgArt) ((int)imgArtDown21 + animationFrame) );
+  animationFrame = (animationFrame + 1) % 4;
+  
+  HT1632Class& HT1632 = displayInternalInfo.ht1632;
+  HT1632.drawTarget(BUFFER_BOARD(2));
+  HT1632.drawImage(imgArtInfo.img, imgArtInfo.width, imgArtInfo.height, xPos, yPos);
+  HT1632.render();
+}
+
+static void modeBasicClockSDoCarAnimation(DisplayInternalInfo& displayInternalInfo) {
+  static const int xPos = 86;
+  static const int yPos = 8;
+  static int animationFrame = 0;
+  static const int animationsAfterOff = 80;  // factor in the ticks (250 ms) == ~22 secs
+  static int animationCounter = animationsAfterOff;
+  static Int32U blinkerEffect = 0;
+  static const ImgArtInfo imgArtInfoBlank = getImgArtInfo(imgArtBlank);
+  std::string value;
+  bool valueFound;
+  Dictionary& dictionary = displayInternalInfo.dictionary;
+
+  value = dictionary.get(dictionaryTopicGarageMotion, &valueFound);
+  if (!valueFound) return;
+
+  if (value == dictionaryTopicValueOn) animationCounter = 0;
+  if (animationCounter >= animationsAfterOff) return;
+  ++animationCounter;  // use animationCounter to keep it going even after dict is no longer 'on'
+
+  ImgArtInfo imgArtInfo = getImgArtInfo( (ImgArt) ((int)imgArtCar1 + animationFrame) );
+  // show car? (blink effect)
+  if ((++blinkerEffect % 10) < 6) {
+    animationFrame ^= 1;
+  } else {
+    assert(imgArtInfoBlank.width >= imgArtInfo.width);
+    assert(imgArtInfoBlank.height >= imgArtInfo.height);
+    imgArtInfo.img = imgArtInfoBlank.img;
+  }
+
+  HT1632Class& HT1632 = displayInternalInfo.ht1632;
+  HT1632.drawTarget(BUFFER_BOARD(1));
+  HT1632.drawImage(imgArtInfo.img, imgArtInfo.width, imgArtInfo.height, xPos, yPos);
+  HT1632.render();
+}
+
+static void modeBasicClockSDoUpDownAnimation(DisplayInternalInfo& displayInternalInfo) {
+  modeBasicClockSDoUpDownAnimationTemperature(displayInternalInfo);
+  modeBasicClockSDoUpDownAnimationHumidity(displayInternalInfo);
+  modeBasicClockSDoCarAnimation(displayInternalInfo);
 }
 
 static void modeBasicClockFast(DisplayInternalInfo& displayInternalInfo) {
@@ -349,7 +468,16 @@ static void modeBasicClockFast(DisplayInternalInfo& displayInternalInfo) {
   }
 
   modeBasicClockShowSeconds(displayInternalInfo);
+  //modeBasicClockSDoUpDownAnimation(displayInternalInfo);
   updateMotionDetectedPixel(displayInternalInfo);
+}
+
+static void modeBasicClock1Sec(DisplayInternalInfo& displayInternalInfo) {
+  // HT1632.renderAll();  // already expected to be invoked by updateMotionDetectedPixel
+}
+
+static void modeBasicClock5Sec(DisplayInternalInfo& displayInternalInfo) {
+  // HT1632.renderAll();  // already expected to be invoked by updateMotionDetectedPixel
 }
 
 static void modeBasicClockInit(DisplayInternalInfo& displayInternalInfo, const void* /*param*/) {
@@ -357,8 +485,11 @@ static void modeBasicClockInit(DisplayInternalInfo& displayInternalInfo, const v
 }
 
 static const Mode modeBasicClock = {displayModeBasicClock, "basicClock",
-				    modeBasicClockInit /*init*/, 0 /*fast*/, 0 /*100ms*/, 0 /*250ms*/,
-				    modeBasicClockFast /*500ms*/, 0 /*1sec*/, 0 /*5sec*/,
+				    modeBasicClockInit /*init*/, 0 /*fast*/,
+				    0 /*100ms*/,
+				    modeBasicClockSDoUpDownAnimation /*250ms*/,
+				    modeBasicClockFast /*500ms*/,
+				    modeBasicClock1Sec /*1sec*/, modeBasicClock5Sec /*5sec*/,
 				    modeBasicClockSlow /*10sec*/, 0 /*25sec*/, 0 /*1min*/};
 
 // ----------------------------------------
@@ -733,6 +864,10 @@ static void drawBackgroundImgs(DisplayInternalInfo& displayInternalInfo) {
                              imgArtInfo.width = IMG_CONCATENATE(IMG_, IMG_CONCATENATE(x, _WIDTH)); \
                              imgArtInfo.height = IMG_CONCATENATE(IMG_, IMG_CONCATENATE(x, _HEIGHT)); \
                            } while (0)
+#define GET_ART_INFO_INDEX(x, i) do { imgArtInfo.img = IMG_CONCATENATE(IMG_, IMG_CONCATENATE(x, i)); \
+                                      imgArtInfo.width = IMG_CONCATENATE(IMG_, IMG_CONCATENATE(x, _WIDTH)); \
+                                      imgArtInfo.height = IMG_CONCATENATE(IMG_, IMG_CONCATENATE(x, _HEIGHT)); \
+                                    } while (0)
 
 static ImgArtInfo getImgArtInfo(ImgArt imgArt) {
   ImgArtInfo imgArtInfo;
@@ -742,29 +877,55 @@ static ImgArtInfo getImgArtInfo(ImgArt imgArt) {
   case imgArtBigHeart:  GET_ART_INFO(BIG_HEART); break;
   case imgArtCat:       GET_ART_INFO(CAT); break;
   case imgArtOwls:      GET_ART_INFO(OWLS); break;
-  //
+  // 5
   case imgArtMail:      GET_ART_INFO(MAIL); break;
   case imgArtMusic:     GET_ART_INFO(MUSIC); break;
   case imgArtMusicNote: GET_ART_INFO(MUSICNOTE); break;
   case imgArtHeart:     GET_ART_INFO(HEART); break;
   case imgArtSpeakerA:  GET_ART_INFO(SPEAKER_A); break;
+  // 10
   case imgArtSpeakerB:  GET_ART_INFO(SPEAKER_B); break;
-  //
   case imgArt8x8:       GET_ART_INFO(8X8); break;
-  case imgArtStickMan1: GET_ART_INFO(STICKMAN1); break;
-  case imgArtStickMan2: GET_ART_INFO(STICKMAN2); break;
-  case imgArtStickMan3: GET_ART_INFO(STICKMAN3); break;
-  case imgArtStickMan4: GET_ART_INFO(STICKMAN4); break;
-
-  case imgArtWave1:     GET_ART_INFO(WAVE1); break;
-  case imgArtWave2:     GET_ART_INFO(WAVE2); break;
-  case imgArtWave3:     GET_ART_INFO(WAVE3); break;
-  case imgArtWave4:     GET_ART_INFO(WAVE4); break;
-
-  case imgArtJump1:     GET_ART_INFO(JUMP1); break;
-  case imgArtJump2:     GET_ART_INFO(JUMP2); break;
-  case imgArtJump3:     GET_ART_INFO(JUMP3); break;
-  case imgArtJump4:     GET_ART_INFO(JUMP4); break;
+  case imgArtStickMan1: GET_ART_INFO_INDEX(STICKMAN, 1); break;
+  case imgArtStickMan2: GET_ART_INFO_INDEX(STICKMAN, 2); break;
+  case imgArtStickMan3: GET_ART_INFO_INDEX(STICKMAN, 3); break;
+  // 15
+  case imgArtStickMan4: GET_ART_INFO_INDEX(STICKMAN, 4); break;
+  case imgArtWave1:     GET_ART_INFO_INDEX(WAVE, 1); break;
+  case imgArtWave2:     GET_ART_INFO_INDEX(WAVE, 2); break;
+  case imgArtWave3:     GET_ART_INFO_INDEX(WAVE, 3); break;
+  case imgArtWave4:     GET_ART_INFO_INDEX(WAVE, 4); break;
+  // 20
+  case imgArtJump1:     GET_ART_INFO_INDEX(JUMP,1); break;
+  case imgArtJump2:     GET_ART_INFO_INDEX(JUMP,2); break;
+  case imgArtJump3:     GET_ART_INFO_INDEX(JUMP,3); break;
+  case imgArtJump4:     GET_ART_INFO_INDEX(JUMP,4); break;
+  case imgArtUp:        GET_ART_INFO(UP); break;
+  // 25
+  case imgArtDown:      GET_ART_INFO(DOWN); break;
+  case imgArtUp1:       GET_ART_INFO_INDEX(ARROW_UP, 1); break;
+  case imgArtUp2:       GET_ART_INFO_INDEX(ARROW_UP, 2); break;
+  case imgArtUp3:       GET_ART_INFO_INDEX(ARROW_UP, 3); break;
+  case imgArtUp4:       GET_ART_INFO_INDEX(ARROW_UP, 4); break;
+  // 30
+  case imgArtDown1:     GET_ART_INFO_INDEX(ARROW_DOWN, 1); break;
+  case imgArtDown2:     GET_ART_INFO_INDEX(ARROW_DOWN, 2); break;
+  case imgArtDown3:     GET_ART_INFO_INDEX(ARROW_DOWN, 3); break;
+  case imgArtDown4:     GET_ART_INFO_INDEX(ARROW_DOWN, 4); break;
+  case imgArtUp21:      GET_ART_INFO_INDEX(ARROW2_UP, 1); break;
+  // 35
+  case imgArtUp22:      GET_ART_INFO_INDEX(ARROW2_UP, 2); break;
+  case imgArtUp23:      GET_ART_INFO_INDEX(ARROW2_UP, 3); break;
+  case imgArtUp24:      GET_ART_INFO_INDEX(ARROW2_UP, 4); break;
+  case imgArtDown21:    GET_ART_INFO_INDEX(ARROW2_DOWN, 1); break;
+  case imgArtDown22:    GET_ART_INFO_INDEX(ARROW2_DOWN, 2); break;
+  // 40
+  case imgArtDown23:    GET_ART_INFO_INDEX(ARROW2_DOWN, 3); break;
+  case imgArtDown24:    GET_ART_INFO_INDEX(ARROW2_DOWN, 4); break;
+  case imgArtCar1:      GET_ART_INFO_INDEX(CAR, 1); break;
+  case imgArtCar2:      GET_ART_INFO_INDEX(CAR, 2); break;
+  case imgArtBlank:     GET_ART_INFO(BLANK); break;
+  // 45
 
   default: GET_ART_INFO(SMILEY); break;
   }
@@ -851,7 +1012,10 @@ static void checkHT1632(HT1632Class& ht1632) {
 // ----------------------------------------
 
 DisplayInternalInfo::DisplayInternalInfo(HT1632Class& ht1632) :
-  ht1632(ht1632), motionSensor(MotionSensor::bind()), lightSensor(LightSensor::bind()) {
+  ht1632(ht1632),
+  dictionary(Dictionary::bind()),
+  motionSensor(MotionSensor::bind()),
+  lightSensor(LightSensor::bind()) {
   initDisplay(*this);
 }
 
