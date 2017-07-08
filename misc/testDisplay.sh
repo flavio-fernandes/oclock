@@ -37,7 +37,6 @@ function main()
     curl --request POST  ${urlMsgBg}  --data 'clearAll=1'
     curl --request POST  ${urlMsgMode} --data 'timeout=0'
 
-    img=11
     color=1
     while : ; do
 	for idx in $(seq 0 31); do
@@ -45,9 +44,16 @@ function main()
 	    x=$((idx * 8))
 	    x=$((x % 128))
 	    ## echo "x is $x  idx is $idx"
+	    #color=$((color + 1)) ; color=$((color % 3))
+	    #color=$(python -S -c "import random; print random.randrange(0,5)")
+	    color=$(((RANDOM + RANDOM) % 5))
+	    if [ $color -eq 4 ]; then
+		img=44 ; color=0
+	    else
+		img=11
+	    fi
 	    curl --request POST  ${urlImgBg}  --data \
 		 "index=${idx}&imgArt=${img}&enabled=1&color=${color}&x=${x}&y=${y}"
-	    color=$((color + 1)) ; color=$((color % 3))
 	done
 	echo -n '.'
     done
