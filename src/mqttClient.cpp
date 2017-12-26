@@ -7,6 +7,7 @@
 #include "inbox.h"
 #include "lightSensor.h"
 
+#include <inttypes.h>
 #include <getopt.h>
 #include <mosquitto.h>
 #include <stdlib.h>
@@ -230,7 +231,7 @@ void MqttClient::parseParams(int argc, char** argv) {
 
 void MqttClient::doPeriodicReport(struct mosquitto* mosq) {
   char lightValueBuffer[6];
-  snprintf(lightValueBuffer, sizeof(lightValueBuffer), "%lu", lightSensor.getLightValue());
+  snprintf(lightValueBuffer, sizeof(lightValueBuffer), "%d", (int) lightSensor.getLightValue());
   doPublish(mosq, topicLightSensor, lightValueBuffer);
 }
 

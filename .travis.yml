@@ -2,23 +2,19 @@ language: cpp
 
 sudo: required
 
-dist: trusty
+dist: xenial
 
 compiler:
   - g++
 
-addons:
-  apt:
-    packages:
-      - git
-      - libevent-dev
-      - g++
 os:
   - linux
 
 before_install:
   - echo $LANG
   - echo $LC_ALL
+  - sudo add-apt-repository ppa:mosquitto-dev/mosquitto-ppa -y
+  - sudo apt-get update -q
   - ./.travis/${TRAVIS_OS_NAME}-prepare.sh
 
 env:
