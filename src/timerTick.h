@@ -10,7 +10,8 @@
 
 typedef unsigned long long TimerTickId;
 
-class TimerTick;
+class TimerTick; // FWD
+class Inbox; // FWD
 
 class TimerTickService
 {
@@ -44,7 +45,8 @@ private:
 class TimerTickServiceBool : public TimerTickService
 {
 public:
-  TimerTickServiceBool(int interval, bool periodic = true) : TimerTickService(interval, periodic), expired(false) {}
+  TimerTickServiceBool(int interval, bool periodic = true, bool expired = false) :
+    TimerTickService(interval, periodic), expired(expired) {}
   virtual void expireTrigger() override final { expired = true; }
   bool getAndResetExpired() { if (expired) { expired = false; return true; } return false; }
 private:
@@ -60,6 +62,15 @@ public:
 private:
   std::mutex mtx;
   std::condition_variable cv;
+};
+
+class TimerTickServiceMessage : public TimerTickService
+{
+public:
+  TimerTickServiceMessage(int interval, Inbox& inbox);
+  virtual void expireTrigger() override final;
+private:
+  Inbox& inbox;
 };
 
 // ======================================================================

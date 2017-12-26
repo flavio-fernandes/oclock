@@ -1,0 +1,3 @@
+libevent-dev
+libmosquitto-dev
+libmosquittopp1

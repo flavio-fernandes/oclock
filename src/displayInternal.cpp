@@ -15,6 +15,7 @@
 #include "stdTypes.h"
 #include "motionSensor.h"
 #include "lightSensor.h"
+#include "inbox.h"
 
 #include <cassert>
 #include <time.h>
@@ -31,7 +32,8 @@ public:
   Dictionary& dictionary;
   MotionSensor& motionSensor;
   LightSensor& lightSensor;
-  
+  InboxRegistry& inboxRegistry;
+
 private:
   DisplayInternalInfo() = delete;
   DisplayInternalInfo(const DisplayInternalInfo& other) = delete;
@@ -157,6 +159,7 @@ static Int8U animationStepTicker10sec = 0;
 struct Mode {
   DisplayMode displayMode;
   const char* const displayModeStr;
+  const InboxMsgType inboxMsgType;
   modeFunctionParamPtr handlerInit;
   modeFunctionPtr handlerTickFast;
   modeFunctionPtr handlerTick100ms;
@@ -484,7 +487,7 @@ static void modeBasicClockInit(DisplayInternalInfo& displayInternalInfo, const v
   modeBasicClockSlow(displayInternalInfo); 
 }
 
-static const Mode modeBasicClock = {displayModeBasicClock, "basicClock",
+static const Mode modeBasicClock = {displayModeBasicClock, "basicClock", inboxMsgTypeDisplayModeBasicClock,
 				    modeBasicClockInit /*init*/, 0 /*fast*/,
 				    0 /*100ms*/,
 				    modeBasicClockSDoUpDownAnimation /*250ms*/,
@@ -654,7 +657,7 @@ static void modeMessageCheckTimeout(DisplayInternalInfo& displayInternalInfo) {
   }
 }
 
-static const Mode modeMessage = {displayModeMessage, "message",
+static const Mode modeMessage = {displayModeMessage, "message", inboxMsgTypeDisplayModeMessage,
 				 modeMessageInit /*init*/, modeMessageFast /*fast*/, 0 /*100ms*/,
 				 modeMessageCheckBlink /*250ms*/, 0 /*500ms*/, modeMessageCheckTimeout /*1sec*/,
 				 0 /*5sec*/, 0 /*10sec*/, 0 /*25sec*/, 0 /*1min*/};
@@ -691,7 +694,7 @@ static void modeNothingCheckMotion(DisplayInternalInfo& displayInternalInfo) {
   }
 }
 
-static const Mode modeNothing = {displayModeNothing, "nothing",
+static const Mode modeNothing = {displayModeNothing, "nothing", inboxMsgTypeDisplayModeNothing,
 				 modeNothingInit /*init*/, 0 /*fast*/, 0 /*100ms*/, 0 /*250ms*/, 0 /*500ms*/,
 				 modeNothingCheckMotion /*1sec*/, 0 /*5sec*/, 0 /*10sec*/, 0 /*25sec*/, 0 /*1min*/};
 
@@ -713,6 +716,7 @@ static void updateDim(DisplayInternalInfo& displayInternalInfo) {
   static bool lastRoomIsDark = false;
   const LightSensor& lightSensor = displayInternalInfo.lightSensor;
   const Int32U lightValue = lightSensor.getLightValue();
+  InboxRegistry& inboxRegistry = displayInternalInfo.inboxRegistry;
 
   bool currRoomIsDark;
     
@@ -729,10 +733,8 @@ static void updateDim(DisplayInternalInfo& displayInternalInfo) {
   displayInternalInfo.ht1632.setBrightness(currRoomIsDark ? 1 : 16);
   lastRoomIsDark = currRoomIsDark;
 
-  char localDisplayBuffer[MESSAGE_MAX_SIZE];
-  snprintf(localDisplayBuffer, sizeof(localDisplayBuffer), "room is %s",
-	   currRoomIsDark ? "dark" : "bright");
-  (void) netNotifyEvent( (const Int8U*) localDisplayBuffer, strlen(localDisplayBuffer) );
+  inboxRegistry.broadcast(currRoomIsDark ? inboxMsgTypeDisplayBrightLow : inboxMsgTypeDisplayBrightHigh,
+			  threadIdDisplay);
 }
 
 // ----------------------------------------
@@ -759,17 +761,14 @@ static DisplayMode getDisplayMode() {
 
 static void changeDisplayMode(DisplayMode displayMode, DisplayInternalInfo& displayInternalInfo, const void* param) {
   HT1632Class& HT1632 = displayInternalInfo.ht1632;
+  InboxRegistry& inboxRegistry = displayInternalInfo.inboxRegistry;
 
   for (int i=0; i < allModesCount; ++i) {
     if (allModes[i].displayMode == displayMode) {
       currModeIndex = i;
-
-      char localDisplayBuffer[MESSAGE_MAX_SIZE];
-      snprintf(localDisplayBuffer, sizeof(localDisplayBuffer), "display mode is %s", allModes[currModeIndex].displayModeStr);
-      (void) netNotifyEvent( (const Int8U*) localDisplayBuffer, strlen(localDisplayBuffer) );
-
       HT1632.clearAll(); HT1632.renderAll();
       if (allModes[currModeIndex].handlerInit != nullptr) (*(allModes[currModeIndex].handlerInit))(displayInternalInfo, param);
+      inboxRegistry.broadcast(allModes[currModeIndex].inboxMsgType, threadIdDisplay);
       break;
     }
   }
@@ -1015,7 +1014,8 @@ DisplayInternalInfo::DisplayInternalInfo(HT1632Class& ht1632) :
   ht1632(ht1632),
   dictionary(Dictionary::bind()),
   motionSensor(MotionSensor::bind()),
-  lightSensor(LightSensor::bind()) {
+  lightSensor(LightSensor::bind()),
+  inboxRegistry(InboxRegistry::bind()) {
   initDisplay(*this);
 }
 

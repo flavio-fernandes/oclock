@@ -6,9 +6,8 @@
 #include <list>
 
 #include "stdTypes.h"
-#include "timerTick.h"
 
-class Mcp3002; // fwd
+class Mcp3002; // FWD
 
 class LightSensor
 {
@@ -21,7 +20,7 @@ public:
   static const Int32U darkRoomThresholdHighWaterMark;
   
   static void registerMainThread();  // only needed by one thread
-  void runThreadLoop(std::recursive_mutex* gpioLockMutexPParam);  // to be ran by timerTickThread only
+  void runThreadLoop(std::recursive_mutex* gpioLockMutexPParam);  // to be ran by main thread only
 
 private:
   static std::thread::id mainThreadId; // http://en.cppreference.com/w/cpp/thread/thread/id

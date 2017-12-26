@@ -1,4 +1,5 @@
 #include <random>
+#include <algorithm>
 #include <stdlib.h>
 #include <strings.h>
 
@@ -12,11 +13,6 @@ static std::uniform_int_distribution<Int32U> uniform_dist(0);
 
 Int32U getRandomNumber(Int32U upperBound) {
   return uniform_dist(randomEngine) % upperBound;
-}
-
-int netNotifyEvent(const Int8U* buffer, size_t size) {
-  // FIXME: implement this!!!
-  return 0;
 }
 
 bool parseBooleanValue(const char* valueStr) {
@@ -44,3 +40,18 @@ bool getParamValue(const StringMap& params, const char* const paramName, std::st
   return false;
 }
 
+static bool isUnwantedChar(char c) {
+  return c < ' ' or c > '~';
+}
+
+std::string currTimestamp() {
+  time_t rawTime;
+  struct tm timeInfo;
+  char buff[64];
+
+  time(&rawTime);
+  localtime_r(&rawTime, &timeInfo);
+  std::string str(asctime_r(&timeInfo, buff));
+  str.erase(std::remove_if(str.begin(), str.end(), &isUnwantedChar), str.end());
+  return str;
+}

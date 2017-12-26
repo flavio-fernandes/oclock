@@ -15,6 +15,11 @@ typedef enum InboxMsgType_t {
   inboxMsgTypeMotionOn,
   inboxMsgTypeMotionOff,
   inboxMsgTypeTimerTickMessage,
+  inboxMsgTypeDisplayBrightHigh,
+  inboxMsgTypeDisplayBrightLow,
+  inboxMsgTypeDisplayModeNothing,
+  inboxMsgTypeDisplayModeBasicClock,
+  inboxMsgTypeDisplayModeMessage,
   inboxMsgTypeCount
 } InboxMsgType;
 
@@ -39,6 +44,8 @@ class Inbox
 public:
   Inbox();
   ~Inbox();
+
+  static const InboxMsg timerTickMessage;
 
   void addMessage(const InboxMsg& msg);
   InboxMsg waitForMessage();

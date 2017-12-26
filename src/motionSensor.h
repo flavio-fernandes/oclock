@@ -5,9 +5,8 @@
 #include <thread>
 
 #include "stdTypes.h"
-#include "timerTick.h"
 
-class InboxRegistry;
+class InboxRegistry;  // FWD
 
 typedef struct MotionInfo_t {
   bool currMotionDetected;
@@ -25,13 +24,14 @@ public:
   bool getMotionValue(MotionInfo* out = 0) const;
   
   static void registerMainThread();  // only needed by one thread
-  void runThreadLoop(std::recursive_mutex* gpioLockMutexPParam);  // to be ran by mainThread only
+  void runThreadLoop(std::recursive_mutex* gpioLockMutexPParam);  // to be ran by main thread only
 
 private:
   static std::thread::id mainThreadId; // http://en.cppreference.com/w/cpp/thread/thread/id
 
   MotionInfo motionInfo;
   static const int sensorGpioPin;
+  InboxRegistry& inboxRegistry;
   
   std::recursive_mutex* gpioLockMutexP;
   static std::recursive_mutex instanceMutex;
@@ -40,7 +40,7 @@ private:
   MotionSensor();
   ~MotionSensor();
   bool checkMotionSensor();
-  void notifyMotionSensorChange(InboxRegistry& inboxRegistry);
+  void notifyMotionSensorChange();
   
   // not implemented
   MotionSensor(const MotionSensor& other) = delete;

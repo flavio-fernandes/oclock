@@ -16,6 +16,16 @@ TimerTickService::~TimerTickService() {
 
 // ======================================================================
 
+TimerTickServiceMessage::TimerTickServiceMessage(int interval, Inbox& inbox) :
+  TimerTickService(interval, true /*periodic*/), inbox(inbox) {
+}
+
+void TimerTickServiceMessage::expireTrigger() {
+  inbox.addMessage(Inbox::timerTickMessage);
+}
+
+// ======================================================================
+
 /*static*/ std::recursive_mutex TimerTick::instanceMutex;
 /*static*/ TimerTick* TimerTick::instance = 0;
 /*static*/ const int TimerTick::millisPerTick = 12;

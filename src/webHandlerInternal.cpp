@@ -17,7 +17,7 @@
 #include "ledStripTypes.h"
 #include "motionSensor.h"
 #include "lightSensor.h"
-
+#include "mqttClient.h"
 
 // Helper web page macro nad string operator
 #define ADD_BODY(__STRPRM)  addBody(requestOutput, __STRPRM)
@@ -350,7 +350,7 @@ class WebHandlerStatus : public WebHandler {
 public:
   WebHandlerStatus() : motionSensor(MotionSensor::bind()), lightSensor(LightSensor::bind()),
 		       display(Display::bind()), ledStrip(LedStrip::bind()),
-		       dictionary(Dictionary::bind()) {}
+		       dictionary(Dictionary::bind()), mqttClient(MqttClient::bind()) {}
   virtual HandleRequestReply process(const RequestInfo& requestInfo, RequestOutput& requestOutput) {
     std::string buff("Stats and status\n\n");
 
@@ -370,6 +370,22 @@ public:
     buff << "light_sensor: "; INT2BUFF(lightSensor.getLightValue()); buff << "\n";
     buff << "display_mode: " << display.getInternalDisplayMode() << "\n";
     buff << "led_strip_mode: " << ledStrip.getInternalLedStripMode() << "\n";
+
+    MqttClientInfo mqttClientInfo;
+    mqttClient.getMqttClientInfo(&mqttClientInfo);
+    buff << "\n";
+    buff << "mqttBrokerConnected: " << (mqttClientInfo.mqttBrokerConnected ? "yes" : "no") << "\n";
+    buff << "mqttLastLoopRc: "; INT2BUFF(mqttClientInfo.last_loop_rc);
+    buff << " (" << mqttClient.getStrError(mqttClientInfo.last_loop_rc) << ")" << "\n";
+    buff << "mqttBrokerIp: " << mqttClientInfo.mqttBrokerIp << "\n";
+    buff << "mqttBrokerPort: "; INT2BUFF(mqttClientInfo.mqttBrokerPort); buff << "\n";
+    buff << "mqttKeepAlive (secs): "; INT2BUFF(mqttClientInfo.mqttKeepAlive); buff << "\n";
+    buff << "mqttConnects: "; INT2BUFF(mqttClientInfo.connects); buff << "\n";
+    buff << "mqttDisconnects: "; INT2BUFF(mqttClientInfo.disconnects); buff << "\n";
+    buff << "mqttPublishes: "; INT2BUFF(mqttClientInfo.publishes); buff << "\n";
+    buff << "mqttPublishesDropped: "; INT2BUFF(mqttClientInfo.publishesDropped); buff << "\n";
+    buff << "mqttPublishCallbacks: "; INT2BUFF(mqttClientInfo.publishCallbacks); buff << "\n";
+    buff << "mqttMessages: "; INT2BUFF(mqttClientInfo.messages); buff << "\n";
 
     if (!dictionary.empty()) {
       buff << "\n";
@@ -393,6 +409,7 @@ private:
   Display& display;
   LedStrip& ledStrip;
   Dictionary& dictionary;
+  MqttClient& mqttClient;
 };
 
 class WebHandlerImgBackground : public WebHandler {

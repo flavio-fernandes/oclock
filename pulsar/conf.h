@@ -14,6 +14,10 @@
 #define WEBSERVER_DEFAULT_PORT     80
 #define WEBSERVER_DEFAULT_WORKERS  4
 
+#define MQTT_BROKER_DEFAULT_IP    "192.168.10.238"
+#define MQTT_BROKER_DEFAULT_PORT  1883
+#define MQTT_BROKER_DEFAULT_KA    182
+
 struct _conf {
 	char *ip;
 	unsigned short port;

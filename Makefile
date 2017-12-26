@@ -17,8 +17,8 @@ INCLUDE	= -I/usr/local/include -I./mcp300x -I./ht1632 -I./lpd8806 -I./src -I./pu
 CFLAGS	= $(DEBUG) $(INCLUDE) -std=gnu++11 -Winline -pipe -Wall
 
 LDFLAGS	= 
-LIBS    = -lwiringPi -lpthread -levent
-VALGRIND_LIBS    = -lpthread -levent
+LIBS    = -lwiringPi -lpthread -levent -lmosquitto
+VALGRIND_LIBS    = -lpthread -levent -lmosquitto
 
 PULSAR_SRC_DIR	= pulsar
 PULSAR_SRC = $(addprefix $(PULSAR_SRC_DIR)/, logger.c conf.c worker.c server.c pulsar.c)
@@ -32,6 +32,7 @@ SRC	= \
 	    dictionary.cpp \
 	    motionSensor.cpp \
 	    lightSensor.cpp \
+	    mqttClient.cpp \
 	    inbox.cpp \
 	    timerTick.cpp \
 	    display.cpp \

@@ -227,19 +227,6 @@ void Dictionary::registerMainThread() {
   mainThreadId = caller;
 }
 
-class TimerTickServiceDictionaryLoop : public TimerTickService
-{
-public:
-  TimerTickServiceDictionaryLoop(Inbox& inbox, int interval) :
-    TimerTickService(interval, true /*periodic*/),
-    msg(inboxMsgTypeTimerTickMessage), inbox(inbox) { }
-
-  virtual void expireTrigger() override final { inbox.addMessage(msg); }
-private:
-  const InboxMsg msg;
-  Inbox& inbox;
-};
-
 void Dictionary::purgeExpiredDictionaryEntries() {
   // simply visit all dictionary entries. By doing so, get member function will
   // remove the entries that have been expired
@@ -255,7 +242,7 @@ void Dictionary::runThreadLoop() {
   Inbox& inbox = inboxRegistry.getInbox(threadIdDictionary);
   InboxMsg msg;
 
-  TimerTickServiceDictionaryLoop timerTickServiceDictionaryLoop(inbox, 10000);  // tick every 10 seconds
+  TimerTickServiceMessage timerTickServiceDictionaryLoop(10000, inbox);  // tick every 10 seconds
   TimerTick& timerTick = TimerTick::bind();
   timerTick.registerTimerTickService(timerTickServiceDictionaryLoop);
 

@@ -17,7 +17,7 @@ const int MotionSensor::sensorGpioPin = 10; // 18;
 std::recursive_mutex MotionSensor::instanceMutex;
 MotionSensor* MotionSensor::instance = 0;
 
-MotionSensor::MotionSensor() : gpioLockMutexP(0) {
+MotionSensor::MotionSensor() : inboxRegistry(InboxRegistry::bind()), gpioLockMutexP(0) {
   memset(&motionInfo, 0, sizeof(motionInfo));
 }
 
@@ -58,7 +58,6 @@ void MotionSensor::runThreadLoop(std::recursive_mutex* gpioLockMutexPParam) {
   TimerTick& timerTick = TimerTick::bind();
   timerTick.registerTimerTickService(doSensorRead);
 
-  InboxRegistry& inboxRegistry = InboxRegistry::bind();
   Inbox& inbox = inboxRegistry.getInbox(threadIdMotionSensor);
   InboxMsg msg;
 
@@ -73,9 +72,7 @@ void MotionSensor::runThreadLoop(std::recursive_mutex* gpioLockMutexPParam) {
       if (msg.inboxMsgType == inboxMsgTypeTerminate) break;
     }
     doSensorRead.wait();
-    if ( checkMotionSensor() ) {
-      notifyMotionSensorChange(inboxRegistry);
-    }
+    checkMotionSensor();
   }
 
   timerTick.unregisterTimerTickService(doSensorRead.getCookie());
@@ -105,14 +102,21 @@ bool MotionSensor::checkMotionSensor() {
       }
     }
   } else {
-    memset(&motionInfo, 0, sizeof(motionInfo));
     motionInfo.currMotionDetected = currMotionDetected;
+
+    // notify world before resetting time counter
+    notifyMotionSensorChange();
+
+    // reset time counter
+    motionInfo.lastChangedSec = 0;
+    motionInfo.lastChangedMin = 0;
+    motionInfo.lastChangedHour = 0;
     return true;
   }       
   return false;
 }
 
-void MotionSensor::notifyMotionSensorChange(InboxRegistry& inboxRegistry) {
+void MotionSensor::notifyMotionSensorChange() {
   InboxMsg msg;
   if (sizeof(msg.payload) < sizeof(motionInfo)) {
     throw std::runtime_error( "motionInfo too big for mailbox msg payload" );

@@ -13,6 +13,7 @@
 #include "timerTick.h"
 #include "lightSensor.h"
 #include "motionSensor.h"
+#include "mqttClient.h"
 #include "dictionary.h"
 #include "inbox.h"
 #include "webHandlerInternal.h"
@@ -23,10 +24,12 @@ extern void displayMain(const ThreadParam& threadParam);
 extern void timerTickMain(const ThreadParam& threadParam);
 extern void lightSensorMain(const ThreadParam& threadParam);
 extern void motionSensorMain(const ThreadParam& threadParam);
+extern void mqttClientMain(const ThreadParam& threadParam);
 extern void dictionaryMain(const ThreadParam& threadParam);
 extern void ledStripMain(const ThreadParam& threadParam);
 
-extern int pulsar_main(int argc, char *argv[]);
+extern void pulsar_parse_args(int argc, char *argv[]);
+extern int pulsar_main();
 
 typedef void (*ThreadMainFunction)(const ThreadParam& threadParam);
 typedef struct {
@@ -54,6 +57,9 @@ void allocThreadInfoArray(ThreadInfo*& threadInfo) {
     case threadIdMotionSensor:
       threadInfo[i].threadMainFunction = motionSensorMain;
       break;
+    case threadIdMqttClient:
+      threadInfo[i].threadMainFunction = mqttClientMain;
+      break;
     case threadIdDictionary:
       threadInfo[i].threadMainFunction = dictionaryMain;
       break;
@@ -69,11 +75,6 @@ void deAllocThreadInfoArray(ThreadInfo*& threadInfo) {
   threadInfo = 0;
 }
 
-void broadcastTerminateMessage(InboxRegistry& inboxRegistry, ThreadId threadIdException) {
-  const InboxMsg msg(inboxMsgTypeTerminate);
-  inboxRegistry.broadcast(msg, threadIdException);
-}
-
 void sendTerminateMessage(InboxRegistry& inboxRegistry, ThreadId threadId) {
   const InboxMsg msg(inboxMsgTypeTerminate);
   inboxRegistry.getInbox(threadId).addMessage(msg);
@@ -86,24 +87,30 @@ int main (int argc, char* argv[])
   ThreadInfo* threadInfo = 0;
   ThreadParam threadParam = {0};
   
+  threadParam.argc = argc;
+  threadParam.argv = argv;
   threadParam.gpioLockMutexP = &gpioLockMutex;
 
   wiringPiSetupGpio();
   WebHandlerInternal::bind().start();
+
+  // parse args in pulsar before unleashing the other threads, because
+  // it uses a non-thread safe parser
+  pulsar_parse_args(argc, argv);
   
   allocThreadInfoArray(threadInfo);
   for (int i=0; i < threadIdCount; ++i) {
     threadInfo[i].threadP = new std::thread(threadInfo[i].threadMainFunction, threadParam);
   }
 
-  pulsar_main(argc, argv);
+  pulsar_main();
   
   /* if we made it here, pulsar server is done and its time to stop
    * all remaining threads.
    */
 
   /* Synchronize the completion of each thread. But make threadIdTimerTick stop last */
-  broadcastTerminateMessage(inboxRegistry, threadIdTimerTick);
+  inboxRegistry.broadcast(inboxMsgTypeTerminate, threadIdTimerTick);
   for (int i=0; i < threadIdCount; ++i) {
     if (i == threadIdTimerTick) continue;
     threadInfo[i].threadP->join();
@@ -118,6 +125,7 @@ int main (int argc, char* argv[])
   WebHandlerInternal::shutdown();
   Display::shutdown();
   LedStrip::shutdown();
+  MqttClient::shutdown();
   Dictionary::shutdown();
   TimerTick::shutdown();
   InboxRegistry::shutdown();

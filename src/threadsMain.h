@@ -8,6 +8,7 @@ typedef enum ThreadId_t {
   threadIdLedStrip,
   threadIdLightSensor,
   threadIdMotionSensor,
+  threadIdMqttClient,
   threadIdDictionary,
   threadIdTimerTick,
   threadIdCount,  // must be last
@@ -15,6 +16,8 @@ typedef enum ThreadId_t {
 } ThreadId;
 
 typedef struct ThreadParam_t {
+  int argc;
+  char** argv;
   std::recursive_mutex* gpioLockMutexP;
 } ThreadParam;
 

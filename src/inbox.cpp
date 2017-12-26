@@ -31,6 +31,8 @@ void InboxMsg::initPayload() {
 
 // ----------------------------------------------------------------------
 
+/*static*/ const InboxMsg Inbox::timerTickMessage(inboxMsgTypeTimerTickMessage);
+
 Inbox::Inbox() :
   msgs(), msgCount(0), mtx(), cv() {
 }

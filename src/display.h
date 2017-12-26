@@ -17,7 +17,7 @@ public:
   static void shutdown();
   
   static void registerMainThread();  // only needed by one thread
-  void runThreadLoop(std::recursive_mutex* gpioLockMutexP);  // to be ran by timerTickThread only
+  void runThreadLoop(std::recursive_mutex* gpioLockMutexP);  // to be ran by main thread only
 
   // call-ins from other threads that add async requests to the display thread
   void enqueueMsgModePost(StringMap& postValues);
