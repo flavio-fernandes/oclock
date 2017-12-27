@@ -7,7 +7,7 @@
 
 std::thread::id LightSensor::mainThreadId;  // default 'invalid' value 
 std::recursive_mutex LightSensor::instanceMutex;
-LightSensor* LightSensor::instance = 0;
+LightSensor* LightSensor::instance = nullptr;
 const size_t LightSensor::maxLightValuesSize = 10;
 const int LightSensor::pinClock = 17;
 const int LightSensor::pinDigitalOut = 27;
@@ -26,7 +26,7 @@ LightSensor::~LightSensor() {
 
 LightSensor& LightSensor::bind() {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
-  if (instance == 0) {
+  if (instance == nullptr) {
     instance = new LightSensor();
   }
   return *instance;
@@ -35,7 +35,7 @@ LightSensor& LightSensor::bind() {
 void LightSensor::shutdown() {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
   delete instance;
-  instance = 0;
+  instance = nullptr;
 }
 
 void LightSensor::registerMainThread() {

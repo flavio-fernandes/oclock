@@ -1,4 +1,3 @@
-
 #include "threadsMain.h"
 #include "timerTick.h"
 #include "inbox.h"
@@ -16,8 +15,8 @@ TimerTickService::~TimerTickService() {
 
 // ======================================================================
 
-TimerTickServiceMessage::TimerTickServiceMessage(int interval, Inbox& inbox) :
-  TimerTickService(interval, true /*periodic*/), inbox(inbox) {
+TimerTickServiceMessage::TimerTickServiceMessage(int interval, Inbox& inbox, bool periodic) :
+  TimerTickService(interval, periodic), inbox(inbox) {
 }
 
 void TimerTickServiceMessage::expireTrigger() {
@@ -27,7 +26,7 @@ void TimerTickServiceMessage::expireTrigger() {
 // ======================================================================
 
 /*static*/ std::recursive_mutex TimerTick::instanceMutex;
-/*static*/ TimerTick* TimerTick::instance = 0;
+/*static*/ TimerTick* TimerTick::instance = nullptr;
 /*static*/ const int TimerTick::millisPerTick = 12;
 /*static*/ std::thread::id TimerTick::timerTickMainThread;  // default 'invalid' value
 
@@ -148,7 +147,7 @@ void TimerTick::runThreadLoop() {
 
 TimerTick& TimerTick::bind() {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
-  if (instance == 0) {
+  if (instance == nullptr) {
     instance = new TimerTick();
   }
   return *instance;
@@ -157,11 +156,11 @@ TimerTick& TimerTick::bind() {
 void TimerTick::shutdown() {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
   delete instance;
-  instance = 0;
+  instance = nullptr;
 }
 
 TimerTick::TimerTick() : nextTimerTickId(TimerTickService::nullCookie + 1), timerTickServices() {
-  if (instance != 0) {
+  if (instance != nullptr) {
     throw std::runtime_error("There can only be one instance of TimerTick!");
   }
 }

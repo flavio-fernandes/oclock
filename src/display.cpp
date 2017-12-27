@@ -48,7 +48,7 @@ DisplayTodo::DisplayTodo(DisplayTodoType displayTodoType, StringMap&& postValues
 
 Display& Display::bind() {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
-  if (instance == 0) {
+  if (instance == nullptr) {
     instance = new Display();
   }
   return *instance;
@@ -63,7 +63,7 @@ void Display::shutdown() {
   instance->displayTodos.clear();
 
   delete instance;
-  instance = 0;
+  instance = nullptr;
 }
 
 void Display::enqueueDisplayTodo(DisplayTodo* displayTodo) {
@@ -92,7 +92,7 @@ const char* Display::getInternalDisplayMode() {
 const DisplayTodo* Display::dequeueDisplayTodo() {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
 
-  if (displayTodos.empty()) return 0;
+  if (displayTodos.empty()) return nullptr;
   const DisplayTodo* const displayTodo = displayTodos.front();
   displayTodos.pop_front();
   return displayTodo;
@@ -100,7 +100,7 @@ const DisplayTodo* Display::dequeueDisplayTodo() {
 
 void Display::checkTodoList() {
   const DisplayTodo* const displayTodo = dequeueDisplayTodo();
-  if (displayTodo == 0) return; // noop
+  if (displayTodo == nullptr) return; // noop
   switch (displayTodo->displayTodoType) {
   case displayTodoTypeHandleMsgModePost:
     internal->doHandleMsgModePost(displayTodo->postValues);
@@ -187,7 +187,7 @@ void Display::runThreadLoop(std::recursive_mutex* gpioLockMutexP) {
     }
   }
 
-  delete internal; internal = 0;
+  delete internal; internal = nullptr;
   
   timerTick.unregisterTimerTickService(displayFastTick.getCookie());
   timerTick.unregisterTimerTickService(display100msTick.getCookie());
@@ -200,7 +200,7 @@ void Display::runThreadLoop(std::recursive_mutex* gpioLockMutexP) {
   timerTick.unregisterTimerTickService(display1minTick.getCookie());
 }
 
-Display::Display() : internal(0) {
+Display::Display() : internal(nullptr) {
 }
 
 Display::~Display() {

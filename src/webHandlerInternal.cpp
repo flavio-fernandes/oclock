@@ -43,7 +43,7 @@ HandleRequestReply handleRequest(struct evhttp_request* req, worker* workerPtr,
   parseRequest(requestInfo);
 
   WebHandlerInternal* const webHandlerInternal = WebHandlerInternal::bindIfExists();
-  if (webHandlerInternal == 0) {
+  if (webHandlerInternal == nullptr) {
     return WebHandler::replyServerUnavail;
   }
   return webHandlerInternal->process(requestInfo, requestOutput);
@@ -203,11 +203,11 @@ void WebHandler::addAnimationStepInput(std::string& buff) {
 // ======================================================================
 
 /*static*/ std::recursive_mutex WebHandlerInternal::instanceMutex;
-/*static*/ WebHandlerInternal* WebHandlerInternal::instance = 0;
+/*static*/ WebHandlerInternal* WebHandlerInternal::instance = nullptr;
 
 WebHandlerInternal& WebHandlerInternal::bind() {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
-  if (instance == 0) {
+  if (instance == nullptr) {
     instance = new WebHandlerInternal();
   }
   return *instance;
@@ -225,7 +225,7 @@ void WebHandlerInternal::start() {
 
 void WebHandlerInternal::shutdown() {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);  
-  if (instance == 0) return; // noop
+  if (instance == nullptr) return; // noop
 
   // There can be multiple keys for the same webHandler. So
   // we first assemble a set to eliminate the duplicates!
@@ -240,13 +240,13 @@ void WebHandlerInternal::shutdown() {
   instance->webHandlers.clear();
   
   delete instance;
-  instance = 0;
+  instance = nullptr;
 }
 
 WebHandler* WebHandlerInternal::findWebHandler(const WebHandlerKey& webHandlerKey) {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);  
   WebHandlers::iterator iter = webHandlers.find(webHandlerKey);
-  if (iter == webHandlers.end()) return 0;
+  if (iter == webHandlers.end()) return nullptr;
   WebHandler* const webHandlerPtr = iter->second;
   webHandlerPtr->bumpHits();
   return webHandlerPtr;
@@ -257,9 +257,9 @@ HandleRequestReply WebHandlerInternal::process(const RequestInfo& requestInfo, R
   //
   WebHandler* webHandlerPtr = findWebHandler(WebHandlerKey(requestInfo.method, requestInfo.uriPath));
   // URI Exceptions
-  if (webHandlerPtr == 0 && requestInfo.method == EVHTTP_REQ_HEAD) webHandlerPtr = findWebHandler(WebHandlerKey::uriHead);
-  if (webHandlerPtr == 0) webHandlerPtr = findWebHandler(WebHandlerKey::uriNotFound);
-  return webHandlerPtr == 0 ? WebHandler::replyNotFound : webHandlerPtr->process(requestInfo, requestOutput);
+  if (webHandlerPtr == nullptr && requestInfo.method == EVHTTP_REQ_HEAD) webHandlerPtr = findWebHandler(WebHandlerKey::uriHead);
+  if (webHandlerPtr == nullptr) webHandlerPtr = findWebHandler(WebHandlerKey::uriNotFound);
+  return webHandlerPtr == nullptr ? WebHandler::replyNotFound : webHandlerPtr->process(requestInfo, requestOutput);
 }
 
 std::string WebHandlerInternal::getHandlerStats() {
@@ -276,7 +276,7 @@ std::string WebHandlerInternal::getHandlerStats() {
 }
 
 WebHandlerInternal::WebHandlerInternal() : webHandlers() {
-  if (instance != 0) {
+  if (instance != nullptr) {
     throw std::runtime_error("There can only be one instance of WebHandlerInternal!");
   }
 }
@@ -571,7 +571,7 @@ HandleRequestReply WebHandler::parsePost(const RequestInfo& requestInfo,
 					 StringMap& postValues) {
     std::string buff;
 
-    if (requestInfo.requestBody == 0) RETURN_ERROR("no body in post request");
+    if (requestInfo.requestBody == nullptr) RETURN_ERROR("no body in post request");
 
     const size_t bodyLen = evbuffer_get_length(requestInfo.requestBody);
     if (bodyLen >= MAX_POST_BODY_LEN || (int) bodyLen < 1) {

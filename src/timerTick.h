@@ -67,7 +67,7 @@ private:
 class TimerTickServiceMessage : public TimerTickService
 {
 public:
-  TimerTickServiceMessage(int interval, Inbox& inbox);
+  TimerTickServiceMessage(int interval, Inbox& inbox, bool periodic);
   virtual void expireTrigger() override final;
 private:
   Inbox& inbox;

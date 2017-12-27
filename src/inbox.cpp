@@ -92,13 +92,13 @@ void Inbox::clear() {
 
 InboxRegistry& InboxRegistry::bind() {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
-  if (instance == 0) instance = new InboxRegistry();
+  if (instance == nullptr) instance = new InboxRegistry();
   return *instance;
 }
 
 void InboxRegistry::shutdown() {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
-  if (instance == 0) return;
+  if (instance == nullptr) return;
 
   for (auto& kvp : instance->inboxes) {
     Inbox& inbox = *(kvp.second);
@@ -108,7 +108,7 @@ void InboxRegistry::shutdown() {
   instance->inboxes.clear();
   
   delete instance;
-  instance = 0;
+  instance = nullptr;
 }
 
 Inbox& InboxRegistry::getInbox(ThreadId threadId) {

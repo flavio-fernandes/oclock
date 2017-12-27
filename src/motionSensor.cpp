@@ -15,9 +15,9 @@
 std::thread::id MotionSensor::mainThreadId;  // default 'invalid' value 
 const int MotionSensor::sensorGpioPin = 10; // 18;
 std::recursive_mutex MotionSensor::instanceMutex;
-MotionSensor* MotionSensor::instance = 0;
+MotionSensor* MotionSensor::instance = nullptr;
 
-MotionSensor::MotionSensor() : inboxRegistry(InboxRegistry::bind()), gpioLockMutexP(0) {
+MotionSensor::MotionSensor() : inboxRegistry(InboxRegistry::bind()), gpioLockMutexP(nullptr) {
   memset(&motionInfo, 0, sizeof(motionInfo));
 }
 
@@ -26,7 +26,7 @@ MotionSensor::~MotionSensor() {
 
 MotionSensor& MotionSensor::bind() {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
-  if (instance == 0) {
+  if (instance == nullptr) {
     instance = new MotionSensor();
   }
   return *instance;
@@ -35,7 +35,7 @@ MotionSensor& MotionSensor::bind() {
 void MotionSensor::shutdown() {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
   delete instance;
-  instance = 0;
+  instance = nullptr;
 }
 
 void MotionSensor::registerMainThread() {
@@ -82,7 +82,7 @@ bool MotionSensor::getMotionValue(MotionInfo* out) const {
   bool rc;
   {
     std::lock_guard<std::recursive_mutex> guard(instanceMutex);
-    if (out != 0) *out = motionInfo;
+    if (out != nullptr) *out = motionInfo;
     rc = motionInfo.currMotionDetected;
   }
   return rc;

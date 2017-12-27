@@ -48,7 +48,7 @@ DictionaryData::~DictionaryData() {
 // ======================================================================
 
 /*static*/ std::recursive_mutex Dictionary::instanceMutex;
-/*static*/ Dictionary* Dictionary::instance = 0;
+/*static*/ Dictionary* Dictionary::instance = nullptr;
 /*static*/ const int Dictionary::noExpiration = -1;
 /*static*/ const std::string Dictionary::noData = std::string();
 /*static*/ std::thread::id Dictionary::mainThreadId;  // default 'invalid' value
@@ -199,7 +199,7 @@ void Dictionary::shutdown() {
   if (instance == nullptr) return; // noop
   instance->clear();
   delete instance;
-  instance = 0;
+  instance = nullptr;
 }
 
 Dictionary::Dictionary() : dictionaryEntries() {
@@ -242,7 +242,7 @@ void Dictionary::runThreadLoop() {
   Inbox& inbox = inboxRegistry.getInbox(threadIdDictionary);
   InboxMsg msg;
 
-  TimerTickServiceMessage timerTickServiceDictionaryLoop(10000, inbox);  // tick every 10 seconds
+  TimerTickServiceMessage timerTickServiceDictionaryLoop(12345, inbox, true /*periodic*/); // auto tick every 12.345 seconds
   TimerTick& timerTick = TimerTick::bind();
   timerTick.registerTimerTickService(timerTickServiceDictionaryLoop);
 

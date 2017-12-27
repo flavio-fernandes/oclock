@@ -45,7 +45,7 @@ LedStripTodo::LedStripTodo(LedStripTodoType ledStripTodoType, StringMap&& postVa
 
 LedStrip& LedStrip::bind() {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
-  if (instance == 0) {
+  if (instance == nullptr) {
     instance = new LedStrip();
   }
   return *instance;
@@ -60,7 +60,7 @@ void LedStrip::shutdown() {
   instance->ledStripTodos.clear();
 
   delete instance;
-  instance = 0;
+  instance = nullptr;
 }
 
 void LedStrip::enqueueMsgModePost(StringMap& postValues) {
@@ -86,7 +86,7 @@ const char* LedStrip::getLedStripModeStr(LedStripMode ledStripMode) {
 const LedStripTodo* LedStrip::dequeueLedStripTodo() {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
 
-  if (ledStripTodos.empty()) return 0;
+  if (ledStripTodos.empty()) return nullptr;
   const LedStripTodo* const ledStripTodo = ledStripTodos.front();
   ledStripTodos.pop_front();
   return ledStripTodo;
@@ -94,7 +94,7 @@ const LedStripTodo* LedStrip::dequeueLedStripTodo() {
 
 void LedStrip::checkTodoList() {
   const LedStripTodo* const ledStripTodo = dequeueLedStripTodo();
-  if (ledStripTodo == 0) return; // noop
+  if (ledStripTodo == nullptr) return; // noop
   switch (ledStripTodo->ledStripTodoType) {
   case ledStripTodoTypeHandleModePost:
     internal->doHandleModePost(ledStripTodo->postValues);
@@ -158,7 +158,7 @@ void LedStrip::runThreadLoop(std::recursive_mutex* gpioLockMutexP) {
     }
   }
 
-  delete internal; internal = 0;
+  delete internal; internal = nullptr;
 
   timerTick.unregisterTimerTickService(ledStripFastTick.getCookie());
   timerTick.unregisterTimerTickService(ledStrip1secTick.getCookie());
@@ -166,7 +166,7 @@ void LedStrip::runThreadLoop(std::recursive_mutex* gpioLockMutexP) {
   timerTick.unregisterTimerTickService(ledStrip1minTick.getCookie());
 }
 
-LedStrip::LedStrip() : internal(0) {
+LedStrip::LedStrip() : internal(nullptr) {
 }
 
 LedStrip::~LedStrip() {

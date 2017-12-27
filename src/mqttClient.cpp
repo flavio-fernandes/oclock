@@ -15,7 +15,7 @@
 
 std::thread::id MqttClient::mainThreadId;  // default 'invalid' value 
 std::recursive_mutex MqttClient::instanceMutex;
-MqttClient* MqttClient::instance = 0;
+MqttClient* MqttClient::instance = nullptr;
 
 /*static*/ const std::string MqttClient::topicPrefix("/officeClock/");
 /*static*/ const std::string MqttClient::topicLightSensor(MqttClient::topicPrefix + "light");
@@ -39,7 +39,7 @@ MqttClient::~MqttClient() {
 
 MqttClient& MqttClient::bind() {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
-  if (instance == 0) {
+  if (instance == nullptr) {
     instance = new MqttClient();
   }
   return *instance;
@@ -48,7 +48,7 @@ MqttClient& MqttClient::bind() {
 void MqttClient::shutdown() {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
   delete instance;
-  instance = 0;
+  instance = nullptr;
 }
 
 bool MqttClient::getMqttClientInfo(MqttClientInfo* out) const {
@@ -127,8 +127,8 @@ void MqttClient::runThreadLoop(int argc, char** argv) {
 
   TimerTick& timerTick = TimerTick::bind();
 
-  const int mqttLoopInterval = 333;  // in milliseconds. How often we will call main mqtt_loop api
-  TimerTickServiceMessage timerTickServiceMqttLoop(mqttLoopInterval, inbox);
+  const int mqttLoopInterval = 333;  // in milliseconds. How often we would like to call mqtt_loop api
+  TimerTickServiceMessage timerTickServiceMqttLoop(mqttLoopInterval, inbox, false /*periodic*/);
   timerTick.registerTimerTickService(timerTickServiceMqttLoop);
 
   const int periodicReportInterval = (5 * 60 + 13) * 1000;  // 5 minutes, 13 seconds, in milliseconds
@@ -151,7 +151,10 @@ void MqttClient::runThreadLoop(int argc, char** argv) {
 
     switch (msg.inboxMsgType) {
       case inboxMsgTypeTimerTickMessage:
-        // we get here because of timerTickServiceMqttLoop
+        // we get here because of timerTickServiceMqttLoop. Explicitly schedule next iteration
+        // so we can cope with cases where mqtt loop is slower than the the provided interval.
+        timerTick.startTimerTickService(timerTickServiceMqttLoop.getCookie());
+
         mosquitto_loop_rc = mosquitto_loop(mosq, 0 /*timeout*/, 1 /*max_packets*/);
         if (mosquitto_loop_rc == MOSQ_ERR_SUCCESS && timerTickPeriodicReport.getAndResetExpired()) {
           doPeriodicReport(mosq);
@@ -171,7 +174,7 @@ void MqttClient::runThreadLoop(int argc, char** argv) {
         // use damper to keep us from doing this too often
         if (timerTickMotionDamper.getAndResetExpired()) {
           doPublish(mosq, topicMotionDetected, currTimestamp().c_str());
-          // 'manually' start damper timer
+          // 'manually' [re]start damper timer
           timerTick.startTimerTickService(timerTickMotionDamper.getCookie());
         }
         break;
