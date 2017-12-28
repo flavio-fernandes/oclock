@@ -57,7 +57,8 @@ private:
   MqttClientInfo mqttClientInfo;
   void parseParams(int argc, char** argv);
   void doPeriodicReport(struct mosquitto* mosq);
-  void doPublish(struct mosquitto* mosq, const std::string& topic, const char* payload);
+  void doPublish(struct mosquitto* mosq, const std::string& topic, const char* payload,
+		 bool retain = false);
 
   Inbox& inbox;
   LightSensor& lightSensor;

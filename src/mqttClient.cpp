@@ -127,7 +127,7 @@ void MqttClient::runThreadLoop(int argc, char** argv) {
 
   TimerTick& timerTick = TimerTick::bind();
 
-  const int mqttLoopInterval = 333;  // in milliseconds. How often we would like to call mqtt_loop api
+  const int mqttLoopInterval = 249;  // in milliseconds. How often we would like to call mqtt_loop api
   TimerTickServiceMessage timerTickServiceMqttLoop(mqttLoopInterval, inbox, false /*periodic*/);
   timerTick.registerTimerTickService(timerTickServiceMqttLoop);
 
@@ -173,7 +173,7 @@ void MqttClient::runThreadLoop(int argc, char** argv) {
       case inboxMsgTypeMotionOn:
         // use damper to keep us from doing this too often
         if (timerTickMotionDamper.getAndResetExpired()) {
-          doPublish(mosq, topicMotionDetected, currTimestamp().c_str());
+          doPublish(mosq, topicMotionDetected, currTimestamp().c_str(), true /*retain*/);
           // 'manually' [re]start damper timer
           timerTick.startTimerTickService(timerTickMotionDamper.getCookie());
         }
@@ -235,14 +235,14 @@ void MqttClient::parseParams(int argc, char** argv) {
 void MqttClient::doPeriodicReport(struct mosquitto* mosq) {
   char lightValueBuffer[6];
   snprintf(lightValueBuffer, sizeof(lightValueBuffer), "%d", (int) lightSensor.getLightValue());
-  doPublish(mosq, topicLightSensor, lightValueBuffer);
+  doPublish(mosq, topicLightSensor, lightValueBuffer, false /*retain*/);
 }
 
-void MqttClient::doPublish(struct mosquitto* mosq, const std::string& topic, const char* payload) {
-  const int rc = mqttClientInfo.mqttBrokerConnected ?
-    mosquitto_publish(mosq, nullptr /*messageId*/, topic.c_str(), strlen(payload), payload,
-                      0 /*qos*/, false /*retain*/) : MOSQ_ERR_NO_CONN;
-
+void MqttClient::doPublish(struct mosquitto* mosq, const std::string& topic, const char* payload,
+			   bool retain) {
+  const int rc = mosquitto_publish(mosq, nullptr /*messageId*/,
+				   topic.c_str(), strlen(payload), payload,
+				   1 /*qos*/, retain);
   // lock and update counters
   {
     std::lock_guard<std::recursive_mutex> guard(instanceMutex);
