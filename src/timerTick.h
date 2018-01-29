@@ -42,6 +42,17 @@ private:
 
 // ======================================================================
 
+#if 0
+class TimerTickServiceCounter : public TimerTickService
+{
+public:
+  TimerTickServiceCounter(int interval, bool periodic = true) :
+    TimerTickService(interval, periodic), counter(0) {}
+  virtual void expireTrigger() override final { ++counter; }
+  std::atomic_ullong counter;
+};
+#endif  // #if 0
+
 class TimerTickServiceBool : public TimerTickService
 {
 public:
@@ -64,13 +75,19 @@ private:
   std::condition_variable cv;
 };
 
+typedef bool (*TimerTickServiceMessageCondFunction)(void* arg);
 class TimerTickServiceMessage : public TimerTickService
 {
 public:
-  TimerTickServiceMessage(int interval, Inbox& inbox, bool periodic);
+  TimerTickServiceMessage(int interval,
+			  Inbox& inbox,
+			  TimerTickServiceMessageCondFunction condFunction = nullptr,
+			  void* condFunctionArg = nullptr);
   virtual void expireTrigger() override final;
 private:
   Inbox& inbox;
+  TimerTickServiceMessageCondFunction condFunction;
+  void* const condFunctionArg;
 };
 
 // ======================================================================

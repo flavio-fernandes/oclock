@@ -6,6 +6,7 @@
 #include <string>
 #include <map>
 
+#include "stdTypes.h"
 #include "commonTypes.h"
 
 const char* const dictionaryParamOperation = "dictionaryOperation";
@@ -30,6 +31,13 @@ const char* const dictionaryTopicDirectionSame = "same";
 
 class DictionaryData;
 
+typedef struct dictionaryStatus_t {
+  Int32U ticks;
+  Int32U entriesAdded;
+  Int32U entriesRemoved;
+  Int32U entriesExpired;
+} DictionaryStatus;
+
 class Dictionary
 {
 public:
@@ -50,6 +58,7 @@ public:
 
   std::string getFirst(std::string& key, bool* found = 0);
   std::string getNext(std::string& key, bool* found = 0);
+  void getDictionaryStatus(DictionaryStatus& dictionaryStatus);
   
   static void registerMainThread();  // only needed by one thread
   void runThreadLoop();  // to be ran by mainThread only
@@ -65,6 +74,9 @@ private:
 
   typedef std::map<std::string, DictionaryData*> DictionaryEntries;
   DictionaryEntries dictionaryEntries;
+
+  DictionaryStatus dictionaryStatus;
+  std::recursive_mutex dictionaryStatusMutex;
 
   void purgeExpiredDictionaryEntries();
   void _remove(DictionaryEntries::iterator& iter);

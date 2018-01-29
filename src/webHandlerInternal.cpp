@@ -380,12 +380,24 @@ public:
     buff << "mqttBrokerIp: " << mqttClientInfo.mqttBrokerIp << "\n";
     buff << "mqttBrokerPort: "; INT2BUFF(mqttClientInfo.mqttBrokerPort); buff << "\n";
     buff << "mqttKeepAlive (secs): "; INT2BUFF(mqttClientInfo.mqttKeepAlive); buff << "\n";
+    buff << "mqttConnectAttempts: "; INT2BUFF(mqttClientInfo.connectAttempts); buff << "\n";
     buff << "mqttConnects: "; INT2BUFF(mqttClientInfo.connects); buff << "\n";
     buff << "mqttDisconnects: "; INT2BUFF(mqttClientInfo.disconnects); buff << "\n";
     buff << "mqttPublishes: "; INT2BUFF(mqttClientInfo.publishes); buff << "\n";
+    buff << "mqttPublishedMotions: "; INT2BUFF(mqttClientInfo.publishedMotions); buff << "\n";
     buff << "mqttPublishesDropped: "; INT2BUFF(mqttClientInfo.publishesDropped); buff << "\n";
     buff << "mqttPublishCallbacks: "; INT2BUFF(mqttClientInfo.publishCallbacks); buff << "\n";
     buff << "mqttMessages: "; INT2BUFF(mqttClientInfo.messages); buff << "\n";
+    buff << "mqttTicks: "; INT2BUFF(mqttClientInfo.ticks); buff << "\n";
+
+    DictionaryStatus dictionaryStatus;
+    dictionary.getDictionaryStatus(dictionaryStatus);
+    buff << "\n";
+    buff << "dictSize: "; INT2BUFF(dictionary.size()); buff << "\n";
+    buff << "dictTicks: "; INT2BUFF(dictionaryStatus.ticks); buff << "\n";
+    buff << "dictAdds: "; INT2BUFF(dictionaryStatus.entriesAdded); buff << "\n";
+    buff << "dictRemoves: "; INT2BUFF(dictionaryStatus.entriesRemoved); buff << "\n";
+    buff << "dictExpires: "; INT2BUFF(dictionaryStatus.entriesExpired); buff << "\n";
 
     if (!dictionary.empty()) {
       buff << "\n";

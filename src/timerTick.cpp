@@ -15,12 +15,20 @@ TimerTickService::~TimerTickService() {
 
 // ======================================================================
 
-TimerTickServiceMessage::TimerTickServiceMessage(int interval, Inbox& inbox, bool periodic) :
-  TimerTickService(interval, periodic), inbox(inbox) {
+TimerTickServiceMessage::TimerTickServiceMessage(int interval, Inbox& inbox,
+						 TimerTickServiceMessageCondFunction condFunction,
+						 void* condFunctionArg) :
+  TimerTickService(interval, true /*periodic*/),
+  inbox(inbox),
+  condFunction(condFunction),
+  condFunctionArg(condFunctionArg) {
 }
 
 void TimerTickServiceMessage::expireTrigger() {
-  inbox.addMessage(Inbox::timerTickMessage);
+  // Add a new message to mailbox, as long as condFunction allows it
+  if (condFunction == nullptr || (*condFunction)(condFunctionArg)) {
+    inbox.addMessage(Inbox::timerTickMessage);
+  }
 }
 
 // ======================================================================

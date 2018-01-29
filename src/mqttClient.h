@@ -20,12 +20,15 @@ typedef struct mqttClientStatus_t {
   // operational
   bool mqttBrokerConnected;
   int last_loop_rc;
+  Int32U connectAttempts;
   Int32U connects;
   Int32U disconnects;
   Int32U publishes;
+  Int32U publishedMotions;
   Int32U publishesDropped;
   Int32U publishCallbacks;
   Int32U messages;
+  Int32U ticks;
 } MqttClientInfo;
 
 class MqttClient
@@ -58,7 +61,7 @@ private:
   void parseParams(int argc, char** argv);
   void doPeriodicReport(struct mosquitto* mosq);
   void doPublish(struct mosquitto* mosq, const std::string& topic, const char* payload,
-		 bool retain = false);
+                 bool retain = true);
 
   Inbox& inbox;
   LightSensor& lightSensor;

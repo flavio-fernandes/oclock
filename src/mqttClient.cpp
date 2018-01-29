@@ -7,6 +7,7 @@
 #include "inbox.h"
 #include "lightSensor.h"
 
+#include <atomic>
 #include <inttypes.h>
 #include <getopt.h>
 #include <mosquitto.h>
@@ -109,6 +110,12 @@ void MqttClient::registerMainThread() {
   mainThreadId = caller;
 }
 
+static bool checkReadyForTimerTickServiceMessage(void* arg) {
+  if (arg == nullptr) throw std::runtime_error( "checkReadyForTimerTickServiceMessage called with bad arg" );
+  const std::atomic_bool* const readyForTimerTickServiceMessagePtr = static_cast<const std::atomic_bool*>(arg);
+  return *readyForTimerTickServiceMessagePtr;
+}
+
 void MqttClient::runThreadLoop(int argc, char** argv) {
   parseParams(argc, argv);
   
@@ -127,15 +134,18 @@ void MqttClient::runThreadLoop(int argc, char** argv) {
 
   TimerTick& timerTick = TimerTick::bind();
 
-  const int mqttLoopInterval = 249;  // in milliseconds. How often we would like to call mqtt_loop api
-  TimerTickServiceMessage timerTickServiceMqttLoop(mqttLoopInterval, inbox, false /*periodic*/);
+  const int mqttLoopInterval = 567;  // in milliseconds. How often we would like to call mqtt_loop api
+  std::atomic_bool readyForTimerTickServiceMessage(false);
+  TimerTickServiceMessage timerTickServiceMqttLoop(mqttLoopInterval, inbox,
+                                                   checkReadyForTimerTickServiceMessage,
+                                                   &readyForTimerTickServiceMessage);
   timerTick.registerTimerTickService(timerTickServiceMqttLoop);
 
   const int periodicReportInterval = (5 * 60 + 13) * 1000;  // 5 minutes, 13 seconds, in milliseconds
   TimerTickServiceBool timerTickPeriodicReport(periodicReportInterval);
   timerTick.registerTimerTickService(timerTickPeriodicReport);
 
-  const int reconnectDamperInterval = 11 * 1000; // 11 seconds, in milliseconds
+  const int reconnectDamperInterval = 7 * 1000; // 7 seconds, in milliseconds
   TimerTickServiceBool timerTickReconnectDamper(reconnectDamperInterval, true /*periodic*/, true /*expired*/);
   timerTick.registerTimerTickService(timerTickReconnectDamper);
 
@@ -145,24 +155,38 @@ void MqttClient::runThreadLoop(int argc, char** argv) {
 
   InboxMsg msg;
   int mosquitto_loop_rc;
+
   while (true) {
+    readyForTimerTickServiceMessage = true;
     msg = inbox.waitForMessage();
+
     if (msg.inboxMsgType == inboxMsgTypeTerminate) break; // while
 
     switch (msg.inboxMsgType) {
       case inboxMsgTypeTimerTickMessage:
-        // we get here because of timerTickServiceMqttLoop. Explicitly schedule next iteration
+        // we get here because of timerTickServiceMqttLoop. Explicitly set readyForTimerTickServiceMessage
         // so we can cope with cases where mqtt loop is slower than the the provided interval.
-        timerTick.startTimerTickService(timerTickServiceMqttLoop.getCookie());
-
+        readyForTimerTickServiceMessage = false;
         mosquitto_loop_rc = mosquitto_loop(mosq, 0 /*timeout*/, 1 /*max_packets*/);
+
+        {
+          std::lock_guard<std::recursive_mutex> guard(instanceMutex);
+          ++mqttClientInfo.ticks;
+        }
+
         if (mosquitto_loop_rc == MOSQ_ERR_SUCCESS && timerTickPeriodicReport.getAndResetExpired()) {
           doPeriodicReport(mosq);
-        } else if (mosquitto_loop_rc == MOSQ_ERR_NO_CONN &&
+        } else if ((mosquitto_loop_rc == MOSQ_ERR_NO_CONN ||
+                    mqttClientInfo.mqttBrokerConnected == false) &&
                    timerTickReconnectDamper.getAndResetExpired()) {
           mosquitto_loop_rc = mosquitto_connect(mosq, mqttClientInfo.mqttBrokerIp,
-                                                mqttClientInfo.mqttBrokerPort,
-                                                mqttClientInfo.mqttKeepAlive);
+                                                   mqttClientInfo.mqttBrokerPort,
+                                                   mqttClientInfo.mqttKeepAlive);
+          // grab lock to update connect counters
+          {
+            std::lock_guard<std::recursive_mutex> guard(instanceMutex);
+            ++mqttClientInfo.connectAttempts;
+          }
         }
         // update last rc, if needed
         if (mosquitto_loop_rc != mqttClientInfo.last_loop_rc) {
@@ -173,9 +197,15 @@ void MqttClient::runThreadLoop(int argc, char** argv) {
       case inboxMsgTypeMotionOn:
         // use damper to keep us from doing this too often
         if (timerTickMotionDamper.getAndResetExpired()) {
-          doPublish(mosq, topicMotionDetected, currTimestamp().c_str(), true /*retain*/);
+          doPublish(mosq, topicMotionDetected, currTimestamp().c_str());
           // 'manually' [re]start damper timer
           timerTick.startTimerTickService(timerTickMotionDamper.getCookie());
+
+          // grab lock to update connect counters
+          {
+            std::lock_guard<std::recursive_mutex> guard(instanceMutex);
+            ++mqttClientInfo.publishedMotions;
+          }
         }
         break;
       case inboxMsgTypeDisplayBrightHigh:
@@ -239,10 +269,10 @@ void MqttClient::doPeriodicReport(struct mosquitto* mosq) {
 }
 
 void MqttClient::doPublish(struct mosquitto* mosq, const std::string& topic, const char* payload,
-			   bool retain) {
+                           bool retain) {
   const int rc = mosquitto_publish(mosq, nullptr /*messageId*/,
-				   topic.c_str(), strlen(payload), payload,
-				   1 /*qos*/, retain);
+                                   topic.c_str(), strlen(payload), payload,
+                                   1 /*qos*/, retain);
   // lock and update counters
   {
     std::lock_guard<std::recursive_mutex> guard(instanceMutex);
