@@ -79,7 +79,7 @@ void TimerTick::unregisterTimerTickService(TimerTickId cookie) {
   timerTickService.cookie = TimerTickService::nullCookie;
   timerTickService.ticksLeft = 0;
   
-  timerTickServices.erase(iter);
+  timerTickServices.erase(cookie);  // not using erase(iter) to avoid API change in GCC 7.1
 }
 
 void TimerTick::registerTimerTickMainThread() {
