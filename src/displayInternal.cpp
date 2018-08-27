@@ -427,14 +427,23 @@ static void modeBasicClockSDoCarAnimation(DisplayInternalInfo& displayInternalIn
   static int animationCounter = animationsAfterOff;
   static Int32U blinkerEffect = 0;
   static const ImgArtInfo imgArtInfoBlank = getImgArtInfo(imgArtBlank);
-  std::string value;
-  bool valueFound;
   Dictionary& dictionary = displayInternalInfo.dictionary;
+  bool value1Found;
+  bool value2Found;
+  bool value3Found;
+  std::string value1;
+  std::string value2;
+  std::string value3;
 
-  value = dictionary.get(dictionaryTopicGarageMotion, &valueFound);
-  if (!valueFound) return;
+  value1 = dictionary.get(dictionaryTopicGarageMotion1, &value1Found);
+  value2 = dictionary.get(dictionaryTopicGarageMotion2, &value2Found);
+  value3 = dictionary.get(dictionaryTopicGarageMotion3, &value3Found);
+  if (!value1Found && !value2Found && !value3Found) return;
 
-  if (value == dictionaryTopicValueOn) animationCounter = 0;
+  if (value1Found && value1 == dictionaryTopicValueOn) animationCounter = 0;
+  if (value2Found && value2 == dictionaryTopicValueOn) animationCounter = 0;
+  if (value3Found && value3 == dictionaryTopicValueOn) animationCounter = 0;
+
   if (animationCounter >= animationsAfterOff) return;
   ++animationCounter;  // use animationCounter to keep it going even after dict is no longer 'on'
 

@@ -134,7 +134,7 @@ void MqttClient::runThreadLoop(int argc, char** argv) {
 
   TimerTick& timerTick = TimerTick::bind();
 
-  const int mqttLoopInterval = 567;  // in milliseconds. How often we would like to call mqtt_loop api
+  const int mqttLoopInterval = 445;  // in milliseconds. How often we would like to call mqtt_loop api
   std::atomic_bool readyForTimerTickServiceMessage(false);
   TimerTickServiceMessage timerTickServiceMqttLoop(mqttLoopInterval, inbox,
                                                    checkReadyForTimerTickServiceMessage,
@@ -272,7 +272,7 @@ void MqttClient::doPublish(struct mosquitto* mosq, const std::string& topic, con
                            bool retain) {
   const int rc = mosquitto_publish(mosq, nullptr /*messageId*/,
                                    topic.c_str(), strlen(payload), payload,
-                                   1 /*qos*/, retain);
+                                   0 /*qos*/, retain);
   // lock and update counters
   {
     std::lock_guard<std::recursive_mutex> guard(instanceMutex);

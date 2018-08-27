@@ -21,7 +21,9 @@ const char* const dictionaryTopicTemperature = "/sensor/temperature_outside";
 const char* const dictionaryTopicTemperatureDir = "/sensor/temperature_outside/direction";
 const char* const dictionaryTopicHumidity = "/garage/humidity";
 const char* const dictionaryTopicHumidityDir = "/garage/humidity/direction";
-const char* const dictionaryTopicGarageMotion = "/garage/oper_flag/motion";
+const char* const dictionaryTopicGarageMotion1 = "/garage/oper_flag/motion";
+const char* const dictionaryTopicGarageMotion2 = "/garage_steps/oper_flag/motion";
+const char* const dictionaryTopicGarageMotion3 = "/kitchen_steps/oper_flag/motion";
 
 const char* const dictionaryTopicValueOn = "on";
 const char* const dictionaryTopicValueOff = "off";
