@@ -22,6 +22,7 @@ MqttClient* MqttClient::instance = nullptr;
 /*static*/ const std::string MqttClient::topicLightSensor(MqttClient::topicPrefix + "light");
 /*static*/ const std::string MqttClient::topicDisplayIntensity(MqttClient::topicPrefix + "display_intensity");
 /*static*/ const std::string MqttClient::topicDisplayMode(MqttClient::topicPrefix + "display_mode");
+/*static*/ const std::string MqttClient::topicMotion(MqttClient::topicPrefix + "motion");
 /*static*/ const std::string MqttClient::topicMotionDetected(MqttClient::topicPrefix + "last_motion");
 
 MqttClient::MqttClient() : inbox(InboxRegistry::bind().getInbox(threadIdMqttClient)),
@@ -155,6 +156,7 @@ void MqttClient::runThreadLoop(int argc, char** argv) {
 
   InboxMsg msg;
   int mosquitto_loop_rc;
+  bool publishedMotionOn = false;
 
   while (true) {
     readyForTimerTickServiceMessage = true;
@@ -194,9 +196,18 @@ void MqttClient::runThreadLoop(int argc, char** argv) {
           mqttClientInfo.last_loop_rc = mosquitto_loop_rc;
         }
         break;
+      case inboxMsgTypeMotionOff:
+        if (publishedMotionOn) {
+          doPublish(mosq, topicMotion, "off");
+          publishedMotionOn = false;
+        }
+        break;
       case inboxMsgTypeMotionOn:
         // use damper to keep us from doing this too often
         if (timerTickMotionDamper.getAndResetExpired()) {
+          doPublish(mosq, topicMotion, "on");
+          publishedMotionOn = true;
+
           doPublish(mosq, topicMotionDetected, currTimestamp().c_str());
           // 'manually' [re]start damper timer
           timerTick.startTimerTickService(timerTickMotionDamper.getCookie());

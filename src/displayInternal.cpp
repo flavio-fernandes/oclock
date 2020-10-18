@@ -117,6 +117,7 @@ static int getFontGlyphStep(Font font);
 static int getAdjustedTextY(Font font, int wantedY);
 static Font getNextFont(Font font);
 
+static std::string lookupDictValue(DisplayInternalInfo& displayInternalInfo, const char* key);
 static void updateMotionDetectedPixel(DisplayInternalInfo& displayInternalInfo, bool invokeRender = true);
 
 // not to be confused with initModeMessage()
@@ -171,6 +172,9 @@ struct Mode {
   modeFunctionPtr handlerTick25Sec;
   modeFunctionPtr handlerTick1Min;
 };
+
+static const char* const msgDictPrefix = "#dict_";
+static const int msgDictPrefixLen = (int) strlen(msgDictPrefix);
 
 // ----------------------------------------
 
@@ -709,6 +713,10 @@ static const Mode modeNothing = {displayModeNothing, "nothing", inboxMsgTypeDisp
 
 // ----------------------------------------
 
+static std::string lookupDictValue(DisplayInternalInfo& displayInternalInfo, const char* key) {
+  return displayInternalInfo.dictionary.get(key);
+}
+
 static void updateMotionDetectedPixel(DisplayInternalInfo& displayInternalInfo, bool invokeRender) {
   HT1632Class& HT1632 = displayInternalInfo.ht1632;
 
@@ -1094,15 +1102,18 @@ void DisplayInternal::doHandleMsgModePost(const StringMap& postValues) {
 
     if (strncasecmp(key, "msg", strlen(key)) == 0) {
       if (strncasecmp(value, "#cookie", 7) == 0) {
-	if (value[7] == 0) {
-	  modeMessageData.modeMsgsIndex = (ModeMsgsIndex) getRandomNumber(modeMsgsIndexLast);
-	} else {
-	  modeMessageData.modeMsgsIndex = (ModeMsgsIndex) strtoul(&value[7], NULL, 10);
-	}
-	// nitpick: skip 0
-	if (modeMessageData.modeMsgsIndex == modeMsgsIndexBoot) modeMessageData.modeMsgsIndex = modeMsgsIndexFortunate1;
+        if (value[7] == 0) {
+          modeMessageData.modeMsgsIndex = (ModeMsgsIndex) getRandomNumber(modeMsgsIndexLast);
+        } else {
+          modeMessageData.modeMsgsIndex = (ModeMsgsIndex) strtoul(&value[7], NULL, 10);
+        }
+        // nitpick: skip 0
+        if (modeMessageData.modeMsgsIndex == modeMsgsIndexBoot) modeMessageData.modeMsgsIndex = modeMsgsIndexFortunate1;
+      } else if (strncasecmp(value, msgDictPrefix, msgDictPrefixLen) == 0 && value[msgDictPrefixLen] != 0) {
+        const std::string dictValue(lookupDictValue(*info, value + msgDictPrefixLen));
+        strncpy(modeMessageData.msg, dictValue.c_str(), sizeof(modeMessageData.msg));
       } else {
-	strncpy(modeMessageData.msg, value, sizeof(modeMessageData.msg));
+        strncpy(modeMessageData.msg, value, sizeof(modeMessageData.msg));
       }
     } else if (strncasecmp(key, "x", strlen(key)) == 0) {
       modeMessageData.currX = strtoul(value, NULL, 10);
@@ -1193,7 +1204,12 @@ void DisplayInternal::doHandleMsgBackgroundPost(const StringMap& postValues) {
 	msgIndex = 0;
       }
     } else if (strncasecmp(key, "msg", strlen(key)) == 0) {
-      strncpy(msg.msg, value, sizeof(msg.msg));
+      if (strncasecmp(value, msgDictPrefix, msgDictPrefixLen) == 0 && value[msgDictPrefixLen] != 0) {
+        const std::string dictValue(lookupDictValue(*info, value + msgDictPrefixLen));
+        strncpy(msg.msg, dictValue.c_str(), sizeof(msg.msg));
+      } else {
+        strncpy(msg.msg, value, sizeof(msg.msg));
+      }
     } else if (strncasecmp(key, "enabled", strlen(key)) == 0) {
       msg.enabled = parseBooleanValue(value);
     } else if (strncasecmp(key, "clearAll", strlen(key)) == 0) {

@@ -69,6 +69,7 @@ private:
   static const std::string topicLightSensor;
   static const std::string topicDisplayIntensity;
   static const std::string topicDisplayMode;
+  static const std::string topicMotion;
   static const std::string topicMotionDetected;
 
   // not implemented
