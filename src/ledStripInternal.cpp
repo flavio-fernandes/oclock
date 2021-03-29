@@ -129,8 +129,24 @@ static const Mode modePastel = { ledStripModePastel, "pastel", modePastelMain /*
 static void modeFillInit(LedStripInternalInfo& info) {
   Int32U color =
     getPixelColorParam(info.params) == LPD8806::nullColor ? getRandomNumber(0x00fffffe) + 1 : getPixelColorParam(info.params);
+
+  // if from/to params were given, try to use it as fill mask
+  Int64U from = 0;
+  Int64U to = 0;
+  try {
+    std::string valueStr;
+    if (getParamValue(info.params, ledStripParamFrom, valueStr)) {
+      from = std::stoll(valueStr, nullptr, 0 /*auto*/);
+    }
+    if (getParamValue(info.params, ledStripParamTo, valueStr)) {
+      to = std::stoll(valueStr, nullptr, 0 /*auto*/);
+    }
+  } catch(...) { }
+
   LPD8806& lpd8806 = info.lpd8806;
   for (Int16U i=0; i < lpd8806.numPixels(); i++) {
+    if (from && Int64U(i+1) < from) continue;
+    if (to && Int64U(i+1) > to) continue;
     lpd8806.setPixelColor(i, color);
     if (isParamSet(info.params, ledStripParamExtra, "randomColor")) color = getRandomNumber(0x00fffffe) + 1;
   }
