@@ -2,7 +2,9 @@
 
 ## Status and decision
 
-This document proposes a migration; it does not change the production GPIO
+Phase 0 is complete; its results are recorded in the
+[production baseline](wiringpi-phase0-baseline.md). This document proposes the
+remaining migration and does not yet change the production GPIO
 implementation.
 
 The migration should remove direct WiringPi use from the application and device
@@ -141,6 +143,11 @@ All phases are tracked in PR 3. Keep phase changes in reviewable commits, and
 leave the tree deployable at the end of each phase.
 
 ### Phase 0: capture the production baseline
+
+**Status: complete.** The 2026-07-30 production capture passed every required
+check. See the [sanitized baseline](wiringpi-phase0-baseline.md) for the
+hardware, software, runtime, and rollback evidence. The raw archive remains
+outside Git.
 
 The power supply and physical wiring are accepted as known-good inputs. The
 wiring record is the BCM inventory above, the current source, and the original

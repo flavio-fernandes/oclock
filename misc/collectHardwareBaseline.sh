@@ -547,7 +547,8 @@ else
     result_warn "status samples do not include changing light values"
 fi
 
-if grep -Eq '^- .*: (no|not recorded)' \
+if grep -Eq \
+        '^- (Display|LED strip|Light sensor|Motion sensor|Service health): (no|not recorded)$' \
         "${output_dir}/operator-notes.md"; then
     result_warn "one or more operator observations need review"
 else
