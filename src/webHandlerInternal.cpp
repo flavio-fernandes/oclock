@@ -40,9 +40,19 @@ static void parseRequest(RequestInfo& requestInfo);
 HandleRequestReply handleRequest(struct evhttp_request* req, worker* workerPtr,
 				   struct evkeyvalq* replyHeaders, struct evbuffer* replyBody) {
   try {
-    RequestInfo requestInfo = {};
-    requestInfo.req = req;
-    requestInfo.workerPtr = workerPtr;
+    RequestInfo requestInfo = {
+      req,
+      workerPtr,
+      EVHTTP_REQ_GET,
+      nullptr,  // uriHost
+      nullptr,  // uriPath
+      nullptr,  // uriQuery
+      nullptr,  // uriScheme
+      nullptr,  // requestHeaders
+      nullptr,  // requestBody
+      nullptr,  // remoteAddress
+      0         // remotePort
+    };
     RequestOutput requestOutput = {replyHeaders, replyBody};
 
     parseRequest(requestInfo);
