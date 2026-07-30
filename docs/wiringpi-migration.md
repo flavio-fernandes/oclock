@@ -1,0 +1,361 @@
+# WiringPi migration plan
+
+## Status and decision
+
+This document proposes a migration; it does not change the production GPIO
+implementation.
+
+The migration should remove direct WiringPi use from the application and device
+drivers without making a new GPIO stack a prerequisite for the existing
+Raspberry Pi Zero. The deployed build must keep working while a modern backend
+is developed and proven on the same electrical load.
+
+The recommended design is:
+
+- put a small, project-owned GPIO interface between the application and all
+  platform libraries;
+- retain a legacy WiringPi backend for the existing Raspbian 8 (Jessie) system;
+- retain and improve the fake backend for development and protocol tests;
+- add a `libgpiod` backend as an explicit opt-in for a supported modern
+  Raspberry Pi OS;
+- migrate software-clocked devices to kernel SPI only as a separate, optional
+  hardware profile, because the current wiring does not match the relevant SPI
+  pin assignments.
+
+Do not replace WiringPi calls with `libgpiod` calls throughout the existing
+drivers. That would couple device protocols to another platform API and make
+rollback difficult.
+
+## Compatibility contract
+
+Until the new backend passes hardware acceptance, all of these are requirements:
+
+1. Plain `make` still builds the WiringPi-backed `oclock` binary, then preserves
+   the existing `root:root` and owner-setuid installation behavior.
+2. The Jessie systemd unit, executable path, command-line options, network
+   defaults, HTTP behavior, MQTT behavior, and GPIO numbering do not change.
+3. No existing wire moves and no boot-overlay changes are required.
+4. The known-good production binary remains available for immediate rollback.
+5. `make sandbox`, `make test`, and `make check-arm-warnings` continue to work
+   without GPIO hardware or WiringPi.
+6. A modern build can be selected explicitly and must not link WiringPi.
+7. The WiringPi backend is not deleted when the modern backend becomes usable.
+   It becomes a compatibility backend receiving only maintenance fixes.
+
+Changing the default backend is a final deployment decision, not an early
+refactor step.
+
+## Current hardware inventory
+
+`wiringPiSetupGpio()` means every number below is a Broadcom GPIO number, not a
+physical header-pin number. This table records the source as of this plan and
+must become an executable pin-map test before backend work begins.
+
+| Device | Signal | BCM GPIO | Current direction | Source |
+| --- | --- | ---: | --- | --- |
+| HT1632 display | chip select | 6 | output | `src/display.cpp` |
+| HT1632 display | write clock | 13 | output | `src/display.cpp` |
+| HT1632 display | data | 19 | output | `src/display.cpp` |
+| HT1632 display | auxiliary clock | 26 | output | `src/display.cpp` |
+| LPD8806 strip | data | 21 | output | `src/ledStrip.cpp` |
+| LPD8806 strip | clock | 20 | output | `src/ledStrip.cpp` |
+| MCP3002 light ADC | clock | 17 | output | `src/lightSensor.cpp` |
+| MCP3002 light ADC | ADC data out / Pi data in | 27 | input | `src/lightSensor.cpp` |
+| MCP3002 light ADC | ADC data in / Pi data out | 22 | output | `src/lightSensor.cpp` |
+| MCP3002 light ADC | chip select | 4 | output | `src/lightSensor.cpp` |
+| motion sensor | value | 10 | input | `src/motionSensor.cpp` |
+
+The Raspberry Pi SPI1 functions use GPIO20 for MOSI and GPIO21 for SCLK. The
+deployed LPD8806 wiring uses those two GPIOs in the opposite roles. The MCP3002
+also uses arbitrary GPIOs instead of the normal SPI0 pins. Enabling a SPI
+overlay or replacing either driver with `spidev` would therefore break the
+current wiring. Hardware SPI remains worth considering, but only in a named
+rewired hardware profile after the GPIO migration is complete.
+
+The current code serializes GPIO access with one `std::recursive_mutex`. Preserve
+that ordering initially. Per-device locks or concurrent transfers would be a
+separate behavior change.
+
+## Why a measured migration is necessary
+
+Motion sensing is a one-second digital read, but the other devices are
+software-clocked:
+
+- the HT1632 driver emits commands and display memory by toggling GPIO;
+- each LPD8806 update shifts 720 data bytes for 240 pixels plus its latch
+  clocks;
+- each MCP3002 sample shifts a command and reads ten result bits;
+- the display and LED threads use a 12 ms fast tick.
+
+WiringPi and the GPIO character-device API have different call paths and timing
+costs. Functional unit tests alone cannot show that pulse widths, frame time,
+CPU use, or scheduling jitter remain acceptable on a Pi Zero. The new backend
+must be measured; acceptable timing must not be assumed.
+
+The Linux GPIO documentation also recommends using a proper kernel subsystem,
+such as SPI, when one fits the device. That is a good long-term direction, but
+it does not override the no-rewiring compatibility contract.
+
+## Proposed internal boundary
+
+Add a small interface under a directory such as `src/gpio/`. Its public types
+should be owned by this project and should not expose WiringPi or `libgpiod`
+headers. It needs only the behavior currently used:
+
+```cpp
+enum class GpioValue { low, high };
+
+class Gpio {
+public:
+  virtual ~Gpio() {}
+  virtual void initialize() = 0;
+  virtual void configureInput(unsigned int bcmGpio) = 0;
+  virtual void configureOutput(unsigned int bcmGpio,
+                               GpioValue initialValue) = 0;
+  virtual GpioValue read(unsigned int bcmGpio) = 0;
+  virtual void write(unsigned int bcmGpio, GpioValue value) = 0;
+};
+```
+
+This is illustrative, not an API that must be copied verbatim. The
+implementation should resolve these details before it is merged:
+
+- output direction and initial value must be applied together where the backend
+  supports it, avoiding a startup glitch;
+- ownership and release behavior must be explicit; the current drivers restore
+  several output pins to inputs;
+- errors need operation, chip, GPIO offset, and backend context;
+- the modern backend must identify the intended GPIO chip by label or verified
+  configuration rather than assuming `/dev/gpiochip0`;
+- line offsets must be verified against Broadcom numbering on the target image;
+- line requests shared by different device objects need a defined lifetime;
+- backend objects should be injected into device drivers rather than accessed
+  through global C function names.
+
+Keep the current mutex outside or immediately inside this boundary during the
+first migration. Do not combine dependency injection with a locking redesign.
+
+## Phased implementation
+
+Each phase should be a separate PR and should leave the tree deployable.
+
+### Phase 0: capture the production baseline
+
+Before changing GPIO code, collect a hardware record from the running Pi:
+
+```sh
+uname -a
+cat /etc/os-release
+gpio -v
+gpio readall
+sha256sum /home/pi/oclock.git/oclock
+systemctl cat oclock
+systemctl status oclock
+```
+
+Also record:
+
+- the Pi model and power supply;
+- a labeled photo or diagram of every connection;
+- WiringPi version and how it was installed;
+- `/boot/config.txt` overlays;
+- idle and active CPU use;
+- normal display refresh, LED animation, light readings, and motion behavior;
+- logic-analyzer captures for one representative transaction per device, if
+  possible.
+
+Copy the current executable to a dated, non-overwritten rollback path and
+verify that it starts manually before proceeding. Do not rely on rebuilding an
+old dependency during an outage.
+
+### Phase 1: introduce the interface with no production change
+
+1. Add the project-owned GPIO interface.
+2. Move every WiringPi include and call into one WiringPi backend translation
+   unit.
+3. Convert `main`, `MotionSensor`, `Mcp300x`, `HT1632Class`, and `LPD8806` to use
+   the injected interface.
+4. Convert `fakeWiringPi` into a fake implementation of the same interface.
+5. Keep `make`, `make hardware`, binary names, link flags, pin values, locking,
+   and service behavior unchanged.
+6. Add a repository check that rejects direct WiringPi includes or calls
+   outside the legacy backend.
+
+At the end of this phase, the production executable should still use WiringPi
+and should emit the same GPIO operation traces as the baseline implementation.
+This phase provides isolation, not a new deployment.
+
+### Phase 2: make protocol behavior testable
+
+Enhance the fake backend so tests can configure input values and record ordered
+operations. Add focused tests for:
+
+- initialization direction and safe initial output level for every pin;
+- HT1632 command bit order, select behavior, and render transaction boundaries;
+- LPD8806 GRB byte order, 240-pixel transfer length, and latch clock count;
+- MCP3002 command bits, sampled input bits, returned value, and chip-select
+  lifetime;
+- motion input mapping;
+- cleanup that returns the same pins to input as the legacy code;
+- serialization of complete device transactions.
+
+Use golden protocol traces only for intentional device-level behavior. Do not
+freeze incidental C++ call structure into the tests.
+
+### Phase 3: select and add the modern backend
+
+Select the production OS and kernel before selecting a `libgpiod` API version:
+
+1. Boot a separate SD card on the same Pi Zero model; do not upgrade the
+   working production card in place.
+2. Confirm the image supports ARMv6 and exposes GPIO character devices.
+3. Record `uname -a`, `gpiodetect`, and `gpioinfo`.
+4. Confirm which `libgpiod` major version the image supports.
+5. Prefer the version 2 API on a kernel supporting GPIO character-device ABI
+   v2. The v1 ABI first appeared in Linux 4.8 and is now obsolete, so do not
+   choose it merely because the current Debian 12 VM packages libgpiod 1.6.3.
+6. If the selected Pi image offers only libgpiod 1.x, make an explicit decision
+   between a small, time-limited v1 backend and selecting a newer image. Keep
+   v1 and v2 implementation details in separate translation units rather than
+   scattering version conditionals through device drivers.
+
+The modern build should be explicit, for example:
+
+```sh
+make GPIO_BACKEND=gpiod hardware
+```
+
+It must fail clearly when the requested API or GPIO chip is unavailable. An
+unknown backend value must also fail instead of silently falling back.
+
+Initially preserve polling, pin directions, bit order, and mutex behavior.
+Using edge events for motion is a possible later optimization, not part of the
+first equivalence test.
+
+### Phase 4: validate in Incus
+
+Keep the `oclock-dev` VM for repeatable x86 testing. On 2026-07-30 it was
+Debian 12 with kernel 6.1; `libgpiod-dev` 1.6.3 was available but not installed.
+The VM exposed no `/dev/gpiochip*` and had neither `gpio-mockup` nor `gpio-sim`
+installed, so it can currently validate compilation, fake traces, application
+tests, sanitizers, and warnings, but not real GPIO timing.
+
+For each implementation PR:
+
+```sh
+make sandbox
+make test
+make check-arm-warnings
+make valgrind
+git diff --check
+```
+
+Add an Incus image or snapshot with the selected `libgpiod` development package
+for compile and link coverage. If a GPIO simulator is added later, use it to
+test line request, direction, value, contention, and error paths. Continue to
+keep protocol trace tests on the project fake because they need deterministic
+operation history.
+
+An x86 VM result is never evidence that Pi Zero pulse timing is acceptable.
+
+### Phase 5: run a side-by-side Pi hardware trial
+
+Build both backends from the same commit:
+
+```sh
+make GPIO_BACKEND=wiringpi hardware
+make GPIO_BACKEND=gpiod hardware
+```
+
+Give the binaries distinct filenames and do not replace `oclock` yet. Stop the
+service before either hardware binary runs so only one process owns the pins.
+
+Run the WiringPi binary first, capture its results, then run the modern binary
+against the same hardware and workload. Compare:
+
+- startup and shutdown pin levels, including visible glitches;
+- HT1632 bit order, clock idle state, pulse widths, and full render time;
+- LPD8806 bit order, latch sequence, full-strip frame time, and animation
+  smoothness;
+- MCP3002 clocking and light values across dark and bright conditions;
+- motion transitions;
+- CPU and memory use;
+- HTTP response latency while display and strip updates are busy;
+- logs and recovery after intentional initialization failures;
+- at least an overnight soak test.
+
+Use a logic analyzer for waveform comparison where possible. The acceptance
+criterion is correct device behavior with margin and no missed application
+deadlines, not identical nanosecond timing.
+
+If the GPIO backend cannot meet the timing budget, keep WiringPi for the current
+wiring and move the affected device to a kernel driver or `spidev` in a later
+rewired profile. Do not hide a timing failure by reducing refresh behavior.
+
+### Phase 6: opt-in deployment with rollback
+
+Only after Phase 5 passes:
+
+1. Install the modern binary beside the legacy and known-good binaries.
+2. Add a temporary service override pointing to the modern binary; preserve all
+   arguments, user, capabilities, and restart behavior.
+3. Restart and repeat the functional checklist.
+4. Monitor it for several days.
+5. Roll back by restoring the original service path and restarting. No package
+   downgrade or source rebuild should be required.
+
+Do not combine the GPIO migration with removal of setuid, service-user changes,
+network changes, OS in-place upgrades, or rewiring. Those may be good follow-up
+projects, but they make failures harder to attribute and rollback harder to
+trust.
+
+### Phase 7: make modern hardware the preferred path
+
+After a sustained successful deployment:
+
+- document the tested Pi image, kernel, `libgpiod`, and firmware versions;
+- make the modern backend the preferred target for that OS;
+- keep an explicit legacy target that reproduces the current Pi Zero build;
+- archive the baseline binary, SD-card image, wiring record, and acceptance
+  results;
+- stop adding features to the WiringPi backend, but keep it buildable and
+  covered by interface-level tests.
+
+“No longer using WiringPi” should mean the actively deployed modern image and
+normal modern builds do not load or link it. It should not mean removing the
+only tested recovery path for the original hardware.
+
+## PR acceptance checklist
+
+Every migration PR should answer all of these:
+
+- Does plain `make` still preserve the legacy deployment contract?
+- Is the production backend choice explicit in the diff and build output?
+- Can the sandbox and tests run without WiringPi?
+- Are all GPIO numbers still Broadcom numbers with the same directions?
+- Are initial output values and release behavior defined?
+- Are errors actionable and free of silent fallback?
+- Does the PR avoid unrelated service, network, privilege, and wiring changes?
+- Is rollback possible by selecting the previous binary or backend?
+- Were Incus checks run?
+- If GPIO behavior changed, were Pi Zero hardware and timing checks run?
+
+## Decision points that need hardware evidence
+
+The following should remain open until measured:
+
+- whether character-device GPIO is fast and stable enough for the HT1632,
+  LPD8806, and MCP3002 software clocks on a Pi Zero;
+- which current Raspberry Pi OS image is the supportable modern baseline;
+- whether a libgpiod v1 transition backend has enough value to justify its
+  maintenance;
+- whether the LED strip and ADC should eventually be rewired for hardware SPI;
+- whether pin ownership can be split per device without changing scheduling.
+
+## References
+
+- [Linux GPIO character-device API v2](https://www.kernel.org/doc/html/latest/userspace-api/gpio/chardev.html)
+- [Linux GPIO character-device API v1 and deprecation status](https://www.kernel.org/doc/html/latest/userspace-api/gpio/chardev_v1.html)
+- [libgpiod documentation](https://libgpiod.readthedocs.io/)
+- [Linux SPI userspace API](https://www.kernel.org/doc/html/latest/spi/spidev.html)
+- [Raspberry Pi GPIO and SPI pin mappings](https://www.raspberrypi.com/documentation/computers/raspberry-pi.html)

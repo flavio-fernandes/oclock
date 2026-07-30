@@ -45,3 +45,8 @@ and `-P` to override them. The control API does not provide authentication,
 so it should only be exposed on a trusted network.
 See [docs/development.md](docs/development.md) for the reproducible Incus VM
 workflow and the limits of fake-GPIO testing.
+
+The proposed removal of direct WiringPi dependencies is deliberately phased so
+the deployed Pi Zero remains recoverable. See
+[docs/wiringpi-migration.md](docs/wiringpi-migration.md) for the pin inventory,
+compatibility contract, implementation sequence, and hardware acceptance gates.
