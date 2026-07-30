@@ -137,36 +137,56 @@ first migration. Do not combine dependency injection with a locking redesign.
 
 ## Phased implementation
 
-Each phase should be a separate PR and should leave the tree deployable.
+All phases are tracked in PR 3. Keep phase changes in reviewable commits, and
+leave the tree deployable at the end of each phase.
 
 ### Phase 0: capture the production baseline
 
-Before changing GPIO code, collect a hardware record from the running Pi:
+The power supply and physical wiring are accepted as known-good inputs. The
+wiring record is the BCM inventory above, the current source, and the original
+[hardware](https://flaviof.com/blog/hacks/office-clock-part1.html) and
+[software](https://flaviof.com/blog/hacks/office-clock-part2.html) build
+articles.
+
+Before changing GPIO code, extract the collector from this PR without switching
+the deployed worktree, then run it:
 
 ```sh
-uname -a
-cat /etc/os-release
-gpio -v
-gpio readall
-sha256sum /home/pi/oclock.git/oclock
-systemctl cat oclock
-systemctl status oclock
+cd /home/pi/oclock.git
+phase0_collector=/tmp/collectHardwareBaseline.sh
+git fetch origin agent/plan-wiringpi-migration
+git show FETCH_HEAD:misc/collectHardwareBaseline.sh >"${phase0_collector}"
+chmod 0755 "${phase0_collector}"
+sudo "${phase0_collector}"
 ```
 
-Also record:
+It samples for 60 seconds by default. During that window, walk into and out of
+the PIR sensor's field of view and visually check the display and LED strip.
+The script records:
 
-- the Pi model and power supply;
-- a labeled photo or diagram of every connection;
+- Pi model, OS, kernel, firmware, boot configuration, and throttling state;
 - WiringPi version and how it was installed;
-- `/boot/config.txt` overlays;
-- idle and active CPU use;
-- normal display refresh, LED animation, light readings, and motion behavior;
-- logic-analyzer captures for one representative transaction per device, if
-  possible.
+- the systemd unit, selected properties, status, recent journal, and process
+  resource samples;
+- GPIO device nodes, `gpio readall`, executable metadata, dependencies,
+  capabilities, and checksum;
+- repeated read-only `/status` responses covering display mode, LED-strip mode,
+  light values, motion changes, and MQTT state;
+- source revision and worktree state;
+- a byte-identical copy of the active executable with ownership, mode, and
+  checksum metadata;
+- an operator checklist for the visual observations.
 
-Copy the current executable to a dated, non-overwritten rollback path and
-verify that it starts manually before proceeding. Do not rely on rebuilding an
-old dependency during an outage.
+The script does not stop or restart the clock, drive GPIO, install packages, or
+change configuration. It creates a timestamped directory and `.tar.gz` archive.
+Answer its observation prompts, review `operator-notes.md`, then retain the
+archive off-device.
+
+The active service plus its executable checksum establishes which binary is
+known-good. Do not start the rollback copy concurrently with the service merely
+to test it; verify executable rollback during the Phase 6 maintenance window.
+Logic-analyzer capture belongs in the Phase 5 side-by-side test, where both
+backends can be measured under the same procedure.
 
 ### Phase 1: introduce the interface with no production change
 

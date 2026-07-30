@@ -37,4 +37,16 @@ grep -q 'legacy-cxx -c' "${test_dir}/compiler.txt"
 grep -Fq 'strncasecmp(key, "msg", strlen(key)) == 0' src/displayInternal.cpp
 grep -Fq 'strncasecmp(key, "animationStep", strlen(key)) == 0' src/displayInternal.cpp
 
+# Keep the Phase 0 hardware collector runnable on the legacy Bash environment
+# without executing its production-only collection path in the sandbox.
+bash -n misc/collectHardwareBaseline.sh
+misc/collectHardwareBaseline.sh --help >"${test_dir}/collector-help.txt"
+grep -q -- '--duration SECONDS' "${test_dir}/collector-help.txt"
+grep -q -- '--binary PATH' "${test_dir}/collector-help.txt"
+if misc/collectHardwareBaseline.sh --duration 0 \
+        >"${test_dir}/collector-invalid.txt" 2>&1; then
+    echo "hardware collector accepted an invalid duration" >&2
+    exit 1
+fi
+
 echo "legacy compatibility tests passed"
