@@ -5,7 +5,7 @@ endif
 .DEFAULT_GOAL := all
 .SUFFIXES:
 .PHONY: all sudo_oclock hardware sandbox compatibility test test-core \
-	check-arm-warnings smoke valgrind clean
+	check-arm-warnings smoke test-shutdown valgrind clean
 
 # Keep the original CC override working even though every source is C++.
 CC = g++
@@ -123,13 +123,16 @@ test-core: build/tests/core_tests
 smoke: oclock-sandbox
 	$Q ./tests/smoke.sh ./oclock-sandbox
 
+test-shutdown: oclock-sandbox
+	$Q ./tests/shutdown-stress.sh ./oclock-sandbox
+
 compatibility: oclock-sandbox
 	$Q ./tests/compatibility.sh ./oclock-sandbox
 
 check-arm-warnings: build/tests/oclock-arm-warnings
 	$Q ./tests/smoke.sh ./build/tests/oclock-arm-warnings
 
-test: compatibility test-core check-arm-warnings smoke
+test: compatibility test-core check-arm-warnings smoke test-shutdown
 
 valgrind: oclock-sandbox
 	$Q ./tests/valgrind-smoke.sh ./oclock-sandbox
