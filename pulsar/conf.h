@@ -11,10 +11,11 @@
 #include "logger.h"
 #include "common.h"
 
-#define WEBSERVER_DEFAULT_PORT     80
+#define WEBSERVER_DEFAULT_IP       "127.0.0.1"
+#define WEBSERVER_DEFAULT_PORT     8080
 #define WEBSERVER_DEFAULT_WORKERS  4
 
-#define MQTT_BROKER_DEFAULT_IP    "192.168.10.238"
+#define MQTT_BROKER_DEFAULT_IP    "127.0.0.1"
 #define MQTT_BROKER_DEFAULT_PORT  1883
 #define MQTT_BROKER_DEFAULT_KA    182
 

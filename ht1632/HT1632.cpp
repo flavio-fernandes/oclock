@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <math.h>       /* ceil */
+#include <new>
 #include <string.h>
 
 #ifdef FAKE_WIRING
@@ -14,6 +15,8 @@
 
 HT1632Class::HT1632Class(std::recursive_mutex* gpioLockMutexP) :
   gpioLockMutex(*gpioLockMutexP), brightness(16), _tgtBuffer(-1) {
+  memset(_globalNeedsRewriting, 0, sizeof(_globalNeedsRewriting));
+  memset(mem, 0, sizeof(mem));
 }
 
 HT1632Class::~HT1632Class() {
@@ -34,7 +37,7 @@ HT1632Class::~HT1632Class() {
 
 void HT1632Class::drawText(const char text [], int x, int y, const char font [], const char font_width [], char font_height, int font_glyph_step, char gutter_space) {
   int curr_x = x;
-  char i = 0;
+  size_t i = 0;
   char currchar;
   
   // Check if string is within y-bounds
@@ -74,7 +77,7 @@ void HT1632Class::drawText(const char text [], int x, int y, const char font [],
 // Gives you the width, in columns, of a particular string.
 int HT1632Class::getTextWidth(const char text [], const char font_width [], char font_height, char gutter_space) {
   int wd = 0;
-  char i = 0;
+  size_t i = 0;
   char currchar;
   
   while(true){  
@@ -110,7 +113,10 @@ void HT1632Class::begin(int pinCS, int pinWR, int pinDATA, int pinCLK) {
   int i=0;
   
   // Allocate new memory for mem (including secondary)
-  for (i=0; i < MAX_BOARDS; ++i) mem[i] = (char *) malloc(ADDR_SPACE_SIZE);
+  for (i=0; i < MAX_BOARDS; ++i) {
+    mem[i] = static_cast<char*>(malloc(ADDR_SPACE_SIZE));
+    if (mem[i] == nullptr) throw std::bad_alloc();
+  }
 
   pinMode(_pinForCS, OUTPUT);
   pinMode(_pinWR, OUTPUT);
@@ -191,6 +197,7 @@ void HT1632Class::initialize(int pinWR, int pinDATA) {
 
 void HT1632Class::setPixel(int loc_x, int loc_y, bool datum) {
   if (_tgtBuffer > BUFFER_SECONDARY || _tgtBuffer < 0) return;
+  if (loc_x < 0 || loc_x >= OUT_SIZE || loc_y < 0 || loc_y >= COM_SIZE) return;
 
   if (datum) {
     mem[_tgtBuffer][GET_ADDR_FROM_X_Y(loc_x,loc_y)] = (mem[_tgtBuffer][GET_ADDR_FROM_X_Y(loc_x,loc_y)] | (1 << (loc_y % 4))) | MASK_NEEDS_REWRITING;

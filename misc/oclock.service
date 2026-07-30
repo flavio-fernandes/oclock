@@ -1,14 +1,22 @@
 [Unit]
 Description=Office Clock Display Service
-After=network.target
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
 WorkingDirectory=/home/pi/oclock.git
-ExecStart=/home/pi/oclock.git/oclock
-StandardOutput=null
+ExecStart=/home/pi/oclock.git/oclock -b 0.0.0.0 -p 8080 -l /var/log/oclock/pulsar.log
+LogsDirectory=oclock
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
 Restart=on-failure
+RestartSec=2
 
 [Install]
 WantedBy=multi-user.target
-Alias=oclock.service

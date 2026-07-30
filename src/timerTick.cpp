@@ -54,7 +54,7 @@ TimerTickId TimerTick::registerTimerTickService(TimerTickService& timerTickServi
   
   // http://stackoverflow.com/questions/9641960/c11-make-pair-with-specified-template-parameters-doesnt-compile
   std::pair<TimerTickServices::iterator, bool> result =
-    timerTickServices.insert( std::make_pair(timerTickService.cookie, &timerTickService) );
+    timerTickServices.insert( std::make_pair(timerTickService.cookie.load(), &timerTickService) );
   if (!result.second) {
     throw std::runtime_error( "could not insert TimerTickService for: " + std::to_string(timerTickService.cookie) );
     timerTickService.cookie = TimerTickService::nullCookie;
@@ -183,4 +183,3 @@ void timerTickMain(const ThreadParam& threadParam) {
   TimerTick& timerTick = TimerTick::bind();
   timerTick.runThreadLoop();
 }
-

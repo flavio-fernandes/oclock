@@ -16,3 +16,24 @@ I had the honor of [talking about what I did](https://youtu.be/LXa7T5t3hmA?t=7m2
 
 [![office-clock talk](https://img.youtube.com/vi/LXa7T5t3hmA/0.jpg)](https://youtu.be/LXa7T5t3hmA?t=7m24s)
 
+## Building
+
+On a Raspberry Pi with WiringPi installed:
+
+```sh
+make hardware
+```
+
+On a development machine without GPIO hardware:
+
+```sh
+make sandbox
+./oclock-sandbox
+make test
+make valgrind
+```
+
+The web server defaults to `127.0.0.1:8080`. Use `-b 0.0.0.0` only on a
+trusted network because the control API does not provide authentication.
+See [docs/development.md](docs/development.md) for the reproducible Incus VM
+workflow and the limits of fake-GPIO testing.

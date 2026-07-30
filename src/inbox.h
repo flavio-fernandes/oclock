@@ -52,7 +52,7 @@ public:
   bool getMessage(InboxMsg& msg);
   bool empty() const;
   void clear();
-  inline Int32U getMsgCount() const { return msgCount; }
+  Int32U getMsgCount() const;
   
   void debugAddNoMessage();
 private:
@@ -60,7 +60,7 @@ private:
   Msgs msgs;
   Int32U msgCount;
 
-  std::mutex mtx;
+  mutable std::mutex mtx;
   std::condition_variable cv;
   
   Inbox(const Inbox& other) = delete;

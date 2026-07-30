@@ -1,18 +1,20 @@
 #include <random>
 #include <algorithm>
+#include <ctime>
 #include <stdlib.h>
 #include <strings.h>
 
 #include "commonUtils.h"
 
-// http://en.cppreference.com/w/cpp/numeric/random
-// Choose a random mean between 1 and 0xffffff
-static std::random_device randomDevice;
-static std::default_random_engine randomEngine(randomDevice());
-static std::uniform_int_distribution<Int32U> uniform_dist(0);
-
 Int32U getRandomNumber(Int32U upperBound) {
-  return uniform_dist(randomEngine) % upperBound;
+  if (upperBound == 0) return 0;
+
+  // The display and LED strip call this from different threads. Keeping an
+  // engine per thread avoids a data race, and a bounded distribution avoids
+  // the modulo bias of "random % upperBound".
+  static thread_local std::mt19937 randomEngine(std::random_device{}());
+  std::uniform_int_distribution<Int32U> distribution(0, upperBound - 1);
+  return distribution(randomEngine);
 }
 
 bool parseBooleanValue(const char* valueStr) {

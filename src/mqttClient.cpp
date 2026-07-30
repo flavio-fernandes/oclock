@@ -255,7 +255,7 @@ void MqttClient::parseParams(int argc, char** argv) {
   /* read input options -- AGAIN */
   // https://stackoverflow.com/questions/19940100/is-there-a-way-to-reset-getopt-for-non-global-use#19940311
   optind = 1;
-  while ((opt = getopt(argc,argv,"p:w:v:l:M:P:K:h")) != -1) {
+  while ((opt = getopt(argc,argv,"b:p:w:v:l:M:P:K:h")) != -1) {
     switch(opt) {
         case 'M':
           mqttClientInfo.mqttBrokerIp = optarg;
@@ -265,6 +265,14 @@ void MqttClient::parseParams(int argc, char** argv) {
           break;
         case 'K':
           mqttClientInfo.mqttKeepAlive = atoi(optarg);
+          break;
+        case 'b':
+        case 'p':
+        case 'w':
+        case 'v':
+        case 'l':
+        case 'h':
+          // Handled by the embedded web server.
           break;
         default:
           // not handled here....

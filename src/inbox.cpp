@@ -54,16 +54,11 @@ void Inbox::addMessage(const InboxMsg& msg) {
 }
 
 InboxMsg Inbox::waitForMessage() {
-  InboxMsg msg;
-  while (true) {
-    std::unique_lock<std::mutex> lck(mtx);
-    cv.wait(lck);
-    if (msgs.empty()) continue;
-    msg = msgs.front();
-    msgs.pop_front();
-    --msgCount;
-    break;
-  }
+  std::unique_lock<std::mutex> lck(mtx);
+  cv.wait(lck, [this] { return !msgs.empty(); });
+  InboxMsg msg = msgs.front();
+  msgs.pop_front();
+  --msgCount;
   return msg;
 }
 
@@ -77,8 +72,13 @@ bool Inbox::getMessage(InboxMsg& msg) {
 }
 
 bool Inbox::empty() const {
-  // std::unique_lock<std::mutex> lck(mtx);
+  std::unique_lock<std::mutex> lck(mtx);
   return msgs.empty();
+}
+
+Int32U Inbox::getMsgCount() const {
+  std::unique_lock<std::mutex> lck(mtx);
+  return msgCount;
 }
 
 void Inbox::clear() {

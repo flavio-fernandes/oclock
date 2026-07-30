@@ -2,6 +2,8 @@
 
 #include <stdlib.h>
 #include <cassert>
+#include <cctype>
+#include <exception>
 #include <set>
 #include <string.h>
 
@@ -36,17 +38,24 @@ static void parseRequest(RequestInfo& requestInfo);
 
 
 HandleRequestReply handleRequest(struct evhttp_request* req, worker* workerPtr,
-			   struct evkeyvalq* replyHeaders, struct evbuffer* replyBody) {
-  RequestInfo requestInfo = {req, workerPtr};  // partial init (http://stackoverflow.com/questions/10828294/c-and-c-partial-initialization-of-automatic-structure)
-  RequestOutput requestOutput = {replyHeaders, replyBody};
-  
-  parseRequest(requestInfo);
+				   struct evkeyvalq* replyHeaders, struct evbuffer* replyBody) {
+  try {
+    RequestInfo requestInfo = {req, workerPtr};
+    RequestOutput requestOutput = {replyHeaders, replyBody};
 
-  WebHandlerInternal* const webHandlerInternal = WebHandlerInternal::bindIfExists();
-  if (webHandlerInternal == nullptr) {
-    return WebHandler::replyServerUnavail;
+    parseRequest(requestInfo);
+
+    WebHandlerInternal* const webHandlerInternal = WebHandlerInternal::bindIfExists();
+    if (webHandlerInternal == nullptr) {
+      return WebHandler::replyServerUnavail;
+    }
+    return webHandlerInternal->process(requestInfo, requestOutput);
+  } catch (const std::exception& error) {
+    evbuffer_add_printf(replyBody, "Internal error: %s\n", error.what());
+  } catch (...) {
+    evbuffer_add_printf(replyBody, "Internal error\n");
   }
-  return webHandlerInternal->process(requestInfo, requestOutput);
+  return WebHandler::replyInternalError;
 }
 
 static void parseRequest(RequestInfo& requestInfo) {
@@ -56,6 +65,9 @@ static void parseRequest(RequestInfo& requestInfo) {
   requestInfo.method = evhttp_request_get_command(requestInfo.req);
   requestInfo.uriHost = evhttp_uri_get_host(uri);
   requestInfo.uriPath = evhttp_uri_get_path(uri);
+  if (requestInfo.uriPath == nullptr || requestInfo.uriPath[0] == '\0') {
+    requestInfo.uriPath = "/";
+  }
   requestInfo.uriQuery = evhttp_uri_get_query(uri);
   requestInfo.uriScheme = evhttp_uri_get_scheme(uri);
   requestInfo.requestHeaders = evhttp_request_get_input_headers(requestInfo.req);
@@ -646,6 +658,10 @@ HandleRequestReply WebHandler::parsePost(const RequestInfo& requestInfo,
 	  break;
 	}
 	const char hex[] = { data[i+1], data[i+2], 0 };
+	if (!std::isxdigit(static_cast<unsigned char>(hex[0])) ||
+	    !std::isxdigit(static_cast<unsigned char>(hex[1]))) {
+	  RETURN_ERROR("invalid percent encoding");
+	}
 	ch = strtoul(hex, NULL, 16);
 	i += 2;
       }
@@ -817,9 +833,10 @@ public:
 	 << "<br/><a href='imgBackground'>image background</a>"
 	 << "<br/><a href='msgBackground'>message background</a>"
 	 << "<br/><a href='ledStrip'>led strip</a>"
-         << "<br/><a href='dictionary'>dictionary</a>"
-         << "<br/><a href='sound'>sound</a>"
-	 << "<br/><a href='stop'>stop</a> (careful!)"
+		 << "<br/><a href='dictionary'>dictionary</a>"
+	         << "<br/><a href='sound'>sound</a>"
+		 << "<form action='/stop' method='post'>"
+		 << "<button type='submit'>Stop oclock</button></form>"
       ; // buff
     
     ADD_BODY(buff + contentStop);
@@ -852,5 +869,5 @@ void WebHandlerInternal::_start() {
   webHandlers[ WebHandlerKey("/dictionary") ] = new WebHandlerDictionary;
   webHandlers[ WebHandlerKey(EVHTTP_REQ_POST, "/dictionary") ] = new WebHandlerDictionaryPost;
 
-  webHandlers[ WebHandlerKey("/stop") ] = new WebHandlerStop;
+  webHandlers[ WebHandlerKey(EVHTTP_REQ_POST, "/stop") ] = new WebHandlerStop;
 }

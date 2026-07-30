@@ -32,6 +32,9 @@ log_free(logger *log);
 logger *
 log_new(const char *logfile, log_level level);
 
+int
+log_set_file(logger *log, const char *logfile);
+
 void
 log_it(logger *log, log_level level, const char *body);
 

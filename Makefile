@@ -1,77 +1,106 @@
-ifneq ($V,1)
+ifneq ($(V),1)
 Q ?= @
 endif
 
-ifneq ($D,1)
-#DEBUG	= -O2
-DEBUG	= -g -O0
-else
-DEBUG	= -g -O0 -DFAKE_WIRING
-endif
+.DEFAULT_GOAL := all
+.SUFFIXES:
+.PHONY: all hardware sandbox test test-core smoke valgrind clean
 
-.SUFFIXES: .c .cpp .o
-.PHONY:	clean
+CXX ?= g++
+CPPFLAGS = -I/usr/local/include -I./mcp300x -I./ht1632 -I./lpd8806 -I./src -I./pulsar
+CXXFLAGS ?= -g -O0
+CXXFLAGS += -std=gnu++11 -Winline -pipe -Wall -Wextra
+LDFLAGS ?=
 
-CC	= g++
-INCLUDE	= -I/usr/local/include -I./mcp300x -I./ht1632 -I./lpd8806 -I./src -I./pulsar
-CFLAGS	= $(DEBUG) $(INCLUDE) -std=gnu++11 -Winline -pipe -Wall
+PULSAR_SRC = \
+	pulsar/logger.c \
+	pulsar/conf.c \
+	pulsar/worker.c \
+	pulsar/server.c \
+	pulsar/pulsar.c
 
-LDFLAGS	= 
-LIBS    = -lwiringPi -lpthread -levent -lmosquitto
-VALGRIND_LIBS    = -lpthread -levent -lmosquitto
+CPP_SRC = \
+	mcp300x/mcp300x.cpp \
+	ht1632/HT1632.cpp \
+	lpd8806/LPD8806.cpp \
+	src/webHandlerInternal.cpp \
+	src/dictionary.cpp \
+	src/motionSensor.cpp \
+	src/lightSensor.cpp \
+	src/mqttClient.cpp \
+	src/inbox.cpp \
+	src/timerTick.cpp \
+	src/display.cpp \
+	src/displayInternal.cpp \
+	src/ledStrip.cpp \
+	src/ledStripInternal.cpp \
+	src/commonUtils.cpp \
+	src/main.cpp
 
-PULSAR_SRC_DIR	= pulsar
-PULSAR_SRC = $(addprefix $(PULSAR_SRC_DIR)/, logger.c conf.c worker.c server.c pulsar.c)
+SRC = $(PULSAR_SRC) $(CPP_SRC)
+HARDWARE_OBJ = $(addprefix build/hardware/,$(addsuffix .o,$(SRC)))
+SANDBOX_OBJ = $(addprefix build/sandbox/,$(addsuffix .o,$(SRC))) \
+	build/sandbox/src/fakeWiringPi.cpp.o
 
-SRC	= \
-	  mcp300x/mcp300x.cpp \
-	  ht1632/HT1632.cpp \
-	  lpd8806/LPD8806.cpp \
-	  $(addprefix src/, \
-	    webHandlerInternal.cpp \
-	    dictionary.cpp \
-	    motionSensor.cpp \
-	    lightSensor.cpp \
-	    mqttClient.cpp \
-	    inbox.cpp \
-	    timerTick.cpp \
-	    display.cpp \
-	    displayInternal.cpp \
-	    ledStrip.cpp \
-	    ledStripInternal.cpp \
-	    commonUtils.cpp \
-	    main.cpp \
-	  )
+HARDWARE_LIBS = -lwiringPi -lpthread -levent -lmosquitto
+SANDBOX_LIBS = -lpthread -levent -lmosquitto
 
-OBJ	= $(PULSAR_SRC:.c=.o) $(SRC:.cpp=.o)
+all: hardware
 
-all:	sudo_oclock
+hardware: oclock
 
-# valgrind: build with -DFAKE_WIRING
-# V=1 D=1 make valgrind
-# time valgrind --leak-check=full --show-reachable=yes -v ./oclock
-valgrind: $(OBJ) src/fakeWiringPi.o
-	$Q echo [Valgrind Link]
-	$Q $(CC) -o oclock $(OBJ) src/fakeWiringPi.o $(LDFLAGS) $(VALGRIND_LIBS)
-	$Q echo "hint:  time valgrind --leak-check=full --show-reachable=yes ./oclock"
+sandbox: oclock-sandbox
 
-sudo_oclock: oclock
-	$Q sudo chown root:root oclock
-	$Q sudo chmod u+s oclock
+oclock: $(HARDWARE_OBJ)
+	$Q echo "[Link] $@"
+	$Q $(CXX) -o $@ $^ $(LDFLAGS) $(HARDWARE_LIBS)
 
-oclock:	$(OBJ)
-	$Q echo [Link]
-	$Q $(CC) -o $@ $(OBJ) $(LDFLAGS) $(LIBS)
+oclock-sandbox: $(SANDBOX_OBJ)
+	$Q echo "[Link] $@"
+	$Q $(CXX) -o $@ $^ $(LDFLAGS) $(SANDBOX_LIBS)
 
-.cpp.o:
-	$Q echo [Compile] $<
-	$Q $(CC) -c $(CFLAGS) $< -o $@
+# Pulsar's .c sources include the C++ request-handler boundary, so they are
+# intentionally compiled as C++ until that interface is split cleanly.
+build/hardware/%.cpp.o: %.cpp
+	$Q echo "[Compile] $<"
+	$Q mkdir -p $(@D)
+	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
 
-.c.o:
-	$Q echo [CompileC] $<
-	$Q $(CC) -c $(CFLAGS) $< -o $@
+build/hardware/%.c.o: %.c
+	$Q echo "[Compile] $<"
+	$Q mkdir -p $(@D)
+	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
+
+build/sandbox/%.cpp.o: %.cpp
+	$Q echo "[Compile sandbox] $<"
+	$Q mkdir -p $(@D)
+	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -DFAKE_WIRING $< -o $@
+
+build/sandbox/%.c.o: %.c
+	$Q echo "[Compile sandbox] $<"
+	$Q mkdir -p $(@D)
+	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -DFAKE_WIRING $< -o $@
+
+build/tests/core_tests: tests/core_tests.cpp src/inbox.cpp src/commonUtils.cpp \
+		ht1632/HT1632.cpp lpd8806/LPD8806.cpp src/fakeWiringPi.cpp
+	$Q echo "[Build test] $@"
+	$Q mkdir -p $(@D)
+	$Q $(CXX) $(CPPFLAGS) $(CXXFLAGS) -DFAKE_WIRING \
+		-fsanitize=address,undefined -fno-omit-frame-pointer \
+		$^ -o $@ -lpthread
+
+test-core: build/tests/core_tests
+	$Q ASAN_OPTIONS=detect_leaks=1 ./build/tests/core_tests
+
+smoke: oclock-sandbox
+	$Q ./tests/smoke.sh ./oclock-sandbox
+
+test: test-core smoke
+
+valgrind: oclock-sandbox
+	$Q ./tests/valgrind-smoke.sh ./oclock-sandbox
 
 clean:
 	$Q echo "[Clean]"
-	$Q rm -f $(OBJ) src/fakeWiringPi.o oclock *~ core tags cscope.* log/pulsar.log
-
+	$Q rm -rf build oclock oclock-sandbox
+	$Q rm -f log/pulsar.log *~ core tags cscope.*

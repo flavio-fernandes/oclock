@@ -280,7 +280,7 @@ static void modeBasicClockSlow(DisplayInternalInfo& displayInternalInfo) {
   // part 2
   const char* const weekDayStr =
     (timeInfo.tm_wday >=0 && timeInfo.tm_wday <= 6) ? daysOfWeek[timeInfo.tm_wday] : "DDD";
-  strncpy(localDisplayBuffer, weekDayStr, sizeof(localDisplayBuffer));
+  snprintf(localDisplayBuffer, sizeof(localDisplayBuffer), "%s", weekDayStr);
 
   HT1632.drawTarget(BUFFER_BOARD(2)); HT1632.clear();
   HT1632.drawText(localDisplayBuffer, clockBaseX + 49 /*x*/, 0 /*y*/, FONT_7X5, FONT_7X5_WIDTH, FONT_7X5_HEIGHT, FONT_7X5_STEP_GLYPH);
@@ -289,7 +289,7 @@ static void modeBasicClockSlow(DisplayInternalInfo& displayInternalInfo) {
   const char* const monthStr =
     (timeInfo.tm_mon >=0 && timeInfo.tm_mon <= 11) ? months[timeInfo.tm_mon] : "MMM";
   assert(sizeof(localDisplayBuffer) >= 6);
-  strncpy(localDisplayBuffer, monthStr, 4 /*sizeof(localDisplayBuffer)*/);
+  snprintf(localDisplayBuffer, 4, "%s", monthStr);
   localDisplayBuffer[3] = ' ';
   getDayOfMonthStr(timeInfo.tm_mday, (char*) (localDisplayBuffer + 4), sizeof(localDisplayBuffer) - 4);
   for (int i=1; i < 3; ++i) {
@@ -544,7 +544,8 @@ static void modeMessageInit(DisplayInternalInfo& displayInternalInfo, const void
   if (param != nullptr) {
     snprintf(modeMessageData.msg, sizeof(modeMessageData.msg), "%s", (const char*) param);
   } else if (modeMessageData.modeMsgsIndex >= (ModeMsgsIndex) 0 && modeMessageData.modeMsgsIndex < modeMsgsIndexLast) {
-    strncpy(modeMessageData.msg, modeMessageMsgs[modeMessageData.modeMsgsIndex], sizeof(modeMessageData.msg));
+    snprintf(modeMessageData.msg, sizeof(modeMessageData.msg), "%s",
+             modeMessageMsgs[modeMessageData.modeMsgsIndex]);
   }
 
   // runtime
@@ -1100,7 +1101,7 @@ void DisplayInternal::doHandleMsgModePost(const StringMap& postValues) {
     const char* const key = k.c_str();
     const char* const value = v.c_str(); 
 
-    if (strncasecmp(key, "msg", strlen(key)) == 0) {
+    if (strcasecmp(key, "msg") == 0) {
       if (strncasecmp(value, "#cookie", 7) == 0) {
         if (value[7] == 0) {
           modeMessageData.modeMsgsIndex = (ModeMsgsIndex) getRandomNumber(modeMsgsIndexLast);
@@ -1111,31 +1112,31 @@ void DisplayInternal::doHandleMsgModePost(const StringMap& postValues) {
         if (modeMessageData.modeMsgsIndex == modeMsgsIndexBoot) modeMessageData.modeMsgsIndex = modeMsgsIndexFortunate1;
       } else if (strncasecmp(value, msgDictPrefix, msgDictPrefixLen) == 0 && value[msgDictPrefixLen] != 0) {
         const std::string dictValue(lookupDictValue(*info, value + msgDictPrefixLen));
-        strncpy(modeMessageData.msg, dictValue.c_str(), sizeof(modeMessageData.msg));
+        snprintf(modeMessageData.msg, sizeof(modeMessageData.msg), "%s", dictValue.c_str());
       } else {
-        strncpy(modeMessageData.msg, value, sizeof(modeMessageData.msg));
+        snprintf(modeMessageData.msg, sizeof(modeMessageData.msg), "%s", value);
       }
-    } else if (strncasecmp(key, "x", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "x") == 0) {
       modeMessageData.currX = strtoul(value, NULL, 10);
-    } else if (strncasecmp(key, "y", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "y") == 0) {
       modeMessageData.currYFactor = strtoul(value, NULL, 10) * INCREMENT_Y_SCALE;
-    } else if (strncasecmp(key, "font", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "font") == 0) {
       modeMessageData.font = (Font) strtoul(value, NULL, 10);
-    } else if (strncasecmp(key, "alternateFont", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "alternateFont") == 0) {
       modeMessageData.alternateFont = parseBooleanValue(value);
-    } else if (strncasecmp(key, "confetti", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "confetti") == 0) {
       modeMessageData.confetti = strtoul(value, NULL, 10);
-    } else if (strncasecmp(key, "bounce", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "bounce") == 0) {
       modeMessageData.incrementY = parseBooleanValue(value) ? INCREMENT_Y_VALUE : 0;
-    } else if (strncasecmp(key, "noScroll", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "noScroll") == 0) {
       modeMessageData.incrementX = parseBooleanValue(value) ? false : true;
-    } else if (strncasecmp(key, "blink", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "blink") == 0) {
       modeMessageData.blink = parseBooleanValue(value);
-    } else if (strncasecmp(key, "color", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "color") == 0) {
       modeMessageData.displayColor = (DisplayColor) strtoul(value, NULL, 10);
-    } else if (strncasecmp(key, "repeats", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "repeats") == 0) {
 	modeMessageData.repeats = strtoul(value, NULL, 10);
-    } else if (strncasecmp(key, "timeout", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "timeout") == 0) {
       modeMessageData.timeout = strtoul(value, NULL, 10);
     }
   } // for
@@ -1153,33 +1154,33 @@ void DisplayInternal::doHandleImgBackgroundPost(const StringMap& postValues) {
     const char* const key = k.c_str();
     const char* const value = v.c_str(); 
 
-    if (strncasecmp(key, "index", strlen(key)) == 0) {
+    if (strcasecmp(key, "index") == 0) {
       backgroundImgIndex = strtoul(value, NULL, 10);
       if (backgroundImgIndex < 0 || backgroundImgIndex >= BACKGROUND_IMG_COUNT) {
 	backgroundImgIndex = 0;
       }
-    } else if (strncasecmp(key, "enabled", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "enabled") == 0) {
       img.enabled = parseBooleanValue(value);
-    } else if (strncasecmp(key, "clearAll", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "clearAll") == 0) {
       if (parseBooleanValue(value)) {
 	for (int i=0; i < BACKGROUND_IMG_COUNT; ++i) initBackgroundImg(i);
       }
-    } else if (strncasecmp(key, "imgArt", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "imgArt") == 0) {
       img.imgArt = (ImgArt) strtoul(value, NULL, 10);
       if (img.imgArt < 0 || img.imgArt >= imgArtLast) {
 	img.imgArt = (ImgArt) 0;
       }
-    } else if (strncasecmp(key, "x", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "x") == 0) {
       img.x = strtoul(value, NULL, 10);
-    } else if (strncasecmp(key, "y", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "y") == 0) {
       img.y = strtoul(value, NULL, 10);
-    } else if (strncasecmp(key, "color", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "color") == 0) {
       img.displayColor = (DisplayColor) strtoul(value, NULL, 10);
-    } else if (strncasecmp(key, "animationStep", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "animationStep") == 0) {
       img.animation.animationStep = (AnimationStep) strtoul(value, NULL, 10);
-    } else if (strncasecmp(key, "animationPhase", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "animationPhase") == 0) {
       img.animation.animationStepPhase = (uint8_t) strtoul(value, NULL, 10);
-    } else if (strncasecmp(key, "animationPhaseValue", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "animationPhaseValue") == 0) {
       img.animation.animationStepPhaseValue = (uint8_t) strtoul(value, NULL, 10);
     }
   } // for
@@ -1198,37 +1199,37 @@ void DisplayInternal::doHandleMsgBackgroundPost(const StringMap& postValues) {
     const char* const key = k.c_str();
     const char* const value = v.c_str(); 
 
-    if (strncasecmp(key, "index", strlen(key)) == 0) {
+    if (strcasecmp(key, "index") == 0) {
       msgIndex = strtoul(value, NULL, 10);
       if (msgIndex < 0 || msgIndex >= BACKGROUND_MESSAGE_COUNT) {
 	msgIndex = 0;
       }
-    } else if (strncasecmp(key, "msg", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "msg") == 0) {
       if (strncasecmp(value, msgDictPrefix, msgDictPrefixLen) == 0 && value[msgDictPrefixLen] != 0) {
         const std::string dictValue(lookupDictValue(*info, value + msgDictPrefixLen));
-        strncpy(msg.msg, dictValue.c_str(), sizeof(msg.msg));
+        snprintf(msg.msg, sizeof(msg.msg), "%s", dictValue.c_str());
       } else {
-        strncpy(msg.msg, value, sizeof(msg.msg));
+        snprintf(msg.msg, sizeof(msg.msg), "%s", value);
       }
-    } else if (strncasecmp(key, "enabled", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "enabled") == 0) {
       msg.enabled = parseBooleanValue(value);
-    } else if (strncasecmp(key, "clearAll", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "clearAll") == 0) {
       if (parseBooleanValue(value)) {
 	for (int i=0; i < BACKGROUND_MESSAGE_COUNT; ++i) initBackgroundMessage(i);
       }
-    } else if (strncasecmp(key, "font", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "font") == 0) {
       msg.font = (Font) strtoul(value, NULL, 10);
-    } else if (strncasecmp(key, "x", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "x") == 0) {
       msg.x = strtoul(value, NULL, 10);
-    } else if (strncasecmp(key, "y", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "y") == 0) {
       msg.y = strtoul(value, NULL, 10);
-    } else if (strncasecmp(key, "color", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "color") == 0) {
       msg.displayColor = (DisplayColor) strtoul(value, NULL, 10);
-    } else if (strncasecmp(key, "animationStep", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "animationStep") == 0) {
       msg.animation.animationStep = (AnimationStep) strtoul(value, NULL, 10);
-    } else if (strncasecmp(key, "animationPhase", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "animationPhase") == 0) {
       msg.animation.animationStepPhase = (uint8_t) strtoul(value, NULL, 10);
-    } else if (strncasecmp(key, "animationPhaseValue", strlen(key)) == 0) {
+    } else if (strcasecmp(key, "animationPhaseValue") == 0) {
       msg.animation.animationStepPhaseValue = (uint8_t) strtoul(value, NULL, 10);
     }
   } // for

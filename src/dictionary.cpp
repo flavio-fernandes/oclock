@@ -1,4 +1,5 @@
 #include <cassert>
+#include <limits>
 #include <string.h>
 
 #include "threadsMain.h"
@@ -81,7 +82,18 @@ bool Dictionary::parsePostRequest(const StringMap& postValues) {
     else remove(key);  // mask out false, so remove of non-existing entry is not a failure
   }
   if (operation != dictionaryParamOperationDel) {
-    return add(key, data, std::stoi(intervalStr));
+    try {
+      size_t parsedChars = 0;
+      const long interval = std::stol(intervalStr, &parsedChars, 10);
+      if (parsedChars != intervalStr.size() ||
+          interval < noExpiration ||
+          interval > std::numeric_limits<int>::max()) {
+        return false;
+      }
+      return add(key, data, static_cast<int>(interval));
+    } catch (...) {
+      return false;
+    }
   }
 
   return true;
@@ -196,16 +208,23 @@ std::string Dictionary::getFirst(std::string& key, bool* found) {
 std::string Dictionary::getNext(std::string& key, bool* found) {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
 
-  DictionaryEntries::iterator iter = dictionaryEntries.upper_bound(key);
-  if (iter == dictionaryEntries.end()) {
-    if (found != nullptr) *found = false;
-    return noData;
-  }
+  while (true) {
+    DictionaryEntries::iterator iter = dictionaryEntries.upper_bound(key);
+    if (iter == dictionaryEntries.end()) {
+      if (found != nullptr) *found = false;
+      return noData;
+    }
 
-  // do a get to ensure entry found is not expired...
-  key = iter->first;
-  std::string result = get(key, found);
-  return result == noData ? getNext(key, found) : result;
+    // get() removes an expired entry. Empty strings are valid dictionary
+    // values, so use the found flag rather than comparing data with noData.
+    key = iter->first;
+    bool entryFound = false;
+    std::string result = get(key, &entryFound);
+    if (entryFound) {
+      if (found != nullptr) *found = true;
+      return result;
+    }
+  }
 }
 
 void Dictionary::getDictionaryStatus(DictionaryStatus& status) {
