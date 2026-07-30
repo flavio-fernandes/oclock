@@ -3,9 +3,10 @@
 ## Status and decision
 
 Phase 0 is complete; its results are recorded in the
-[production baseline](wiringpi-phase0-baseline.md). This document proposes the
-remaining migration and does not yet change the production GPIO
-implementation.
+[production baseline](wiringpi-phase0-baseline.md). Phase 1 is implemented and
+documented in the [GPIO interface report](wiringpi-phase1-interface.md), with
+Pi Zero confirmation pending. This document proposes the remaining migration
+and does not yet select a new production GPIO implementation.
 
 The migration should remove direct WiringPi use from the application and device
 drivers without making a new GPIO stack a prerequisite for the existing
@@ -100,9 +101,9 @@ it does not override the no-rewiring compatibility contract.
 
 ## Proposed internal boundary
 
-Add a small interface under a directory such as `src/gpio/`. Its public types
-should be owned by this project and should not expose WiringPi or `libgpiod`
-headers. It needs only the behavior currently used:
+Phase 1 added a small interface under `src/gpio/`. Its public types are owned by
+this project and do not expose WiringPi or `libgpiod` headers. It contains only
+the behavior currently used:
 
 ```cpp
 enum class GpioValue { low, high };
@@ -110,17 +111,20 @@ enum class GpioValue { low, high };
 class Gpio {
 public:
   virtual ~Gpio() {}
-  virtual void initialize() = 0;
-  virtual void configureInput(unsigned int bcmGpio) = 0;
-  virtual void configureOutput(unsigned int bcmGpio,
-                               GpioValue initialValue) = 0;
-  virtual GpioValue read(unsigned int bcmGpio) = 0;
-  virtual void write(unsigned int bcmGpio, GpioValue value) = 0;
+  virtual bool initialize() = 0;
+  virtual void configureInput(int bcmGpio) = 0;
+  virtual void configureOutput(int bcmGpio) = 0;
+  virtual GpioValue read(int bcmGpio) = 0;
+  virtual void write(int bcmGpio, GpioValue value) = 0;
+  virtual void delayMilliseconds(unsigned int duration) = 0;
 };
 ```
 
-This is illustrative, not an API that must be copied verbatim. The
-implementation should resolve these details before it is merged:
+The separate output-direction operation preserves the exact legacy call order
+in Phase 1. Phase 2 must establish safe initial levels from operation traces,
+after which the interface should support applying direction and initial value
+together where the backend can do so. These details remain required before a
+modern backend is deployed:
 
 - output direction and initial value must be applied together where the backend
   supports it, avoiding a startup glitch;
@@ -196,6 +200,11 @@ Logic-analyzer capture belongs in the Phase 5 side-by-side test, where both
 backends can be measured under the same procedure.
 
 ### Phase 1: introduce the interface with no production change
+
+**Status: implemented; Pi Zero confirmation pending.** See the
+[Phase 1 interface report](wiringpi-phase1-interface.md) for the concrete API,
+backend selection, preserved behavior, repository enforcement, and safe
+hardware build handoff.
 
 1. Add the project-owned GPIO interface.
 2. Move every WiringPi include and call into one WiringPi backend translation

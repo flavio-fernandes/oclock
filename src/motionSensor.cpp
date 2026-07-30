@@ -1,13 +1,9 @@
 #include "motionSensor.h"
 
+#include <stdexcept>
 #include <string.h>
 
-#ifdef FAKE_WIRING
-#include "fakeWiringPi.h"
-#else
-#include <wiringPi.h>
-#endif // ifdef FAKE_WIRING
-
+#include "gpio/Gpio.h"
 #include "threadsMain.h"
 #include "timerTick.h"
 #include "inbox.h"
@@ -17,7 +13,8 @@ const int MotionSensor::sensorGpioPin = 10; // 18;
 std::recursive_mutex MotionSensor::instanceMutex;
 MotionSensor* MotionSensor::instance = nullptr;
 
-MotionSensor::MotionSensor() : inboxRegistry(InboxRegistry::bind()), gpioLockMutexP(nullptr) {
+MotionSensor::MotionSensor() : inboxRegistry(InboxRegistry::bind()),
+  gpioLockMutexP(nullptr), gpioP(nullptr) {
   memset(&motionInfo, 0, sizeof(motionInfo));
 }
 
@@ -52,7 +49,8 @@ void MotionSensor::registerMainThread() {
   mainThreadId = caller;
 }
 
-void MotionSensor::runThreadLoop(std::recursive_mutex* gpioLockMutexPParam) {
+void MotionSensor::runThreadLoop(std::recursive_mutex* gpioLockMutexPParam,
+                                 Gpio& gpio) {
   TimerTickServiceCv doSensorRead(1000); // expected to be 1 second (motionInfo update)
 
   TimerTick& timerTick = TimerTick::bind();
@@ -62,9 +60,10 @@ void MotionSensor::runThreadLoop(std::recursive_mutex* gpioLockMutexPParam) {
   InboxMsg msg;
 
   gpioLockMutexP = gpioLockMutexPParam;
+  gpioP = &gpio;
   {
     std::lock_guard<std::recursive_mutex> guard(*gpioLockMutexP);
-    pinMode(sensorGpioPin, INPUT);
+    gpioP->configureInput(sensorGpioPin);
   }
 
   while (true) {
@@ -91,7 +90,8 @@ bool MotionSensor::getMotionValue(MotionInfo* out) const {
 bool MotionSensor::checkMotionSensor() {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
 
-  const bool currMotionDetected = digitalRead(sensorGpioPin) == HIGH;
+  const bool currMotionDetected =
+    gpioP->read(sensorGpioPin) == GpioValue::high;
 
   if (motionInfo.currMotionDetected == currMotionDetected) {
     if (++motionInfo.lastChangedSec > 59) {
@@ -130,6 +130,5 @@ void MotionSensor::notifyMotionSensorChange() {
 void motionSensorMain(const ThreadParam& threadParam) {
   MotionSensor::registerMainThread();
   MotionSensor& motionSensor = MotionSensor::bind();
-  motionSensor.runThreadLoop(threadParam.gpioLockMutexP);
+  motionSensor.runThreadLoop(threadParam.gpioLockMutexP, *threadParam.gpioP);
 }
-

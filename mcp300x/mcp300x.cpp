@@ -1,30 +1,26 @@
-#ifdef FAKE_WIRING
-#include "fakeWiringPi.h"
-#else
-#include <wiringPi.h>
-#endif // ifdef FAKE_WIRING
-
 #include "mcp300x.h"
+#include "gpio/Gpio.h"
 
-Mcp300x::Mcp300x(std::recursive_mutex& gpioLockMutex, int pinClock, int pinDigitalOut, int pinDigitalIn, int pinChipSelect) :
-  gpioLockMutex(gpioLockMutex),
+Mcp300x::Mcp300x(std::recursive_mutex& gpioLockMutex, Gpio& gpio, int pinClock,
+                 int pinDigitalOut, int pinDigitalIn, int pinChipSelect) :
+  gpioLockMutex(gpioLockMutex), gpio(gpio),
   pinClock(pinClock), pinDigitalOut(pinDigitalOut), pinDigitalIn(pinDigitalIn), pinChipSelect(pinChipSelect) {
   std::lock_guard<std::recursive_mutex> guard(gpioLockMutex);
 
-  pinMode(pinClock, OUTPUT);
-  pinMode(pinDigitalOut, INPUT);
-  pinMode(pinChipSelect, OUTPUT);
-  pinMode(pinDigitalIn, OUTPUT);
+  gpio.configureOutput(pinClock);
+  gpio.configureInput(pinDigitalOut);
+  gpio.configureOutput(pinChipSelect);
+  gpio.configureOutput(pinDigitalIn);
 }
 
 Mcp300x::~Mcp300x() {
   std::lock_guard<std::recursive_mutex> guard(gpioLockMutex);
 
   // nitpick: restore pins as input
-  pinMode(pinClock, INPUT);
-  // pinMode(pinDigitalOut, INPUT);
-  pinMode(pinChipSelect, INPUT);
-  pinMode(pinDigitalIn, INPUT);
+  gpio.configureInput(pinClock);
+  // pinDigitalOut is already an input.
+  gpio.configureInput(pinChipSelect);
+  gpio.configureInput(pinDigitalIn);
 }
 
 int Mcp300x::readAnalog(int pinChannel) const {
@@ -43,12 +39,13 @@ int Mcp300x::readAnalog(int pinChannel) const {
 
   // initiate communication with device
   // toggle cs and start clock low  
-  digitalWrite(pinChipSelect, HIGH);
-  digitalWrite(pinClock, LOW);
-  digitalWrite(pinChipSelect, LOW);
+  gpio.write(pinChipSelect, GpioValue::high);
+  gpio.write(pinClock, GpioValue::low);
+  gpio.write(pinChipSelect, GpioValue::low);
   
   for (int i = 0; i < cmdOutBits; ++i) {
-    digitalWrite(pinDigitalIn, (cmdOut & 0x80) ? HIGH : LOW);
+    gpio.write(pinDigitalIn,
+               (cmdOut & 0x80) ? GpioValue::high : GpioValue::low);
     cmdOut <<= 1; // shift out bit just used
     _tickClock();
   }
@@ -59,19 +56,19 @@ int Mcp300x::readAnalog(int pinChannel) const {
   for (int i = 0; i < 10; ++i) {
     _tickClock();
     valueOut <<= 1; // make room for next bit
-    if (digitalRead(pinDigitalOut) == HIGH) {
+    if (gpio.read(pinDigitalOut) == GpioValue::high) {
       valueOut |= 1;
     }
   }
 
   _tickClock(); // read (skip) null bit
-  digitalWrite(pinChipSelect, HIGH);
+  gpio.write(pinChipSelect, GpioValue::high);
   
   return valueOut;
 }
 
 void Mcp300x::_tickClock() const {
 
-  digitalWrite(pinClock, HIGH);
-  digitalWrite(pinClock, LOW);
+  gpio.write(pinClock, GpioValue::high);
+  gpio.write(pinClock, GpioValue::low);
 }

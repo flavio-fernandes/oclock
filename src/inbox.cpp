@@ -1,5 +1,8 @@
 #include <string.h>
 
+#include <stdexcept>
+#include <string>
+
 #include "inbox.h"
 
 InboxMsg::InboxMsg() : inboxMsgType(inboxMsgTypeNoop) {

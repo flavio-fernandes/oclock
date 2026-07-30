@@ -4,7 +4,7 @@ endif
 
 .DEFAULT_GOAL := all
 .SUFFIXES:
-.PHONY: all sudo_oclock hardware sandbox compatibility test test-core \
+.PHONY: all sudo_oclock hardware sandbox compatibility gpio-boundary test test-core \
 	check-arm-warnings smoke test-shutdown valgrind clean
 
 # Keep the original CC override working even though every source is C++.
@@ -41,11 +41,11 @@ CPP_SRC = \
 	src/main.cpp
 
 SRC = $(PULSAR_SRC) $(CPP_SRC)
-HARDWARE_OBJ = $(addprefix build/hardware/,$(addsuffix .o,$(SRC)))
-SANDBOX_OBJ = $(addprefix build/sandbox/,$(addsuffix .o,$(SRC))) \
-	build/sandbox/src/fakeWiringPi.cpp.o
-ARM_WARNING_OBJ = $(addprefix build/arm-warnings/,$(addsuffix .o,$(SRC))) \
-	build/arm-warnings/src/fakeWiringPi.cpp.o
+HARDWARE_SRC = $(SRC) src/gpio/wiringPiGpio.cpp
+SANDBOX_SRC = $(SRC) src/gpio/fakeGpio.cpp
+HARDWARE_OBJ = $(addprefix build/hardware/,$(addsuffix .o,$(HARDWARE_SRC)))
+SANDBOX_OBJ = $(addprefix build/sandbox/,$(addsuffix .o,$(SANDBOX_SRC)))
+ARM_WARNING_OBJ = $(addprefix build/arm-warnings/,$(addsuffix .o,$(SANDBOX_SRC)))
 
 HARDWARE_LIBS = -lwiringPi -lpthread -levent -lmosquitto
 SANDBOX_LIBS = -lpthread -levent -lmosquitto
@@ -85,23 +85,23 @@ build/hardware/%.c.o: %.c
 build/sandbox/%.cpp.o: %.cpp
 	$Q echo "[Compile sandbox] $<"
 	$Q mkdir -p $(@D)
-	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -DFAKE_WIRING $< -o $@
+	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
 
 build/sandbox/%.c.o: %.c
 	$Q echo "[Compile sandbox] $<"
 	$Q mkdir -p $(@D)
-	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -DFAKE_WIRING $< -o $@
+	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
 
 build/arm-warnings/%.cpp.o: %.cpp
 	$Q echo "[Compile ARM warning check] $<"
 	$Q mkdir -p $(@D)
-	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -DFAKE_WIRING \
+	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) \
 		-funsigned-char -Werror $< -o $@
 
 build/arm-warnings/%.c.o: %.c
 	$Q echo "[Compile ARM warning check] $<"
 	$Q mkdir -p $(@D)
-	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -DFAKE_WIRING \
+	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) \
 		-funsigned-char -Werror $< -o $@
 
 build/tests/oclock-arm-warnings: $(ARM_WARNING_OBJ)
@@ -110,10 +110,10 @@ build/tests/oclock-arm-warnings: $(ARM_WARNING_OBJ)
 	$Q $(CXX) -o $@ $^ $(LDFLAGS) $(SANDBOX_LIBS)
 
 build/tests/core_tests: tests/core_tests.cpp src/inbox.cpp src/commonUtils.cpp \
-		ht1632/HT1632.cpp lpd8806/LPD8806.cpp src/fakeWiringPi.cpp
+		ht1632/HT1632.cpp lpd8806/LPD8806.cpp src/gpio/fakeGpio.cpp
 	$Q echo "[Build test] $@"
 	$Q mkdir -p $(@D)
-	$Q $(CXX) $(CPPFLAGS) $(CXXFLAGS) -DFAKE_WIRING \
+	$Q $(CXX) $(CPPFLAGS) $(CXXFLAGS) \
 		-fsanitize=address,undefined -fno-omit-frame-pointer \
 		$^ -o $@ -lpthread
 
@@ -129,10 +129,13 @@ test-shutdown: oclock-sandbox
 compatibility: oclock-sandbox
 	$Q ./tests/compatibility.sh ./oclock-sandbox
 
+gpio-boundary:
+	$Q ./tests/gpio-boundary.sh
+
 check-arm-warnings: build/tests/oclock-arm-warnings
 	$Q ./tests/smoke.sh ./build/tests/oclock-arm-warnings
 
-test: compatibility test-core check-arm-warnings smoke test-shutdown
+test: compatibility gpio-boundary test-core check-arm-warnings smoke test-shutdown
 
 valgrind: oclock-sandbox
 	$Q ./tests/valgrind-smoke.sh ./oclock-sandbox

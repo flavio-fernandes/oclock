@@ -1,14 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#ifdef FAKE_WIRING
-#include "fakeWiringPi.h"
-#else
-#include <wiringPi.h>
-#endif // ifdef FAKE_WIRING
-
+#include <stdexcept>
+#include <string>
 #include <thread>         // std::thread
 
+#include "gpio/Gpio.h"
 #include "threadsMain.h"
 #include "timerTick.h"
 #include "lightSensor.h"
@@ -84,10 +81,11 @@ int main (int argc, char* argv[])
 {
   InboxRegistry& inboxRegistry = InboxRegistry::bind();
   std::recursive_mutex gpioLockMutex;
+  std::unique_ptr<Gpio> gpio = createGpio();
   ThreadInfo* threadInfo = 0;
-  ThreadParam threadParam = {argc, argv, &gpioLockMutex};
+  ThreadParam threadParam = {argc, argv, &gpioLockMutex, gpio.get()};
 
-  if (wiringPiSetupGpio() != 0) {
+  if (!gpio->initialize()) {
     fprintf(stderr, "Unable to initialize GPIO access\n");
     return EXIT_FAILURE;
   }

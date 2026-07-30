@@ -1,10 +1,6 @@
 #include "LPD8806.h"
 
-#ifdef FAKE_WIRING
-#include "fakeWiringPi.h"
-#else
-#include <wiringPi.h>
-#endif // ifdef FAKE_WIRING
+#include "gpio/Gpio.h"
 
 #define BYTES_PER_LED 3
 
@@ -13,8 +9,9 @@ const Int32U LPD8806::nullColor = LPD8806::Color(0,0,0);
 /*****************************************************************************/
 
 // Constructor for use with arbitrary clock/data pins:
-LPD8806::LPD8806(std::recursive_mutex* gpioLockMutexP, Int16U n, Int8U dpin, Int8U cpin) :
-  gpioLockMutex(*gpioLockMutexP), numLEDs(0), largestChangedLed(0),
+LPD8806::LPD8806(std::recursive_mutex* gpioLockMutexP, Gpio& gpio,
+                 Int16U n, Int8U dpin, Int8U cpin) :
+  gpioLockMutex(*gpioLockMutexP), gpio(gpio), numLEDs(0), largestChangedLed(0),
   pixels(0), clkpin(0), datapin(0), begun(false) {
   updateLength(n);
   updatePins(dpin, cpin);
@@ -34,8 +31,8 @@ void LPD8806::updatePins(Int8U dpin, Int8U cpin) {
   std::lock_guard<std::recursive_mutex> guard(gpioLockMutex);
 
   if (begun) { // If begin() was previously invoked...
-    pinMode(datapin, INPUT); // Restore prior data and clock pins to inputs
-    pinMode(clkpin , INPUT);
+    gpio.configureInput(datapin); // Restore prior data and clock pins to inputs
+    gpio.configureInput(clkpin);
   }
   datapin = dpin;
   clkpin = cpin;
@@ -48,8 +45,8 @@ void LPD8806::updatePins(Int8U dpin, Int8U cpin) {
 void LPD8806::startBitbang() const {
   std::lock_guard<std::recursive_mutex> guard(gpioLockMutex);
 
-  pinMode(datapin, OUTPUT);
-  pinMode(clkpin , OUTPUT);
+  gpio.configureOutput(datapin);
+  gpio.configureOutput(clkpin);
 
   _bitBangLatchSignal();
 }
@@ -57,10 +54,10 @@ void LPD8806::startBitbang() const {
 void LPD8806::_bitBangLatchSignal() const {
   // std::lock_guard<std::recursive_mutex> guard(gpioLockMutex);
 
-  digitalWrite(datapin, LOW);
+  gpio.write(datapin, GpioValue::low);
   for (Int16U i=((numLEDs+31)/32)*8; i>0; --i) {
-    digitalWrite(clkpin, HIGH);
-    digitalWrite(clkpin, LOW);
+    gpio.write(clkpin, GpioValue::high);
+    gpio.write(clkpin, GpioValue::low);
   }
 }
 
@@ -101,19 +98,19 @@ void LPD8806::show() {
 
     for (bit=0x80; bit; bit >>= 1) {
       if (p & bit) {
-	if (currDatapinValue != HIGH) {
-	  digitalWrite(datapin, HIGH);
-	  currDatapinValue = HIGH;
+	if (currDatapinValue != 1) {
+	  gpio.write(datapin, GpioValue::high);
+	  currDatapinValue = 1;
 	}
       } else {
-	if (currDatapinValue != LOW) {
-	  digitalWrite(datapin, LOW);
-	  currDatapinValue = LOW;
+	if (currDatapinValue != 0) {
+	  gpio.write(datapin, GpioValue::low);
+	  currDatapinValue = 0;
 	}
       }
 
-      digitalWrite(clkpin, HIGH);
-      digitalWrite(clkpin, LOW);
+      gpio.write(clkpin, GpioValue::high);
+      gpio.write(clkpin, GpioValue::low);
     }
   }
   _bitBangLatchSignal();
@@ -160,6 +157,10 @@ void LPD8806::clearPixelColors() {
   const int dataBytes = numLEDs * BYTES_PER_LED;
   memset(pixels, 0x80, dataBytes);
   largestChangedLed = numLEDs - 1;
+}
+
+void LPD8806::delayMilliseconds(unsigned int duration) const {
+  gpio.delayMilliseconds(duration);
 }
 
 // Query color from previously-set pixel (returns packed 32-bit GRB value)

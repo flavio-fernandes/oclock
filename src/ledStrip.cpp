@@ -1,4 +1,9 @@
 #include "LPD8806.h"
+#include "gpio/Gpio.h"
+
+#include <stdexcept>
+#include <string>
+#include <utility>
 
 #include "ledStrip.h"
 #include "ledStripInternal.h"
@@ -125,7 +130,7 @@ void LedStrip::registerMainThread() {
   mainThreadId = caller;
 }
 
-void LedStrip::runThreadLoop(std::recursive_mutex* gpioLockMutexP) {
+void LedStrip::runThreadLoop(std::recursive_mutex* gpioLockMutexP, Gpio& gpio) {
   TimerTickServiceCv ledStripFastTick(TimerTick::millisPerTick);
   TimerTickServiceBool ledStrip1secTick(1000);
   TimerTickServiceBool ledStrip10secTick(10000);
@@ -141,7 +146,7 @@ void LedStrip::runThreadLoop(std::recursive_mutex* gpioLockMutexP) {
   Inbox& inbox = inboxRegistry.getInbox(threadIdLedStrip);
   InboxMsg msg;
 
-  LPD8806 lpd8806(gpioLockMutexP, numberOfLeds, pinDATA, pinCLK);
+  LPD8806 lpd8806(gpioLockMutexP, gpio, numberOfLeds, pinDATA, pinCLK);
   this->internal = new LedStripInternal(lpd8806);
 
   while (true) {
@@ -180,5 +185,5 @@ void ledStripMain(const ThreadParam& threadParam) {
   // thread entry point
   LedStrip::registerMainThread();
   LedStrip& ledStrip = LedStrip::bind();
-  ledStrip.runThreadLoop(threadParam.gpioLockMutexP);
+  ledStrip.runThreadLoop(threadParam.gpioLockMutexP, *threadParam.gpioP);
 }

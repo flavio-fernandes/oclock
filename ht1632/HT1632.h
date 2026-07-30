@@ -13,6 +13,8 @@
 
 #include <mutex>
 
+class Gpio;
+
 /*
  * USER OPTIONS
  * Change these options
@@ -99,7 +101,7 @@
 // edge of the WR signal. On a 16MHz processor, this provides 62.5ns per NOP. 
 #define NOP(); __asm__("nop\n\t"); 
 #else
-#define NOP() delay(1)
+#define NOP() gpio.delayMilliseconds(1)
 #endif
 
 // Standard command list.
@@ -136,6 +138,7 @@ class HT1632Class
 {
   private:  
     std::recursive_mutex& gpioLockMutex;
+    Gpio& gpio;
     int brightness;
 
     int _pinForCS;
@@ -159,7 +162,7 @@ class HT1632Class
     HT1632Class& operator=(const HT1632Class& other) = delete;
   
   public:
-    HT1632Class(std::recursive_mutex* gpioLockMutexP);
+    HT1632Class(std::recursive_mutex* gpioLockMutexP, Gpio& gpio);
     ~HT1632Class();
   
     void begin(int pinCS, int pinWR,  int pinDATA, int pinCLK);

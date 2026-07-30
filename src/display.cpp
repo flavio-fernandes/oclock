@@ -1,4 +1,9 @@
 #include "HT1632.h"
+#include "gpio/Gpio.h"
+
+#include <stdexcept>
+#include <string>
+#include <utility>
 
 #include "display.h"
 #include "displayInternal.h"
@@ -134,7 +139,7 @@ void Display::registerMainThread() {
   mainThreadId = caller;
 }
 
-void Display::runThreadLoop(std::recursive_mutex* gpioLockMutexP) {
+void Display::runThreadLoop(std::recursive_mutex* gpioLockMutexP, Gpio& gpio) {
   TimerTickServiceCv displayFastTick(TimerTick::millisPerTick);
   TimerTickServiceBool display100msTick(100);
   TimerTickServiceBool display250msTick(250);
@@ -160,7 +165,7 @@ void Display::runThreadLoop(std::recursive_mutex* gpioLockMutexP) {
   Inbox& inbox = inboxRegistry.getInbox(threadIdDisplay);
   InboxMsg msg;
 
-  HT1632Class ht1632(gpioLockMutexP);
+  HT1632Class ht1632(gpioLockMutexP, gpio);
   ht1632.begin(pinCS, pinWR, pinDATA, pinCLK);
   this->internal = new DisplayInternal(ht1632);
   
@@ -211,5 +216,5 @@ void displayMain(const ThreadParam& threadParam) {
   // thread entry point
   Display::registerMainThread();
   Display& display = Display::bind();
-  display.runThreadLoop(threadParam.gpioLockMutexP);
+  display.runThreadLoop(threadParam.gpioLockMutexP, *threadParam.gpioP);
 }

@@ -1,9 +1,12 @@
 #include "lightSensor.h"
 
+#include <stdexcept>
+
 #include "threadsMain.h"
 #include "timerTick.h"
 #include "inbox.h"
 #include "mcp300x.h"
+#include "gpio/Gpio.h"
 
 std::thread::id LightSensor::mainThreadId;  // default 'invalid' value 
 std::recursive_mutex LightSensor::instanceMutex;
@@ -87,7 +90,8 @@ Int32U LightSensor::getLightValue() const {
   return lightValueEntries == 0 ? 0 : lightValueSum / lightValueEntries;
 }
 
-void LightSensor::runThreadLoop(std::recursive_mutex* gpioLockMutexPParam) {
+void LightSensor::runThreadLoop(std::recursive_mutex* gpioLockMutexPParam,
+                                Gpio& gpio) {
   TimerTickServiceCv sensorReadTimer(600); // 0.6 seconds
 
   TimerTick& timerTick = TimerTick::bind();
@@ -97,7 +101,8 @@ void LightSensor::runThreadLoop(std::recursive_mutex* gpioLockMutexPParam) {
   Inbox& inbox = inboxRegistry.getInbox(threadIdLightSensor);
   InboxMsg msg;
 
-  const Mcp3002 mcp(*gpioLockMutexPParam, pinClock, pinDigitalOut, pinDigitalIn, pinChipSelect);
+  const Mcp3002 mcp(*gpioLockMutexPParam, gpio, pinClock, pinDigitalOut,
+                    pinDigitalIn, pinChipSelect);
   while (true) {
 
     if (inbox.getMessage(msg)) {
@@ -114,5 +119,5 @@ void LightSensor::runThreadLoop(std::recursive_mutex* gpioLockMutexPParam) {
 void lightSensorMain(const ThreadParam& threadParam) {
   LightSensor::registerMainThread();
   LightSensor& lightSensor = LightSensor::bind();
-  lightSensor.runThreadLoop(threadParam.gpioLockMutexP);
+  lightSensor.runThreadLoop(threadParam.gpioLockMutexP, *threadParam.gpioP);
 }

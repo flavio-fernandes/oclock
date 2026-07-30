@@ -3,6 +3,8 @@
 
 #include <mutex>
 
+class Gpio;
+
 typedef enum ThreadId_t {
   threadIdDisplay = 0,
   threadIdLedStrip,
@@ -19,6 +21,7 @@ typedef struct ThreadParam_t {
   int argc;
   char** argv;
   std::recursive_mutex* gpioLockMutexP;
+  Gpio* gpioP;
 } ThreadParam;
 
 

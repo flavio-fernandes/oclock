@@ -5,6 +5,8 @@
 #include <mutex>
 #include "stdTypes.h"
 
+class Gpio;
+
 // Some really good Refs:
 //
 //      http://ww1.microchip.com/downloads/en/DeviceDoc/21294C.pdf
@@ -15,7 +17,8 @@
 
 class Mcp300x {
 public:
-  Mcp300x(std::recursive_mutex& gpioLockMutex, int pinClock, int pinDigitalOut, int pinDigitalIn, int pinChipSelect);
+  Mcp300x(std::recursive_mutex& gpioLockMutex, Gpio& gpio, int pinClock,
+          int pinDigitalOut, int pinDigitalIn, int pinChipSelect);
   virtual ~Mcp300x();
 
   // Read analog value on provided channel pin. Note that this should be
@@ -30,6 +33,7 @@ protected:
 
 private:
   std::recursive_mutex& gpioLockMutex;
+  Gpio& gpio;
 
   // Note: If you need to change these pins, simply instantiate new Mcp300x
   //       (... or make these non-const public members :))
@@ -49,8 +53,10 @@ private:
 
 class Mcp3002 : public Mcp300x {
 public:
-  Mcp3002(std::recursive_mutex& gpioLockMutex, int pinClock, int pinDigitalOut, int pinDigitalIn, int pinChipSelect) :
-    Mcp300x(gpioLockMutex, pinClock, pinDigitalOut, pinDigitalIn, pinChipSelect) { }
+  Mcp3002(std::recursive_mutex& gpioLockMutex, Gpio& gpio, int pinClock,
+          int pinDigitalOut, int pinDigitalIn, int pinChipSelect) :
+    Mcp300x(gpioLockMutex, gpio, pinClock, pinDigitalOut, pinDigitalIn,
+            pinChipSelect) { }
 
   virtual int lastChannelPin() const { return 1; }
   virtual void getCmdOutInfo(const int pinChannel, Int8U& cmdOut, int& cmdOutBitsCount) const {
@@ -63,8 +69,10 @@ public:
 
 class Mcp3008 : public Mcp300x {
 public:
-  Mcp3008(std::recursive_mutex& gpioLockMutex, int pinClock, int pinDigitalOut, int pinDigitalIn, int pinChipSelect) :
-    Mcp300x(gpioLockMutex, pinClock, pinDigitalOut, pinDigitalIn, pinChipSelect) { }
+  Mcp3008(std::recursive_mutex& gpioLockMutex, Gpio& gpio, int pinClock,
+          int pinDigitalOut, int pinDigitalIn, int pinChipSelect) :
+    Mcp300x(gpioLockMutex, gpio, pinClock, pinDigitalOut, pinDigitalIn,
+            pinChipSelect) { }
 
   virtual int lastChannelPin() const { return 7; }
   virtual void getCmdOutInfo(const int pinChannel, Int8U& cmdOut, int& cmdOutBitsCount) const {

@@ -27,11 +27,12 @@ incus exec oclock-dev -- bash -lc 'cd /root/oclock.git && make sandbox && make t
 behavior and treats compiler warnings as errors. This catches signedness bugs
 in the GPIO/rendering path even though the VM itself is x86-64.
 
-The sandbox binary uses `src/fakeWiringPi.cpp`; it exercises the application,
-threading, HTTP, MQTT client, rendering logic, and clean shutdown without
-touching GPIO. The VM is x86-64, while the original Pi Zero is ARMv6 and its
-GPIO devices and bit-bang timing are not virtualized. A final hardware build
-and electrical/timing test must therefore still run on a Raspberry Pi:
+The sandbox binary uses `src/gpio/fakeGpio.cpp` through the project-owned GPIO
+interface; it exercises the application, threading, HTTP, MQTT client,
+rendering logic, and clean shutdown without touching GPIO or linking WiringPi.
+The VM is x86-64, while the original Pi Zero is ARMv6 and its GPIO devices and
+bit-bang timing are not virtualized. A final hardware build and
+electrical/timing test must therefore still run on a Raspberry Pi:
 
 ```sh
 make hardware

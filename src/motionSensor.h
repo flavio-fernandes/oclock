@@ -7,6 +7,7 @@
 #include "stdTypes.h"
 
 class InboxRegistry;  // FWD
+class Gpio;  // FWD
 
 typedef struct MotionInfo_t {
   bool currMotionDetected;
@@ -24,7 +25,8 @@ public:
   bool getMotionValue(MotionInfo* out = 0) const;
   
   static void registerMainThread();  // only needed by one thread
-  void runThreadLoop(std::recursive_mutex* gpioLockMutexPParam);  // to be ran by main thread only
+  void runThreadLoop(std::recursive_mutex* gpioLockMutexPParam,
+                     Gpio& gpio);  // to be ran by main thread only
 
 private:
   static std::thread::id mainThreadId; // http://en.cppreference.com/w/cpp/thread/thread/id
@@ -34,6 +36,7 @@ private:
   InboxRegistry& inboxRegistry;
   
   std::recursive_mutex* gpioLockMutexP;
+  Gpio* gpioP;
   static std::recursive_mutex instanceMutex;
   static MotionSensor* instance;
 
