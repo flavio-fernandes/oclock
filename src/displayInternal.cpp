@@ -488,11 +488,11 @@ static void modeBasicClockFast(DisplayInternalInfo& displayInternalInfo) {
   updateMotionDetectedPixel(displayInternalInfo);
 }
 
-static void modeBasicClock1Sec(DisplayInternalInfo& displayInternalInfo) {
+static void modeBasicClock1Sec(DisplayInternalInfo& /*displayInternalInfo*/) {
   // HT1632.renderAll();  // already expected to be invoked by updateMotionDetectedPixel
 }
 
-static void modeBasicClock5Sec(DisplayInternalInfo& displayInternalInfo) {
+static void modeBasicClock5Sec(DisplayInternalInfo& /*displayInternalInfo*/) {
   // HT1632.renderAll();  // already expected to be invoked by updateMotionDetectedPixel
 }
 
@@ -1009,7 +1009,7 @@ static int getAdjustedTextY(Font font, int wantedY) {
 }
 
 static Font getNextFont(Font font) {
-  Font nextFont = (Font) (((int) modeMessageData.font) + 1);
+  Font nextFont = (Font) (((int) font) + 1);
   return nextFont >= fontLast ? (Font) 0 : nextFont;
 }
 

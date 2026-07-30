@@ -34,12 +34,21 @@ static void testRandomBounds() {
 static void testLongTextAndUninitializedDisplayCleanup() {
   std::recursive_mutex gpioMutex;
   HT1632Class display(&gpioMutex);
+  char font[64] = {};
   char widths[64];
   std::fill(widths, widths + 64, 1);
 
   const std::string message(300, 'A');
   const int width = display.getTextWidth(message.c_str(), widths, 1);
   assert(width == 599);
+
+  display.begin(8, 7, 4, 11);
+  display.drawTarget(BUFFER_BOARD(1));
+  display.drawText(message.c_str(), 0, 0, font, widths, 1, 1);
+
+  const char image[] = {0x0f, 0x0f};
+  display.drawImage(image, 2, 4, -1, -1);
+  display.render();
 }
 
 static void testEmptyLedStrip() {

@@ -64,7 +64,7 @@ bool MqttClient::getMqttClientInfo(MqttClientInfo* out) const {
 }
 
 /*static*/ void
-MqttClient::mqtt_on_connect(struct mosquitto* mosq, void* mqttClientOpaque, int rc) {
+MqttClient::mqtt_on_connect(struct mosquitto* /*mosq*/, void* mqttClientOpaque, int rc) {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
   if (mqttClientOpaque != instance) return;
   ++instance->mqttClientInfo.connects;
@@ -78,20 +78,21 @@ MqttClient::mqtt_on_connect(struct mosquitto* mosq, void* mqttClientOpaque, int 
   instance->mqttClientInfo.mqttBrokerConnected = rc == 0 /*MOSQ_ERR_SUCCESS*/;
 }
 /* static */ void
-MqttClient::mqtt_on_disconnect(struct mosquitto* mosq, void* mqttClientOpaque, int /*rc*/) {
+MqttClient::mqtt_on_disconnect(struct mosquitto* /*mosq*/, void* mqttClientOpaque, int /*rc*/) {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
   if (mqttClientOpaque != instance) return;
   ++instance->mqttClientInfo.disconnects;
   instance->mqttClientInfo.mqttBrokerConnected = false;
 }
 /* static */ void
-MqttClient::mqtt_on_publish(struct mosquitto* mosq, void* mqttClientOpaque, int /*message_id*/) {
+MqttClient::mqtt_on_publish(struct mosquitto* /*mosq*/, void* mqttClientOpaque, int /*message_id*/) {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
   if (mqttClientOpaque != instance) return;
   ++instance->mqttClientInfo.publishCallbacks;
 }
 /* static */ void
-MqttClient::mqtt_on_message(struct mosquitto* mosq, void* mqttClientOpaque, const struct mosquitto_message* msg) {
+MqttClient::mqtt_on_message(struct mosquitto* /*mosq*/, void* mqttClientOpaque,
+			    const struct mosquitto_message* /*msg*/) {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
   if (mqttClientOpaque != instance) return;
   ++instance->mqttClientInfo.messages;

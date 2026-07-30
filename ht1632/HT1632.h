@@ -136,21 +136,21 @@ class HT1632Class
 {
   private:  
     std::recursive_mutex& gpioLockMutex;
-    char brightness;
+    int brightness;
 
-    char _pinForCS;
-    char _pinCLK;
-    char _pinWR;
-    char _pinDATA;
-    char _tgtBuffer;
-    char _globalNeedsRewriting [MAX_BOARDS];
+    int _pinForCS;
+    int _pinCLK;
+    int _pinWR;
+    int _pinDATA;
+    int _tgtBuffer;
+    bool _globalNeedsRewriting [MAX_BOARDS];
     char * mem [MAX_BOARDS];
-    void writeCommand(char);
-    void writeData(char, char);
-    void writeDataRev(char, char);
+    void writeCommand(int);
+    void writeData(int, int);
+    void writeDataRev(int, int);
     void writeSingleBit();
-    void initialize(int, int);
-    void select(char mask);
+    void initialize();
+    void select(int mask);
     inline void select() { select(0); }
 
     // not implemented
@@ -166,18 +166,18 @@ class HT1632Class
     void reinit();
     void blank();
     void sendCommand(char command);
-    void drawTarget(char targetBuffer);
+    void drawTarget(int targetBuffer);
     void render();
     void renderAll();
-    void transition(char mode, int time = 1000); // Time is in miliseconds.
+    void transition(int mode, int time = 1000); // Time is in miliseconds.
     void clear();
     void clearAll();
     void setPixel(int loc_x, int loc_y, bool datum = true);
-    void drawImage(const char * img, char width, char height, int x, int y, int offset = 0);
-    void drawText(const char [], int x, int y, const char font [], const char font_width [], char font_height,
-		  int font_glyph_step, char gutter_space = 1);
-    int getTextWidth(const char [], const char font_width [], char font_height, char gutter_space = 1);
-    void setBrightness(char brightness);
+    void drawImage(const char * img, int width, int height, int x, int y, int offset = 0);
+    void drawText(const char [], int x, int y, const char font [], const char font_width [], int font_height,
+			  int font_glyph_step, int gutter_space = 1);
+    int getTextWidth(const char [], const char font_width [], int font_height, int gutter_space = 1);
+    void setBrightness(int brightness);
 };
 
 #endif

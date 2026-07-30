@@ -178,7 +178,7 @@ TimerTick::~TimerTick() {
 
 // ======================================================================
 
-void timerTickMain(const ThreadParam& threadParam) {
+void timerTickMain(const ThreadParam& /*threadParam*/) {
   TimerTick::registerTimerTickMainThread();
   TimerTick& timerTick = TimerTick::bind();
   timerTick.runThreadLoop();

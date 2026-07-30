@@ -40,7 +40,9 @@ static void parseRequest(RequestInfo& requestInfo);
 HandleRequestReply handleRequest(struct evhttp_request* req, worker* workerPtr,
 				   struct evkeyvalq* replyHeaders, struct evbuffer* replyBody) {
   try {
-    RequestInfo requestInfo = {req, workerPtr};
+    RequestInfo requestInfo = {};
+    requestInfo.req = req;
+    requestInfo.workerPtr = workerPtr;
     RequestOutput requestOutput = {replyHeaders, replyBody};
 
     parseRequest(requestInfo);
@@ -363,7 +365,7 @@ public:
   WebHandlerStatus() : motionSensor(MotionSensor::bind()), lightSensor(LightSensor::bind()),
 		       display(Display::bind()), ledStrip(LedStrip::bind()),
 		       dictionary(Dictionary::bind()), mqttClient(MqttClient::bind()) {}
-  virtual HandleRequestReply process(const RequestInfo& requestInfo, RequestOutput& requestOutput) {
+  virtual HandleRequestReply process(const RequestInfo& /*requestInfo*/, RequestOutput& requestOutput) {
     std::string buff("Stats and status\n\n");
 
     WebHandlerInternal* const webHandlerInternal = WebHandlerInternal::bindIfExists();
@@ -438,7 +440,7 @@ private:
 
 class WebHandlerImgBackground : public WebHandler {
 public:
-  virtual HandleRequestReply process(const RequestInfo& requestInfo, RequestOutput& requestOutput) {
+  virtual HandleRequestReply process(const RequestInfo& /*requestInfo*/, RequestOutput& requestOutput) {
     std::string buff(contentStart);
 
     buff << "<form action='/imgBackground' method='post'>"
@@ -495,7 +497,7 @@ private:
 
 class WebHandlerMsgBackground : public WebHandler {
 public:
-  virtual HandleRequestReply process(const RequestInfo& requestInfo, RequestOutput& requestOutput) {
+  virtual HandleRequestReply process(const RequestInfo& /*requestInfo*/, RequestOutput& requestOutput) {
     std::string buff(contentStart);
 
     buff << "<form action='/msgBackground' method='post'>"
@@ -543,7 +545,7 @@ private:
 
 class WebHandlerMsgMode : public WebHandler {
 public:
-  virtual HandleRequestReply process(const RequestInfo& requestInfo, RequestOutput& requestOutput) {
+  virtual HandleRequestReply process(const RequestInfo& /*requestInfo*/, RequestOutput& requestOutput) {
     std::string buff(contentStart);
 
     buff << "<form action='/msgMode' method='post'>"
@@ -697,7 +699,7 @@ private:
 
 class WebHandlerLedStrip : public WebHandler {
 public:
-  virtual HandleRequestReply process(const RequestInfo& requestInfo, RequestOutput& requestOutput) {
+  virtual HandleRequestReply process(const RequestInfo& /*requestInfo*/, RequestOutput& requestOutput) {
     std::string buff(contentStart);
 
     buff << "<form action='/ledStrip' method='post'>"
@@ -758,7 +760,7 @@ private:
 
 class WebHandlerDictionary : public WebHandler {
 public:
-  virtual HandleRequestReply process(const RequestInfo& requestInfo, RequestOutput& requestOutput) {
+  virtual HandleRequestReply process(const RequestInfo& /*requestInfo*/, RequestOutput& requestOutput) {
     std::string buff(contentStart);
 
     buff << "<form action='/dictionary' method='post'>"
@@ -806,7 +808,7 @@ private:
 
 class WebHandlerStop : public WebHandler {
 public:
-  virtual HandleRequestReply process(const RequestInfo& requestInfo, RequestOutput& requestOutput) {
+  virtual HandleRequestReply process(const RequestInfo& requestInfo, RequestOutput& /*requestOutput*/) {
     // TODO: if you are ever worried about non-intentional 'stops', consider adding logic here that checks things
     //       like requestInfo.remoteAddress or requestInfo.requestHeaders
     int rc = server_stop(requestInfo.workerPtr->s);
@@ -816,14 +818,14 @@ public:
 
 class WebHandlerHeadRoot : public WebHandler {
 public:
-  virtual HandleRequestReply process(const RequestInfo& requestInfo, RequestOutput& requestOutput) {
+  virtual HandleRequestReply process(const RequestInfo& /*requestInfo*/, RequestOutput& /*requestOutput*/) {
     return replyNoContent; // so boring!  :)
   }
 };
 
 class WebHandlerRoot : public WebHandler {
 public:
-  virtual HandleRequestReply process(const RequestInfo& requestInfo, RequestOutput& requestOutput) {
+  virtual HandleRequestReply process(const RequestInfo& /*requestInfo*/, RequestOutput& requestOutput) {
     std::string buff(contentStart);
 
     buff << "<h1>Office Clock main page</h1><p>";

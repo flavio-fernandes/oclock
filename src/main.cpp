@@ -85,11 +85,7 @@ int main (int argc, char* argv[])
   InboxRegistry& inboxRegistry = InboxRegistry::bind();
   std::recursive_mutex gpioLockMutex;
   ThreadInfo* threadInfo = 0;
-  ThreadParam threadParam = {0};
-  
-  threadParam.argc = argc;
-  threadParam.argv = argv;
-  threadParam.gpioLockMutexP = &gpioLockMutex;
+  ThreadParam threadParam = {argc, argv, &gpioLockMutex};
 
   if (wiringPiSetupGpio() != 0) {
     fprintf(stderr, "Unable to initialize GPIO access\n");

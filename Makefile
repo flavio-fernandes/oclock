@@ -4,7 +4,8 @@ endif
 
 .DEFAULT_GOAL := all
 .SUFFIXES:
-.PHONY: all sudo_oclock hardware sandbox compatibility test test-core smoke valgrind clean
+.PHONY: all sudo_oclock hardware sandbox compatibility test test-core \
+	check-arm-warnings smoke valgrind clean
 
 # Keep the original CC override working even though every source is C++.
 CC = g++
@@ -43,6 +44,8 @@ SRC = $(PULSAR_SRC) $(CPP_SRC)
 HARDWARE_OBJ = $(addprefix build/hardware/,$(addsuffix .o,$(SRC)))
 SANDBOX_OBJ = $(addprefix build/sandbox/,$(addsuffix .o,$(SRC))) \
 	build/sandbox/src/fakeWiringPi.cpp.o
+ARM_WARNING_OBJ = $(addprefix build/arm-warnings/,$(addsuffix .o,$(SRC))) \
+	build/arm-warnings/src/fakeWiringPi.cpp.o
 
 HARDWARE_LIBS = -lwiringPi -lpthread -levent -lmosquitto
 SANDBOX_LIBS = -lpthread -levent -lmosquitto
@@ -89,6 +92,23 @@ build/sandbox/%.c.o: %.c
 	$Q mkdir -p $(@D)
 	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -DFAKE_WIRING $< -o $@
 
+build/arm-warnings/%.cpp.o: %.cpp
+	$Q echo "[Compile ARM warning check] $<"
+	$Q mkdir -p $(@D)
+	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -DFAKE_WIRING \
+		-funsigned-char -Werror $< -o $@
+
+build/arm-warnings/%.c.o: %.c
+	$Q echo "[Compile ARM warning check] $<"
+	$Q mkdir -p $(@D)
+	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -DFAKE_WIRING \
+		-funsigned-char -Werror $< -o $@
+
+build/tests/oclock-arm-warnings: $(ARM_WARNING_OBJ)
+	$Q echo "[Link ARM warning check] $@"
+	$Q mkdir -p $(@D)
+	$Q $(CXX) -o $@ $^ $(LDFLAGS) $(SANDBOX_LIBS)
+
 build/tests/core_tests: tests/core_tests.cpp src/inbox.cpp src/commonUtils.cpp \
 		ht1632/HT1632.cpp lpd8806/LPD8806.cpp src/fakeWiringPi.cpp
 	$Q echo "[Build test] $@"
@@ -106,7 +126,10 @@ smoke: oclock-sandbox
 compatibility: oclock-sandbox
 	$Q ./tests/compatibility.sh ./oclock-sandbox
 
-test: compatibility test-core smoke
+check-arm-warnings: build/tests/oclock-arm-warnings
+	$Q ./tests/smoke.sh ./build/tests/oclock-arm-warnings
+
+test: compatibility test-core check-arm-warnings smoke
 
 valgrind: oclock-sandbox
 	$Q ./tests/valgrind-smoke.sh ./oclock-sandbox

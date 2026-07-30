@@ -35,6 +35,7 @@ On a development machine without GPIO hardware:
 make sandbox
 ./oclock-sandbox -b 127.0.0.1 -p 8080 -M 127.0.0.1
 make test
+make check-arm-warnings
 make valgrind
 ```
 

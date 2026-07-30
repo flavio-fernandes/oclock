@@ -37,7 +37,7 @@ print_usage(char *exe) {
 		       MQTT_BROKER_DEFAULT_IP, MQTT_BROKER_DEFAULT_PORT, MQTT_BROKER_DEFAULT_KA);
 }
 
-static PulsarServerInfo pulsarServerInfo = {0};
+static PulsarServerInfo pulsarServerInfo = {NULL, NULL, NULL};
 
 static long
 parse_number(const char *name, const char *value, long minimum, long maximum) {

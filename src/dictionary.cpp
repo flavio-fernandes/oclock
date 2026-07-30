@@ -304,7 +304,7 @@ void Dictionary::runThreadLoop() {
   inbox.clear();
 }
 
-void dictionaryMain(const ThreadParam& threadParam) {
+void dictionaryMain(const ThreadParam& /*threadParam*/) {
   Dictionary::registerMainThread();
   Dictionary& dictionary = Dictionary::bind();
   dictionary.runThreadLoop();

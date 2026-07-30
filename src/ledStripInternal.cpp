@@ -64,7 +64,7 @@ typedef struct {
 
 // ledStripModeManual
 
-static void modeManualInit(LedStripInternalInfo& info) {
+static void modeManualInit(LedStripInternalInfo& /*info*/) {
   // FIXME: finish this!
   // What we need to do is to parse the "rawFormat" and "getPixelColorParam" info.params
 }
