@@ -107,6 +107,9 @@ server_free(server *s) {
 
 	/* shutdown worker threads */
 	for(i=0; i<s->cfg->workers; i++) {
+		(void)worker_stop(s->w[i]);
+	}
+	for(i=0; i<s->cfg->workers; i++) {
 		worker_free(s->w[i]);
 	}
 
