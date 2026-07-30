@@ -81,7 +81,13 @@ bool Dictionary::parsePostRequest(const StringMap& postValues) {
     else remove(key);  // mask out false, so remove of non-existing entry is not a failure
   }
   if (operation != dictionaryParamOperationDel) {
-    return add(key, data, std::stoi(intervalStr));
+    try {
+      // Keep std::stoi's original accepted syntax while preventing malformed
+      // or out-of-range input from escaping the request handler.
+      return add(key, data, std::stoi(intervalStr));
+    } catch (...) {
+      return false;
+    }
   }
 
   return true;
@@ -196,16 +202,23 @@ std::string Dictionary::getFirst(std::string& key, bool* found) {
 std::string Dictionary::getNext(std::string& key, bool* found) {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
 
-  DictionaryEntries::iterator iter = dictionaryEntries.upper_bound(key);
-  if (iter == dictionaryEntries.end()) {
-    if (found != nullptr) *found = false;
-    return noData;
-  }
+  while (true) {
+    DictionaryEntries::iterator iter = dictionaryEntries.upper_bound(key);
+    if (iter == dictionaryEntries.end()) {
+      if (found != nullptr) *found = false;
+      return noData;
+    }
 
-  // do a get to ensure entry found is not expired...
-  key = iter->first;
-  std::string result = get(key, found);
-  return result == noData ? getNext(key, found) : result;
+    // get() removes an expired entry. Empty strings are valid dictionary
+    // values, so use the found flag rather than comparing data with noData.
+    key = iter->first;
+    bool entryFound = false;
+    std::string result = get(key, &entryFound);
+    if (entryFound) {
+      if (found != nullptr) *found = true;
+      return result;
+    }
+  }
 }
 
 void Dictionary::getDictionaryStatus(DictionaryStatus& status) {
@@ -291,7 +304,7 @@ void Dictionary::runThreadLoop() {
   inbox.clear();
 }
 
-void dictionaryMain(const ThreadParam& threadParam) {
+void dictionaryMain(const ThreadParam& /*threadParam*/) {
   Dictionary::registerMainThread();
   Dictionary& dictionary = Dictionary::bind();
   dictionary.runThreadLoop();

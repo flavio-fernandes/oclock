@@ -56,6 +56,7 @@ Display& Display::bind() {
 
 void Display::shutdown() {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
+  if (instance == nullptr) return;
 
   for (const DisplayTodo* displayTodo : instance->displayTodos) {
     delete displayTodo;
@@ -86,7 +87,7 @@ void Display::enqueueMsgBackgroundPost(StringMap& postValues) {
 
 const char* Display::getInternalDisplayMode() {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
-  return internal->getDisplayModeStr();
+  return internal == nullptr ? "starting" : internal->getDisplayModeStr();
 }
 
 const DisplayTodo* Display::dequeueDisplayTodo() {

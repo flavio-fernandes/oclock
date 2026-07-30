@@ -13,6 +13,7 @@
 
 struct _worker {
 	pthread_t t;
+	int started;
 
 	struct event_base *base;
 	struct evhttp *http;
@@ -23,7 +24,7 @@ struct _worker {
 worker *
 worker_new(server *s);
 
-void
+int
 worker_start(worker *w);
 
 void

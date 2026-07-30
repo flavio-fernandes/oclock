@@ -16,3 +16,32 @@ I had the honor of [talking about what I did](https://youtu.be/LXa7T5t3hmA?t=7m2
 
 [![office-clock talk](https://img.youtube.com/vi/LXa7T5t3hmA/0.jpg)](https://youtu.be/LXa7T5t3hmA?t=7m24s)
 
+## Building
+
+On a Raspberry Pi with WiringPi installed:
+
+```sh
+make
+```
+
+The default target preserves the original deployment behavior: it builds
+`oclock`, changes it to `root:root`, and enables the owner setuid bit. Use
+`make hardware` when only a hardware binary is wanted without changing its
+owner or mode.
+
+On a development machine without GPIO hardware:
+
+```sh
+make sandbox
+./oclock-sandbox -b 127.0.0.1 -p 8080 -M 127.0.0.1
+make test
+make check-arm-warnings
+make valgrind
+```
+
+For compatibility with the deployed clock, the runtime defaults remain
+`0.0.0.0:80` and MQTT broker `192.168.10.238:1883`. Use `-b`, `-p`, `-M`,
+and `-P` to override them. The control API does not provide authentication,
+so it should only be exposed on a trusted network.
+See [docs/development.md](docs/development.md) for the reproducible Incus VM
+workflow and the limits of fake-GPIO testing.

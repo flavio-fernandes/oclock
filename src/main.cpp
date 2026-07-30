@@ -85,13 +85,12 @@ int main (int argc, char* argv[])
   InboxRegistry& inboxRegistry = InboxRegistry::bind();
   std::recursive_mutex gpioLockMutex;
   ThreadInfo* threadInfo = 0;
-  ThreadParam threadParam = {0};
-  
-  threadParam.argc = argc;
-  threadParam.argv = argv;
-  threadParam.gpioLockMutexP = &gpioLockMutex;
+  ThreadParam threadParam = {argc, argv, &gpioLockMutex};
 
-  wiringPiSetupGpio();
+  if (wiringPiSetupGpio() != 0) {
+    fprintf(stderr, "Unable to initialize GPIO access\n");
+    return EXIT_FAILURE;
+  }
   WebHandlerInternal::bind().start();
 
   // parse args in pulsar before unleashing the other threads, because
@@ -103,7 +102,7 @@ int main (int argc, char* argv[])
     threadInfo[i].threadP = new std::thread(threadInfo[i].threadMainFunction, threadParam);
   }
 
-  pulsar_main();
+  const int pulsarResult = pulsar_main();
   
   /* if we made it here, pulsar server is done and its time to stop
    * all remaining threads.
@@ -132,6 +131,5 @@ int main (int argc, char* argv[])
 
   deAllocThreadInfoArray(threadInfo);
 
-  return 0;
+  return pulsarResult;
 }
-

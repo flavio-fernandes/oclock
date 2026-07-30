@@ -47,15 +47,16 @@ worker_free(worker *w) {
 	int i;
 	void *res;
 
-	i = pthread_cancel(w->t);
-	assert(i == 0);
+	if (w == NULL) return;
+	if (w->started) {
+		i = pthread_cancel(w->t);
+		if (i == 0) {
+			(void)pthread_join(w->t, &res);
+		}
+	}
 
-	i = pthread_join(w->t, &res);
-	assert(i == 0);
-	assert(res == PTHREAD_CANCELED);
-
-	evhttp_free(w->http);
-	event_base_free(w->base);
+	if (w->http != NULL) evhttp_free(w->http);
+	if (w->base != NULL) event_base_free(w->base);
 	free(w);
 }
 
@@ -79,7 +80,9 @@ worker_main(void *arg) {
 	assert(ret == 0);
 
 	evhttp_free(w->http);
+	w->http = NULL;
 	event_base_free(w->base);
+	w->base = NULL;
 
 	return NULL;
 }
@@ -88,13 +91,16 @@ worker *
 worker_new(server *s) {
 	worker *w;
 	w = (worker*) calloc(1, sizeof(worker));
+	if (w == NULL) return NULL;
 
 	w->s = s;
 
 	return w;
 }
 
-void
+int
 worker_start(worker *w) {
-	pthread_create(&w->t, NULL, worker_main, w);
+	const int rc = pthread_create(&w->t, NULL, worker_main, w);
+	w->started = rc == 0;
+	return rc;
 }

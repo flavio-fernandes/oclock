@@ -21,25 +21,39 @@
 
 void
 log_free(logger *log) {
+	if (log == NULL) return;
+	if (log->fd >= 0 && log->fd != STDERR_FILENO) {
+		close(log->fd);
+	}
 	free(log);
+}
+
+int
+log_set_file(logger *log, const char *logfile) {
+	if (log == NULL) return -1;
+	if (log->fd >= 0 && log->fd != STDERR_FILENO) {
+		close(log->fd);
+	}
+
+	log->logfile = logfile;
+	log->fd = logfile == NULL
+		? STDERR_FILENO
+		: open(logfile, O_WRONLY | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR);
+	return log->fd < 0 ? -1 : 0;
 }
 
 logger *
 log_new(const char *logfile, log_level level) {
 	logger *log;
 	log = (logger *)calloc(1, sizeof(logger));
+	if (log == NULL) return NULL;
 
 	log->self = getpid();
 	log->logfile = logfile;
 	log->verbosity = level;
 
-	if(log->logfile) {
-		log->fd = open(log->logfile, O_WRONLY | O_APPEND | O_CREAT, S_IRUSR|S_IWUSR);
-	}
-	else {
-		/* stderr */
-		log->fd = 2;
-	}
+	log->fd = -1;
+	log_set_file(log, logfile);
 
 	return log;
 }
@@ -58,7 +72,7 @@ log_it(logger *log, log_level level, const char *body) {
 	int line_sz, ret;
 
 	if(level > log->verbosity) return;
-	if(!log->fd || log->fd == -1) return;
+	if(log->fd < 0) return;
 
 	/* limit max log size */
 	sz = strlen(body);

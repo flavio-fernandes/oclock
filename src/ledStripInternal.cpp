@@ -64,7 +64,7 @@ typedef struct {
 
 // ledStripModeManual
 
-static void modeManualInit(LedStripInternalInfo& info) {
+static void modeManualInit(LedStripInternalInfo& /*info*/) {
   // FIXME: finish this!
   // What we need to do is to parse the "rawFormat" and "getPixelColorParam" info.params
 }
@@ -303,7 +303,7 @@ static const Mode modeBinaryCounter = {ledStripModeBinaryCounter, "binCnt", 0 /*
 // ======================================================================
 
 static Int32U wheel(LPD8806& lpd8806, Int16U wheelPos) {
-  Int8U r, g, b;
+  Int8U r = 0, g = 0, b = 0;
   switch(wheelPos / 128)
   {
     case 0:
@@ -320,6 +320,8 @@ static Int32U wheel(LPD8806& lpd8806, Int16U wheelPos) {
       b = 127 - wheelPos % 128; // blue down
       r = wheelPos % 128;       // red up
       g = 0;                    // green off
+      break;
+    default:
       break;
   }
   return(lpd8806.Color(r,g,b));

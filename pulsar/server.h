@@ -35,7 +35,7 @@ struct _server {
 server *
 server_new(conf *cfg, logger *log);
 
-void
+int
 server_start(server *s);
 
 int

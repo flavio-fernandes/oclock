@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <math.h>       /* ceil */
+#include <new>
 #include <string.h>
 
 #ifdef FAKE_WIRING
@@ -14,6 +15,8 @@
 
 HT1632Class::HT1632Class(std::recursive_mutex* gpioLockMutexP) :
   gpioLockMutex(*gpioLockMutexP), brightness(16), _tgtBuffer(-1) {
+  memset(_globalNeedsRewriting, 0, sizeof(_globalNeedsRewriting));
+  memset(mem, 0, sizeof(mem));
 }
 
 HT1632Class::~HT1632Class() {
@@ -32,10 +35,9 @@ HT1632Class::~HT1632Class() {
  * functions go here:
  */
 
-void HT1632Class::drawText(const char text [], int x, int y, const char font [], const char font_width [], char font_height, int font_glyph_step, char gutter_space) {
+void HT1632Class::drawText(const char text [], int x, int y, const char font [], const char font_width [], int font_height, int font_glyph_step, int gutter_space) {
   int curr_x = x;
-  char i = 0;
-  char currchar;
+  size_t i = 0;
   
   // Check if string is within y-bounds
   if (y + font_height < 0 || y >= COM_SIZE)
@@ -45,7 +47,7 @@ void HT1632Class::drawText(const char text [], int x, int y, const char font [],
     if (text[i] == '\0')
       return;
     
-    currchar = text[i] - 32;
+    int currchar = static_cast<unsigned char>(text[i]) - 32;
     if (currchar >= 65 && currchar <= 90) // If character is lower-case, automatically make it upper-case
       currchar -= 32; // Make this character uppercase.
     if (currchar < 0 || currchar >= 64) { // If out of bounds, skip
@@ -61,7 +63,7 @@ void HT1632Class::drawText(const char text [], int x, int y, const char font [],
       drawImage(font, font_width[currchar], font_height, curr_x, y,  currchar*font_glyph_step);
       
       // Draw the gutter space
-      for (char j = 0; j < gutter_space; ++j)
+      for (int j = 0; j < gutter_space; ++j)
         drawImage(font, 1, font_height, curr_x + font_width[currchar] + j, y, 0);
       
     }
@@ -72,16 +74,15 @@ void HT1632Class::drawText(const char text [], int x, int y, const char font [],
 }
 
 // Gives you the width, in columns, of a particular string.
-int HT1632Class::getTextWidth(const char text [], const char font_width [], char font_height, char gutter_space) {
+int HT1632Class::getTextWidth(const char text [], const char font_width [], int /*font_height*/, int gutter_space) {
   int wd = 0;
-  char i = 0;
-  char currchar;
+  size_t i = 0;
   
   while(true){  
     if (text[i] == '\0')
       return wd - gutter_space;
       
-    currchar = text[i] - 32;
+    int currchar = static_cast<unsigned char>(text[i]) - 32;
     if (currchar >= 65 && currchar <= 90) // If character is lower-case, automatically make it upper-case
       currchar -= 32; // Make this character uppercase.
     if (currchar < 0 || currchar >= 64) { // If out of bounds, skip
@@ -110,14 +111,17 @@ void HT1632Class::begin(int pinCS, int pinWR, int pinDATA, int pinCLK) {
   int i=0;
   
   // Allocate new memory for mem (including secondary)
-  for (i=0; i < MAX_BOARDS; ++i) mem[i] = (char *) malloc(ADDR_SPACE_SIZE);
+  for (i=0; i < MAX_BOARDS; ++i) {
+    mem[i] = static_cast<char*>(malloc(ADDR_SPACE_SIZE));
+    if (mem[i] == nullptr) throw std::bad_alloc();
+  }
 
   pinMode(_pinForCS, OUTPUT);
   pinMode(_pinWR, OUTPUT);
   pinMode(_pinDATA, OUTPUT);
   pinMode(_pinCLK, OUTPUT);
 
-  initialize(_pinWR, _pinDATA);
+  initialize();
 
   for (i=0; i < MAX_BOARDS; ++i) {
     drawTarget(i);
@@ -130,9 +134,9 @@ void HT1632Class::begin(int pinCS, int pinWR, int pinDATA, int pinCLK) {
 }
 
 void HT1632Class::reinit() {
-  const char saveTarget = _tgtBuffer;
+  const int saveTarget = _tgtBuffer;
 
-  initialize(_pinWR, _pinDATA);
+  initialize();
   for (int i=0; i < MAX_BOARDS; ++i) {
     drawTarget(i);
     render(); // Redo render from undisturbed memory
@@ -154,7 +158,7 @@ void HT1632Class::blank() {
   }
 }
 
-void HT1632Class::initialize(int pinWR, int pinDATA) {
+void HT1632Class::initialize() {
   std::lock_guard<std::recursive_mutex> guard(gpioLockMutex);
 
 
@@ -191,6 +195,7 @@ void HT1632Class::initialize(int pinWR, int pinDATA) {
 
 void HT1632Class::setPixel(int loc_x, int loc_y, bool datum) {
   if (_tgtBuffer > BUFFER_SECONDARY || _tgtBuffer < 0) return;
+  if (loc_x < 0 || loc_x >= OUT_SIZE || loc_y < 0 || loc_y >= COM_SIZE) return;
 
   if (datum) {
     mem[_tgtBuffer][GET_ADDR_FROM_X_Y(loc_x,loc_y)] = (mem[_tgtBuffer][GET_ADDR_FROM_X_Y(loc_x,loc_y)] | (1 << (loc_y % 4))) | MASK_NEEDS_REWRITING;
@@ -200,12 +205,12 @@ void HT1632Class::setPixel(int loc_x, int loc_y, bool datum) {
   }
 }
 
-void HT1632Class::drawTarget(char targetBuffer) {
+void HT1632Class::drawTarget(int targetBuffer) {
   if (targetBuffer >= 0 && targetBuffer < MAX_BOARDS) _tgtBuffer = targetBuffer;
 }
 
-void HT1632Class::drawImage(const char * img, char width, char height, int x, int y, int offset){
-  char mask;
+void HT1632Class::drawImage(const char * img, int width, int height, int x, int y, int offset){
+  int mask;
 
   if (_tgtBuffer > BUFFER_SECONDARY || _tgtBuffer < 0) return;
 
@@ -216,16 +221,16 @@ void HT1632Class::drawImage(const char * img, char width, char height, int x, in
   
   // Copying Engine.
   // You are only expected to understand this if it does not work right. ;)
-  for (char i=0; i<width; ++i) {
-    char carryover_y = 0; // Simply a copy of the last 4-bit word of img.
-    char carryover_num = (y - (y & ~ 3)); // Number of digits carried over
+  for (int i=0; i<width; ++i) {
+    int carryover_y = 0; // Simply a copy of the last 4-bit word of img.
+    int carryover_num = (y - (y & ~ 3)); // Number of digits carried over
     bool carryover_valid = false; // If true, there is data to be carried over.
     
-    char loc_x = i + x;
+    const int loc_x = i + x;
     if (loc_x < 0 || loc_x >= OUT_SIZE) // Skip this column if it is out of range.
       continue;
-    for (char j=0; j < (carryover_valid ? (height+4):height) ; j+=4) {
-      const char loc_y = j + y;
+    for (int j=0; j < (carryover_valid ? (height+4):height) ; j+=4) {
+      const int loc_y = j + y;
       if (loc_y <= -4 || loc_y >= COM_SIZE) // Skip this row if it is out of range.
         continue;
       // Direct copying possible when render is on boundaries.
@@ -270,7 +275,9 @@ void HT1632Class::drawImage(const char * img, char width, char height, int x, in
             mem[_tgtBuffer][GET_ADDR_FROM_X_Y(loc_x,loc_y)] = (mem[_tgtBuffer][GET_ADDR_FROM_X_Y(loc_x,loc_y)] & (~mask) & 0b00001111) | ((img[(int)ceil((float)height/4.0f)*i + j/4 + offset] << carryover_num) & mask) | (carryover_y >> (4 - carryover_num) & mask) | MASK_NEEDS_REWRITING;
           }
         }
-        carryover_y = img[(int)ceil((float)height/4.0f)*i + j/4 + offset];
+        if (j < height) {
+          carryover_y = img[(int)ceil((float)height/4.0f)*i + j/4 + offset];
+        }
       }
     }
   }
@@ -284,7 +291,7 @@ void HT1632Class::clear() {
 }
 
 void HT1632Class::clearAll() {
-  const char saveTarget = _tgtBuffer;
+  const int saveTarget = _tgtBuffer;
 
   for (int i=0; i < MAX_BOARDS; ++i) {
     drawTarget(i);
@@ -295,7 +302,7 @@ void HT1632Class::clearAll() {
 }
   
 void HT1632Class::renderAll() {
-  const char saveTarget = _tgtBuffer;
+  const int saveTarget = _tgtBuffer;
 
   for (int i=0; i < MAX_BOARDS; ++i) {
     drawTarget(i);
@@ -311,9 +318,9 @@ void HT1632Class::render() {
 
   if (_tgtBuffer >= BUFFER_SECONDARY || _tgtBuffer < 0) return;
   
-  char nChip;
-  char nChipOpen = -1;                   // Automatically compact sequential writes.
-  char chipBasedAddress;
+  int nChip;
+  int nChipOpen = -1;                   // Automatically compact sequential writes.
+  int chipBasedAddress;
   const int colorOffset = _tgtBuffer * 32;      // Color (aka board) memory offset in chip 
   
   select(0);
@@ -343,7 +350,7 @@ void HT1632Class::render() {
 
 // Set the brightness to an integer level between 1 and 16 (inclusive).
 // Uses the PWM feature to set the brightness.
-void HT1632Class::setBrightness(char brightnessParam) {
+void HT1632Class::setBrightness(int brightnessParam) {
   std::lock_guard<std::recursive_mutex> guard(gpioLockMutex);
 
   if (brightnessParam < 1 || brightnessParam > 16) return;
@@ -358,7 +365,7 @@ void HT1632Class::setBrightness(char brightnessParam) {
   select(0);
 }
 
-void HT1632Class::transition(char mode, int time){
+void HT1632Class::transition(int mode, int time){
   if (_tgtBuffer >= BUFFER_SECONDARY || _tgtBuffer < 0) return;
   
   switch(mode) {
@@ -426,7 +433,7 @@ void HT1632Class::transition(char mode, int time){
  * Functions that directly talk to hardware go here:
  */
  
-void HT1632Class::writeCommand(char data) {
+void HT1632Class::writeCommand(int data) {
   std::lock_guard<std::recursive_mutex> guard(gpioLockMutex);
 
   writeData(data, HT1632_CMD_LEN);
@@ -434,7 +441,7 @@ void HT1632Class::writeCommand(char data) {
 } 
 // Integer write to display. Used to write commands/addresses.
 // PRECONDITION: WR is LOW
-void HT1632Class::writeData(char data, char len) {
+void HT1632Class::writeData(int data, int len) {
   std::lock_guard<std::recursive_mutex> guard(gpioLockMutex);
 
   for (int j=len-1, t = 1 << (len - 1); j>=0; --j, t >>= 1){
@@ -450,7 +457,7 @@ void HT1632Class::writeData(char data, char len) {
 }
 // REVERSED Integer write to display. Used to write cell values.
 // PRECONDITION: WR is LOW
-void HT1632Class::writeDataRev(char data, char len) {
+void HT1632Class::writeDataRev(int data, int len) {
   std::lock_guard<std::recursive_mutex> guard(gpioLockMutex);
 
   for (int j=0; j<len; ++j){
@@ -481,14 +488,14 @@ void HT1632Class::writeSingleBit() {
 }
 
 //Output a clock pulse
-static inline void outputCLK_Pulse(char _pinCLK) { digitalWrite(_pinCLK, HIGH); digitalWrite(_pinCLK, LOW); }
+static inline void outputCLK_Pulse(int pinCLK) { digitalWrite(pinCLK, HIGH); digitalWrite(pinCLK, LOW); }
 
 // Choose a chip. This function sets the correct CS line to LOW, and the rest to HIGH
 // Call the function with no arguments to deselect all chips.
-void HT1632Class::select(char mask) {
+void HT1632Class::select(int mask) {
   std::lock_guard<std::recursive_mutex> guard(gpioLockMutex);
 
-  char tmp = 0;
+  int tmp = 0;
 
   if (mask < 0) { // Enable all HT1632C
     digitalWrite(_pinForCS, LOW);

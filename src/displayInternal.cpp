@@ -280,7 +280,7 @@ static void modeBasicClockSlow(DisplayInternalInfo& displayInternalInfo) {
   // part 2
   const char* const weekDayStr =
     (timeInfo.tm_wday >=0 && timeInfo.tm_wday <= 6) ? daysOfWeek[timeInfo.tm_wday] : "DDD";
-  strncpy(localDisplayBuffer, weekDayStr, sizeof(localDisplayBuffer));
+  snprintf(localDisplayBuffer, sizeof(localDisplayBuffer), "%s", weekDayStr);
 
   HT1632.drawTarget(BUFFER_BOARD(2)); HT1632.clear();
   HT1632.drawText(localDisplayBuffer, clockBaseX + 49 /*x*/, 0 /*y*/, FONT_7X5, FONT_7X5_WIDTH, FONT_7X5_HEIGHT, FONT_7X5_STEP_GLYPH);
@@ -289,7 +289,7 @@ static void modeBasicClockSlow(DisplayInternalInfo& displayInternalInfo) {
   const char* const monthStr =
     (timeInfo.tm_mon >=0 && timeInfo.tm_mon <= 11) ? months[timeInfo.tm_mon] : "MMM";
   assert(sizeof(localDisplayBuffer) >= 6);
-  strncpy(localDisplayBuffer, monthStr, 4 /*sizeof(localDisplayBuffer)*/);
+  snprintf(localDisplayBuffer, 4, "%s", monthStr);
   localDisplayBuffer[3] = ' ';
   getDayOfMonthStr(timeInfo.tm_mday, (char*) (localDisplayBuffer + 4), sizeof(localDisplayBuffer) - 4);
   for (int i=1; i < 3; ++i) {
@@ -488,11 +488,11 @@ static void modeBasicClockFast(DisplayInternalInfo& displayInternalInfo) {
   updateMotionDetectedPixel(displayInternalInfo);
 }
 
-static void modeBasicClock1Sec(DisplayInternalInfo& displayInternalInfo) {
+static void modeBasicClock1Sec(DisplayInternalInfo& /*displayInternalInfo*/) {
   // HT1632.renderAll();  // already expected to be invoked by updateMotionDetectedPixel
 }
 
-static void modeBasicClock5Sec(DisplayInternalInfo& displayInternalInfo) {
+static void modeBasicClock5Sec(DisplayInternalInfo& /*displayInternalInfo*/) {
   // HT1632.renderAll();  // already expected to be invoked by updateMotionDetectedPixel
 }
 
@@ -544,7 +544,8 @@ static void modeMessageInit(DisplayInternalInfo& displayInternalInfo, const void
   if (param != nullptr) {
     snprintf(modeMessageData.msg, sizeof(modeMessageData.msg), "%s", (const char*) param);
   } else if (modeMessageData.modeMsgsIndex >= (ModeMsgsIndex) 0 && modeMessageData.modeMsgsIndex < modeMsgsIndexLast) {
-    strncpy(modeMessageData.msg, modeMessageMsgs[modeMessageData.modeMsgsIndex], sizeof(modeMessageData.msg));
+    snprintf(modeMessageData.msg, sizeof(modeMessageData.msg), "%s",
+             modeMessageMsgs[modeMessageData.modeMsgsIndex]);
   }
 
   // runtime
@@ -1008,7 +1009,7 @@ static int getAdjustedTextY(Font font, int wantedY) {
 }
 
 static Font getNextFont(Font font) {
-  Font nextFont = (Font) (((int) modeMessageData.font) + 1);
+  Font nextFont = (Font) (((int) font) + 1);
   return nextFont >= fontLast ? (Font) 0 : nextFont;
 }
 
@@ -1111,9 +1112,9 @@ void DisplayInternal::doHandleMsgModePost(const StringMap& postValues) {
         if (modeMessageData.modeMsgsIndex == modeMsgsIndexBoot) modeMessageData.modeMsgsIndex = modeMsgsIndexFortunate1;
       } else if (strncasecmp(value, msgDictPrefix, msgDictPrefixLen) == 0 && value[msgDictPrefixLen] != 0) {
         const std::string dictValue(lookupDictValue(*info, value + msgDictPrefixLen));
-        strncpy(modeMessageData.msg, dictValue.c_str(), sizeof(modeMessageData.msg));
+        snprintf(modeMessageData.msg, sizeof(modeMessageData.msg), "%s", dictValue.c_str());
       } else {
-        strncpy(modeMessageData.msg, value, sizeof(modeMessageData.msg));
+        snprintf(modeMessageData.msg, sizeof(modeMessageData.msg), "%s", value);
       }
     } else if (strncasecmp(key, "x", strlen(key)) == 0) {
       modeMessageData.currX = strtoul(value, NULL, 10);
@@ -1206,9 +1207,9 @@ void DisplayInternal::doHandleMsgBackgroundPost(const StringMap& postValues) {
     } else if (strncasecmp(key, "msg", strlen(key)) == 0) {
       if (strncasecmp(value, msgDictPrefix, msgDictPrefixLen) == 0 && value[msgDictPrefixLen] != 0) {
         const std::string dictValue(lookupDictValue(*info, value + msgDictPrefixLen));
-        strncpy(msg.msg, dictValue.c_str(), sizeof(msg.msg));
+        snprintf(msg.msg, sizeof(msg.msg), "%s", dictValue.c_str());
       } else {
-        strncpy(msg.msg, value, sizeof(msg.msg));
+        snprintf(msg.msg, sizeof(msg.msg), "%s", value);
       }
     } else if (strncasecmp(key, "enabled", strlen(key)) == 0) {
       msg.enabled = parseBooleanValue(value);

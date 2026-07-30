@@ -1,17 +1,23 @@
 #include <random>
 #include <algorithm>
+#include <ctime>
+#include <mutex>
 #include <stdlib.h>
 #include <strings.h>
 
 #include "commonUtils.h"
 
-// http://en.cppreference.com/w/cpp/numeric/random
-// Choose a random mean between 1 and 0xffffff
+// Preserve the original engine and modulo behavior while serializing access
+// from the display and LED-strip threads.
 static std::random_device randomDevice;
 static std::default_random_engine randomEngine(randomDevice());
 static std::uniform_int_distribution<Int32U> uniform_dist(0);
+static std::mutex randomMutex;
 
 Int32U getRandomNumber(Int32U upperBound) {
+  if (upperBound == 0) return 0;
+
+  std::lock_guard<std::mutex> guard(randomMutex);
   return uniform_dist(randomEngine) % upperBound;
 }
 

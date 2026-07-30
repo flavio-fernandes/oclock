@@ -53,6 +53,7 @@ LedStrip& LedStrip::bind() {
 
 void LedStrip::shutdown() {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
+  if (instance == nullptr) return;
 
   for (const LedStripTodo* ledStripTodo : instance->ledStripTodos) {
     delete ledStripTodo;
@@ -75,11 +76,14 @@ void LedStrip::enqueueMsgModePost(StringMap& postValues) {
 
 const char* LedStrip::getInternalLedStripMode() {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
-  return internal->getLedStripModeStr();
+  return internal == nullptr ? "starting" : internal->getLedStripModeStr();
 }
 
 const char* LedStrip::getLedStripModeStr(LedStripMode ledStripMode) {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
+  if (internal == nullptr) {
+    return ledStripMode == ledStripModeManual ? "manual" : "";
+  }
   return internal->getLedStripModeStr(ledStripMode);
 }
 

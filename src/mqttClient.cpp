@@ -64,7 +64,7 @@ bool MqttClient::getMqttClientInfo(MqttClientInfo* out) const {
 }
 
 /*static*/ void
-MqttClient::mqtt_on_connect(struct mosquitto* mosq, void* mqttClientOpaque, int rc) {
+MqttClient::mqtt_on_connect(struct mosquitto* /*mosq*/, void* mqttClientOpaque, int rc) {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
   if (mqttClientOpaque != instance) return;
   ++instance->mqttClientInfo.connects;
@@ -78,20 +78,21 @@ MqttClient::mqtt_on_connect(struct mosquitto* mosq, void* mqttClientOpaque, int 
   instance->mqttClientInfo.mqttBrokerConnected = rc == 0 /*MOSQ_ERR_SUCCESS*/;
 }
 /* static */ void
-MqttClient::mqtt_on_disconnect(struct mosquitto* mosq, void* mqttClientOpaque, int /*rc*/) {
+MqttClient::mqtt_on_disconnect(struct mosquitto* /*mosq*/, void* mqttClientOpaque, int /*rc*/) {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
   if (mqttClientOpaque != instance) return;
   ++instance->mqttClientInfo.disconnects;
   instance->mqttClientInfo.mqttBrokerConnected = false;
 }
 /* static */ void
-MqttClient::mqtt_on_publish(struct mosquitto* mosq, void* mqttClientOpaque, int /*message_id*/) {
+MqttClient::mqtt_on_publish(struct mosquitto* /*mosq*/, void* mqttClientOpaque, int /*message_id*/) {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
   if (mqttClientOpaque != instance) return;
   ++instance->mqttClientInfo.publishCallbacks;
 }
 /* static */ void
-MqttClient::mqtt_on_message(struct mosquitto* mosq, void* mqttClientOpaque, const struct mosquitto_message* msg) {
+MqttClient::mqtt_on_message(struct mosquitto* /*mosq*/, void* mqttClientOpaque,
+			    const struct mosquitto_message* /*msg*/) {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
   if (mqttClientOpaque != instance) return;
   ++instance->mqttClientInfo.messages;
@@ -255,7 +256,7 @@ void MqttClient::parseParams(int argc, char** argv) {
   /* read input options -- AGAIN */
   // https://stackoverflow.com/questions/19940100/is-there-a-way-to-reset-getopt-for-non-global-use#19940311
   optind = 1;
-  while ((opt = getopt(argc,argv,"p:w:v:l:M:P:K:h")) != -1) {
+  while ((opt = getopt(argc,argv,"b:p:w:v:l:M:P:K:h")) != -1) {
     switch(opt) {
         case 'M':
           mqttClientInfo.mqttBrokerIp = optarg;
@@ -265,6 +266,14 @@ void MqttClient::parseParams(int argc, char** argv) {
           break;
         case 'K':
           mqttClientInfo.mqttKeepAlive = atoi(optarg);
+          break;
+        case 'b':
+        case 'p':
+        case 'w':
+        case 'v':
+        case 'l':
+        case 'h':
+          // Handled by the embedded web server.
           break;
         default:
           // not handled here....

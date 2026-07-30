@@ -19,8 +19,8 @@ public:
   TimerTickService(int interval, bool periodic = true);
   virtual ~TimerTickService();
 
-  inline TimerTickId getCookie() const  { return cookie; }
-  inline bool getIsRegistered() const { return cookie != nullCookie; }
+  inline TimerTickId getCookie() const  { return cookie.load(); }
+  inline bool getIsRegistered() const { return cookie.load() != nullCookie; }
   inline bool getIsExpired() const  { return ticksLeft == 0; }
   
   int interval;  // in milliseconds
@@ -31,7 +31,7 @@ protected:
   virtual void expireTrigger() = 0;  // callback
 
 private:
-  TimerTickId cookie;
+  std::atomic_ullong cookie;
   std::atomic_ullong ticksLeft;  // decreases as the timer ticks...
 
   friend class TimerTick;
@@ -59,7 +59,7 @@ public:
   TimerTickServiceBool(int interval, bool periodic = true, bool expired = false) :
     TimerTickService(interval, periodic), expired(expired) {}
   virtual void expireTrigger() override final { expired = true; }
-  bool getAndResetExpired() { if (expired) { expired = false; return true; } return false; }
+  bool getAndResetExpired() { return expired.exchange(false); }
 private:
   std::atomic_bool expired;
 };
@@ -67,12 +67,22 @@ private:
 class TimerTickServiceCv : public TimerTickService
 {
 public:
-  TimerTickServiceCv(int interval, bool periodic = true) : TimerTickService(interval, periodic), mtx(), cv() {}
-  virtual void expireTrigger() override { std::unique_lock<std::mutex> lck(mtx); cv.notify_all(); }
-  void wait() { std::unique_lock<std::mutex> lck(mtx); if (getIsRegistered()) cv.wait(lck); }
+  TimerTickServiceCv(int interval, bool periodic = true) :
+    TimerTickService(interval, periodic), mtx(), cv(), expired(false) {}
+  virtual void expireTrigger() override {
+    std::unique_lock<std::mutex> lck(mtx);
+    expired = true;
+    cv.notify_all();
+  }
+  void wait() {
+    std::unique_lock<std::mutex> lck(mtx);
+    cv.wait(lck, [this] { return expired; });
+    expired = false;
+  }
 private:
   std::mutex mtx;
   std::condition_variable cv;
+  bool expired;
 };
 
 typedef bool (*TimerTickServiceMessageCondFunction)(void* arg);

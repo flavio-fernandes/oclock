@@ -153,6 +153,10 @@ void LPD8806::setPixelColor(Int16U n, Int32U c) {
 }
 
 void LPD8806::clearPixelColors() {
+  if (numLEDs == 0 || pixels == nullptr) {
+    largestChangedLed = 0;
+    return;
+  }
   const int dataBytes = numLEDs * BYTES_PER_LED;
   memset(pixels, 0x80, dataBytes);
   largestChangedLed = numLEDs - 1;
@@ -180,4 +184,3 @@ void LPD8806::getPixelColor(Int16U n, Int8U& r, Int8U& g, Int8U& b) const {
     r = g = b = 0; // Pixel # is out of bounds
   }
 }
-

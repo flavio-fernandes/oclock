@@ -19,6 +19,10 @@ conf *
 conf_new(char *ip, unsigned short port, int workers) {
 	conf *cfg;
 	cfg = (conf*) calloc(1, sizeof(conf));
+	if (cfg == NULL) {
+		free(ip);
+		return NULL;
+	}
 
 	cfg->ip = ip;
 	cfg->port = port;
