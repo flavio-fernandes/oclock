@@ -6,15 +6,13 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=/home/pi/oclock.git
+# Raspbian Jessie ships systemd 215, before LogsDirectory= was added.
+ExecStartPre=/bin/mkdir -p /var/log/oclock
 ExecStart=/home/pi/oclock.git/oclock -b 0.0.0.0 -p 8080 -l /var/log/oclock/pulsar.log
-LogsDirectory=oclock
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
 ProtectHome=read-only
-ProtectKernelTunables=true
-ProtectControlGroups=true
-RestrictSUIDSGID=true
 Restart=on-failure
 RestartSec=2
 
