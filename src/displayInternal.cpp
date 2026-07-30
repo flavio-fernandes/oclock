@@ -1101,7 +1101,7 @@ void DisplayInternal::doHandleMsgModePost(const StringMap& postValues) {
     const char* const key = k.c_str();
     const char* const value = v.c_str(); 
 
-    if (strcasecmp(key, "msg") == 0) {
+    if (strncasecmp(key, "msg", strlen(key)) == 0) {
       if (strncasecmp(value, "#cookie", 7) == 0) {
         if (value[7] == 0) {
           modeMessageData.modeMsgsIndex = (ModeMsgsIndex) getRandomNumber(modeMsgsIndexLast);
@@ -1116,27 +1116,27 @@ void DisplayInternal::doHandleMsgModePost(const StringMap& postValues) {
       } else {
         snprintf(modeMessageData.msg, sizeof(modeMessageData.msg), "%s", value);
       }
-    } else if (strcasecmp(key, "x") == 0) {
+    } else if (strncasecmp(key, "x", strlen(key)) == 0) {
       modeMessageData.currX = strtoul(value, NULL, 10);
-    } else if (strcasecmp(key, "y") == 0) {
+    } else if (strncasecmp(key, "y", strlen(key)) == 0) {
       modeMessageData.currYFactor = strtoul(value, NULL, 10) * INCREMENT_Y_SCALE;
-    } else if (strcasecmp(key, "font") == 0) {
+    } else if (strncasecmp(key, "font", strlen(key)) == 0) {
       modeMessageData.font = (Font) strtoul(value, NULL, 10);
-    } else if (strcasecmp(key, "alternateFont") == 0) {
+    } else if (strncasecmp(key, "alternateFont", strlen(key)) == 0) {
       modeMessageData.alternateFont = parseBooleanValue(value);
-    } else if (strcasecmp(key, "confetti") == 0) {
+    } else if (strncasecmp(key, "confetti", strlen(key)) == 0) {
       modeMessageData.confetti = strtoul(value, NULL, 10);
-    } else if (strcasecmp(key, "bounce") == 0) {
+    } else if (strncasecmp(key, "bounce", strlen(key)) == 0) {
       modeMessageData.incrementY = parseBooleanValue(value) ? INCREMENT_Y_VALUE : 0;
-    } else if (strcasecmp(key, "noScroll") == 0) {
+    } else if (strncasecmp(key, "noScroll", strlen(key)) == 0) {
       modeMessageData.incrementX = parseBooleanValue(value) ? false : true;
-    } else if (strcasecmp(key, "blink") == 0) {
+    } else if (strncasecmp(key, "blink", strlen(key)) == 0) {
       modeMessageData.blink = parseBooleanValue(value);
-    } else if (strcasecmp(key, "color") == 0) {
+    } else if (strncasecmp(key, "color", strlen(key)) == 0) {
       modeMessageData.displayColor = (DisplayColor) strtoul(value, NULL, 10);
-    } else if (strcasecmp(key, "repeats") == 0) {
+    } else if (strncasecmp(key, "repeats", strlen(key)) == 0) {
 	modeMessageData.repeats = strtoul(value, NULL, 10);
-    } else if (strcasecmp(key, "timeout") == 0) {
+    } else if (strncasecmp(key, "timeout", strlen(key)) == 0) {
       modeMessageData.timeout = strtoul(value, NULL, 10);
     }
   } // for
@@ -1154,33 +1154,33 @@ void DisplayInternal::doHandleImgBackgroundPost(const StringMap& postValues) {
     const char* const key = k.c_str();
     const char* const value = v.c_str(); 
 
-    if (strcasecmp(key, "index") == 0) {
+    if (strncasecmp(key, "index", strlen(key)) == 0) {
       backgroundImgIndex = strtoul(value, NULL, 10);
       if (backgroundImgIndex < 0 || backgroundImgIndex >= BACKGROUND_IMG_COUNT) {
 	backgroundImgIndex = 0;
       }
-    } else if (strcasecmp(key, "enabled") == 0) {
+    } else if (strncasecmp(key, "enabled", strlen(key)) == 0) {
       img.enabled = parseBooleanValue(value);
-    } else if (strcasecmp(key, "clearAll") == 0) {
+    } else if (strncasecmp(key, "clearAll", strlen(key)) == 0) {
       if (parseBooleanValue(value)) {
 	for (int i=0; i < BACKGROUND_IMG_COUNT; ++i) initBackgroundImg(i);
       }
-    } else if (strcasecmp(key, "imgArt") == 0) {
+    } else if (strncasecmp(key, "imgArt", strlen(key)) == 0) {
       img.imgArt = (ImgArt) strtoul(value, NULL, 10);
       if (img.imgArt < 0 || img.imgArt >= imgArtLast) {
 	img.imgArt = (ImgArt) 0;
       }
-    } else if (strcasecmp(key, "x") == 0) {
+    } else if (strncasecmp(key, "x", strlen(key)) == 0) {
       img.x = strtoul(value, NULL, 10);
-    } else if (strcasecmp(key, "y") == 0) {
+    } else if (strncasecmp(key, "y", strlen(key)) == 0) {
       img.y = strtoul(value, NULL, 10);
-    } else if (strcasecmp(key, "color") == 0) {
+    } else if (strncasecmp(key, "color", strlen(key)) == 0) {
       img.displayColor = (DisplayColor) strtoul(value, NULL, 10);
-    } else if (strcasecmp(key, "animationStep") == 0) {
+    } else if (strncasecmp(key, "animationStep", strlen(key)) == 0) {
       img.animation.animationStep = (AnimationStep) strtoul(value, NULL, 10);
-    } else if (strcasecmp(key, "animationPhase") == 0) {
+    } else if (strncasecmp(key, "animationPhase", strlen(key)) == 0) {
       img.animation.animationStepPhase = (uint8_t) strtoul(value, NULL, 10);
-    } else if (strcasecmp(key, "animationPhaseValue") == 0) {
+    } else if (strncasecmp(key, "animationPhaseValue", strlen(key)) == 0) {
       img.animation.animationStepPhaseValue = (uint8_t) strtoul(value, NULL, 10);
     }
   } // for
@@ -1199,37 +1199,37 @@ void DisplayInternal::doHandleMsgBackgroundPost(const StringMap& postValues) {
     const char* const key = k.c_str();
     const char* const value = v.c_str(); 
 
-    if (strcasecmp(key, "index") == 0) {
+    if (strncasecmp(key, "index", strlen(key)) == 0) {
       msgIndex = strtoul(value, NULL, 10);
       if (msgIndex < 0 || msgIndex >= BACKGROUND_MESSAGE_COUNT) {
 	msgIndex = 0;
       }
-    } else if (strcasecmp(key, "msg") == 0) {
+    } else if (strncasecmp(key, "msg", strlen(key)) == 0) {
       if (strncasecmp(value, msgDictPrefix, msgDictPrefixLen) == 0 && value[msgDictPrefixLen] != 0) {
         const std::string dictValue(lookupDictValue(*info, value + msgDictPrefixLen));
         snprintf(msg.msg, sizeof(msg.msg), "%s", dictValue.c_str());
       } else {
         snprintf(msg.msg, sizeof(msg.msg), "%s", value);
       }
-    } else if (strcasecmp(key, "enabled") == 0) {
+    } else if (strncasecmp(key, "enabled", strlen(key)) == 0) {
       msg.enabled = parseBooleanValue(value);
-    } else if (strcasecmp(key, "clearAll") == 0) {
+    } else if (strncasecmp(key, "clearAll", strlen(key)) == 0) {
       if (parseBooleanValue(value)) {
 	for (int i=0; i < BACKGROUND_MESSAGE_COUNT; ++i) initBackgroundMessage(i);
       }
-    } else if (strcasecmp(key, "font") == 0) {
+    } else if (strncasecmp(key, "font", strlen(key)) == 0) {
       msg.font = (Font) strtoul(value, NULL, 10);
-    } else if (strcasecmp(key, "x") == 0) {
+    } else if (strncasecmp(key, "x", strlen(key)) == 0) {
       msg.x = strtoul(value, NULL, 10);
-    } else if (strcasecmp(key, "y") == 0) {
+    } else if (strncasecmp(key, "y", strlen(key)) == 0) {
       msg.y = strtoul(value, NULL, 10);
-    } else if (strcasecmp(key, "color") == 0) {
+    } else if (strncasecmp(key, "color", strlen(key)) == 0) {
       msg.displayColor = (DisplayColor) strtoul(value, NULL, 10);
-    } else if (strcasecmp(key, "animationStep") == 0) {
+    } else if (strncasecmp(key, "animationStep", strlen(key)) == 0) {
       msg.animation.animationStep = (AnimationStep) strtoul(value, NULL, 10);
-    } else if (strcasecmp(key, "animationPhase") == 0) {
+    } else if (strncasecmp(key, "animationPhase", strlen(key)) == 0) {
       msg.animation.animationStepPhase = (uint8_t) strtoul(value, NULL, 10);
-    } else if (strcasecmp(key, "animationPhaseValue") == 0) {
+    } else if (strncasecmp(key, "animationPhaseValue", strlen(key)) == 0) {
       msg.animation.animationStepPhaseValue = (uint8_t) strtoul(value, NULL, 10);
     }
   } // for

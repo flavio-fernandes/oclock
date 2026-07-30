@@ -21,19 +21,26 @@ I had the honor of [talking about what I did](https://youtu.be/LXa7T5t3hmA?t=7m2
 On a Raspberry Pi with WiringPi installed:
 
 ```sh
-make hardware
+make
 ```
+
+The default target preserves the original deployment behavior: it builds
+`oclock`, changes it to `root:root`, and enables the owner setuid bit. Use
+`make hardware` when only a hardware binary is wanted without changing its
+owner or mode.
 
 On a development machine without GPIO hardware:
 
 ```sh
 make sandbox
-./oclock-sandbox
+./oclock-sandbox -b 127.0.0.1 -p 8080 -M 127.0.0.1
 make test
 make valgrind
 ```
 
-The web server defaults to `127.0.0.1:8080`. Use `-b 0.0.0.0` only on a
-trusted network because the control API does not provide authentication.
+For compatibility with the deployed clock, the runtime defaults remain
+`0.0.0.0:80` and MQTT broker `192.168.10.238:1883`. Use `-b`, `-p`, `-M`,
+and `-P` to override them. The control API does not provide authentication,
+so it should only be exposed on a trusted network.
 See [docs/development.md](docs/development.md) for the reproducible Incus VM
 workflow and the limits of fake-GPIO testing.

@@ -4,9 +4,11 @@ endif
 
 .DEFAULT_GOAL := all
 .SUFFIXES:
-.PHONY: all hardware sandbox test test-core smoke valgrind clean
+.PHONY: all sudo_oclock hardware sandbox compatibility test test-core smoke valgrind clean
 
-CXX ?= g++
+# Keep the original CC override working even though every source is C++.
+CC = g++
+CXX = $(CC)
 CPPFLAGS = -I/usr/local/include -I./mcp300x -I./ht1632 -I./lpd8806 -I./src -I./pulsar
 CXXFLAGS ?= -g -O0
 CXXFLAGS += -std=gnu++11 -Winline -pipe -Wall -Wextra
@@ -45,7 +47,13 @@ SANDBOX_OBJ = $(addprefix build/sandbox/,$(addsuffix .o,$(SRC))) \
 HARDWARE_LIBS = -lwiringPi -lpthread -levent -lmosquitto
 SANDBOX_LIBS = -lpthread -levent -lmosquitto
 
-all: hardware
+all: sudo_oclock
+
+# Keep the original `make` workflow intact for the deployed Raspberry Pi.
+# `make hardware` is the build-only alternative for development and packaging.
+sudo_oclock: oclock
+	$Q sudo chown root:root oclock
+	$Q sudo chmod u+s oclock
 
 hardware: oclock
 
@@ -95,7 +103,10 @@ test-core: build/tests/core_tests
 smoke: oclock-sandbox
 	$Q ./tests/smoke.sh ./oclock-sandbox
 
-test: test-core smoke
+compatibility: oclock-sandbox
+	$Q ./tests/compatibility.sh ./oclock-sandbox
+
+test: compatibility test-core smoke
 
 valgrind: oclock-sandbox
 	$Q ./tests/valgrind-smoke.sh ./oclock-sandbox

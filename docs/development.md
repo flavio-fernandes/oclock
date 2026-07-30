@@ -31,9 +31,11 @@ and electrical/timing test must therefore still run on a Raspberry Pi:
 
 ```sh
 make hardware
-sudo ./oclock -b 0.0.0.0 -p 8080
+sudo ./oclock
 ```
 
-The HTTP server defaults to loopback port 8080. Binding to `0.0.0.0` exposes
-an unauthenticated device-control API and should only be done on a trusted
+The production defaults are intentionally unchanged: HTTP on `0.0.0.0:80`
+and MQTT at `192.168.10.238:1883`. The sandbox and tests pass explicit
+loopback addresses and high ports. The production HTTP default exposes an
+unauthenticated device-control API and should only be used on a trusted
 network or behind an authenticated reverse proxy.

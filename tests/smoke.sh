@@ -48,7 +48,8 @@ done
 
 grep -q "Stats and status" "${test_dir}/status.txt"
 [[ -f "${test_dir}/pulsar.log" ]]
-curl --fail --silent --show-error "${base_url}/" >/dev/null
+curl --fail --silent --show-error "${base_url}/" >"${test_dir}/root.html"
+grep -q "href='stop'" "${test_dir}/root.html"
 
 request_pids=()
 for _ in $(seq 1 32); do
@@ -71,6 +72,11 @@ invalid_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
     --data 'dictionaryOperation=add&dictionaryKey=bad&dictionaryData=x&dictionaryTimeout=not-a-number')
 [[ ${invalid_status} == 500 ]]
 
+legacy_timeout_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+    --request POST "${base_url}/dictionary" \
+    --data 'dictionaryOperation=add&dictionaryKey=legacy-timeout&dictionaryData=accepted&dictionaryTimeout=60000ms')
+[[ ${legacy_timeout_status} == 204 ]]
+
 empty_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
     --request POST "${base_url}/dictionary" \
     --data 'dictionaryOperation=add&dictionaryKey=empty-value&dictionaryData=&dictionaryTimeout=-1')
@@ -80,11 +86,7 @@ curl --fail --silent --show-error "${base_url}/status" |
 
 get_stop_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
     "${base_url}/stop")
-[[ ${get_stop_status} == 404 ]]
-
-post_stop_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
-    --request POST "${base_url}/stop")
-[[ ${post_stop_status} == 204 ]]
+[[ ${get_stop_status} == 204 ]]
 
 wait "${pid}"
 pid=

@@ -68,21 +68,21 @@ class TimerTickServiceCv : public TimerTickService
 {
 public:
   TimerTickServiceCv(int interval, bool periodic = true) :
-    TimerTickService(interval, periodic), mtx(), cv(), pendingExpirations(0) {}
+    TimerTickService(interval, periodic), mtx(), cv(), expired(false) {}
   virtual void expireTrigger() override {
     std::unique_lock<std::mutex> lck(mtx);
-    ++pendingExpirations;
+    expired = true;
     cv.notify_all();
   }
   void wait() {
     std::unique_lock<std::mutex> lck(mtx);
-    cv.wait(lck, [this] { return pendingExpirations > 0; });
-    --pendingExpirations;
+    cv.wait(lck, [this] { return expired; });
+    expired = false;
   }
 private:
   std::mutex mtx;
   std::condition_variable cv;
-  unsigned int pendingExpirations;
+  bool expired;
 };
 
 typedef bool (*TimerTickServiceMessageCondFunction)(void* arg);

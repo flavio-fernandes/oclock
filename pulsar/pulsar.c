@@ -99,7 +99,8 @@ pulsar_parse_args(int argc, char *argv[]) {
 		        break;
 			case 'h':
 				print_usage(argv[0]);
-				exit(EXIT_SUCCESS);
+				/* Preserve the original command-line contract. */
+				exit(EXIT_FAILURE);
 			default:
 				print_usage(argv[0]);
 				exit(EXIT_FAILURE);

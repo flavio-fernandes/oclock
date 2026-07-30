@@ -1,5 +1,4 @@
 #include <cassert>
-#include <limits>
 #include <string.h>
 
 #include "threadsMain.h"
@@ -83,14 +82,9 @@ bool Dictionary::parsePostRequest(const StringMap& postValues) {
   }
   if (operation != dictionaryParamOperationDel) {
     try {
-      size_t parsedChars = 0;
-      const long interval = std::stol(intervalStr, &parsedChars, 10);
-      if (parsedChars != intervalStr.size() ||
-          interval < noExpiration ||
-          interval > std::numeric_limits<int>::max()) {
-        return false;
-      }
-      return add(key, data, static_cast<int>(interval));
+      // Keep std::stoi's original accepted syntax while preventing malformed
+      // or out-of-range input from escaping the request handler.
+      return add(key, data, std::stoi(intervalStr));
     } catch (...) {
       return false;
     }

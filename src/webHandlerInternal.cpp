@@ -835,8 +835,7 @@ public:
 	 << "<br/><a href='ledStrip'>led strip</a>"
 		 << "<br/><a href='dictionary'>dictionary</a>"
 	         << "<br/><a href='sound'>sound</a>"
-		 << "<form action='/stop' method='post'>"
-		 << "<button type='submit'>Stop oclock</button></form>"
+		 << "<br/><a href='stop'>stop</a> (careful!)"
       ; // buff
     
     ADD_BODY(buff + contentStop);
@@ -869,5 +868,7 @@ void WebHandlerInternal::_start() {
   webHandlers[ WebHandlerKey("/dictionary") ] = new WebHandlerDictionary;
   webHandlers[ WebHandlerKey(EVHTTP_REQ_POST, "/dictionary") ] = new WebHandlerDictionaryPost;
 
+  // GET is the deployed legacy API; POST is an additive safer alternative.
+  webHandlers[ WebHandlerKey("/stop") ] = new WebHandlerStop;
   webHandlers[ WebHandlerKey(EVHTTP_REQ_POST, "/stop") ] = new WebHandlerStop;
 }
