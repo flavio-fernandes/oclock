@@ -55,6 +55,10 @@ bash -n misc/verifyPhase1Hardware.sh
 misc/verifyPhase1Hardware.sh --help >"${test_dir}/phase1-help.txt"
 grep -q -- '--binary PATH' "${test_dir}/phase1-help.txt"
 grep -q -- '--commit SHA' "${test_dir}/phase1-help.txt"
+# Dependency inspection must consume complete command output before matching.
+# A `grep -q` pipeline can make the producer receive SIGPIPE under pipefail.
+grep -Fq 'candidate_dependencies=$(ldd "${binary_path}" 2>&1)' \
+    misc/verifyPhase1Hardware.sh
 if misc/verifyPhase1Hardware.sh --binary /missing --commit invalid \
         >"${test_dir}/phase1-invalid.txt" 2>&1; then
     echo "Phase 1 verifier accepted invalid arguments" >&2

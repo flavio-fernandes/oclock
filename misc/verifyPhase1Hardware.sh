@@ -108,11 +108,18 @@ binary_path=$(readlink -f "${binary_path}") ||
     die "cannot resolve candidate binary path"
 [[ -f ${binary_path} && -x ${binary_path} ]] ||
     die "candidate is not an executable file: ${binary_path}"
-file "${binary_path}" | grep -q 'ELF 32-bit LSB executable, ARM' ||
+candidate_file=$(file "${binary_path}") ||
+    die "could not inspect candidate executable"
+grep 'ELF 32-bit LSB executable, ARM' <<<"${candidate_file}" >/dev/null ||
     die "candidate is not the expected 32-bit ARM executable"
-ldd "${binary_path}" 2>&1 |
-    grep -q 'libwiringPi\.so => /usr/local/lib/libwiringPi\.so' ||
+candidate_dependencies=$(ldd "${binary_path}" 2>&1) ||
+    die "could not inspect candidate dynamic dependencies"
+if ! grep 'libwiringPi\.so => /usr/local/lib/libwiringPi\.so' \
+        <<<"${candidate_dependencies}" >/dev/null; then
+    echo "Observed WiringPi dependency:" >&2
+    grep 'libwiringPi' <<<"${candidate_dependencies}" >&2 || echo "  none" >&2
     die "candidate does not resolve the preserved /usr/local WiringPi library"
+fi
 systemctl is-active --quiet "${service_name}" ||
     die "production service is not active; restore it before this test"
 
