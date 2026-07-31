@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "gpio/Gpio.h"
+#include "motionInput.h"
 #include "threadsMain.h"
 #include "timerTick.h"
 #include "inbox.h"
@@ -63,7 +64,7 @@ void MotionSensor::runThreadLoop(std::recursive_mutex* gpioLockMutexPParam,
   gpioP = &gpio;
   {
     std::lock_guard<std::recursive_mutex> guard(*gpioLockMutexP);
-    gpioP->configureInput(sensorGpioPin);
+    configureMotionInput(*gpioP, sensorGpioPin);
   }
 
   while (true) {
@@ -91,7 +92,7 @@ bool MotionSensor::checkMotionSensor() {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
 
   const bool currMotionDetected =
-    gpioP->read(sensorGpioPin) == GpioValue::high;
+    readMotionDetected(*gpioP, sensorGpioPin);
 
   if (motionInfo.currMotionDetected == currMotionDetected) {
     if (++motionInfo.lastChangedSec > 59) {

@@ -7,10 +7,10 @@ Mcp300x::Mcp300x(std::recursive_mutex& gpioLockMutex, Gpio& gpio, int pinClock,
   pinClock(pinClock), pinDigitalOut(pinDigitalOut), pinDigitalIn(pinDigitalIn), pinChipSelect(pinChipSelect) {
   std::lock_guard<std::recursive_mutex> guard(gpioLockMutex);
 
-  gpio.configureOutput(pinClock);
+  gpio.configureOutput(pinClock, GpioValue::low);
   gpio.configureInput(pinDigitalOut);
-  gpio.configureOutput(pinChipSelect);
-  gpio.configureOutput(pinDigitalIn);
+  gpio.configureOutput(pinChipSelect, GpioValue::high);
+  gpio.configureOutput(pinDigitalIn, GpioValue::low);
 }
 
 Mcp300x::~Mcp300x() {

@@ -4,8 +4,9 @@ endif
 
 .DEFAULT_GOAL := all
 .SUFFIXES:
-.PHONY: all sudo_oclock hardware sandbox compatibility gpio-boundary test test-core \
-	check-arm-warnings smoke test-shutdown valgrind clean
+.PHONY: all sudo_oclock hardware sandbox compatibility gpio-boundary test \
+	test-core test-gpio-protocols test-wiringpi-compile check-arm-warnings \
+	smoke test-shutdown valgrind clean
 
 # Keep the original CC override working even though every source is C++.
 CC = g++
@@ -28,6 +29,7 @@ CPP_SRC = \
 	lpd8806/LPD8806.cpp \
 	src/webHandlerInternal.cpp \
 	src/dictionary.cpp \
+	src/motionInput.cpp \
 	src/motionSensor.cpp \
 	src/lightSensor.cpp \
 	src/mqttClient.cpp \
@@ -120,6 +122,27 @@ build/tests/core_tests: tests/core_tests.cpp src/inbox.cpp src/commonUtils.cpp \
 test-core: build/tests/core_tests
 	$Q ASAN_OPTIONS=detect_leaks=1 ./build/tests/core_tests
 
+build/tests/gpio_protocol_tests: tests/gpio_protocol_tests.cpp \
+		src/motionInput.cpp mcp300x/mcp300x.cpp ht1632/HT1632.cpp \
+		lpd8806/LPD8806.cpp src/gpio/fakeGpio.cpp
+	$Q echo "[Build test] $@"
+	$Q mkdir -p $(@D)
+	$Q $(CXX) $(CPPFLAGS) $(CXXFLAGS) \
+		-fsanitize=address,undefined -fno-omit-frame-pointer \
+		$^ -o $@ -lpthread
+
+test-gpio-protocols: build/tests/gpio_protocol_tests
+	$Q ASAN_OPTIONS=detect_leaks=1 ./build/tests/gpio_protocol_tests
+
+build/tests/wiringPiGpio.cpp.o: src/gpio/wiringPiGpio.cpp \
+		tests/support/wiringPi.h
+	$Q echo "[Compile legacy backend] $<"
+	$Q mkdir -p $(@D)
+	$Q $(CXX) -c -Itests/support $(CPPFLAGS) $(CXXFLAGS) \
+		-funsigned-char -Werror $< -o $@
+
+test-wiringpi-compile: build/tests/wiringPiGpio.cpp.o
+
 smoke: oclock-sandbox
 	$Q ./tests/smoke.sh ./oclock-sandbox
 
@@ -135,7 +158,8 @@ gpio-boundary:
 check-arm-warnings: build/tests/oclock-arm-warnings
 	$Q ./tests/smoke.sh ./build/tests/oclock-arm-warnings
 
-test: compatibility gpio-boundary test-core check-arm-warnings smoke test-shutdown
+test: compatibility gpio-boundary test-core test-gpio-protocols \
+	test-wiringpi-compile check-arm-warnings smoke test-shutdown
 
 valgrind: oclock-sandbox
 	$Q ./tests/valgrind-smoke.sh ./oclock-sandbox

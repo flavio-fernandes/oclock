@@ -114,18 +114,19 @@ public:
   virtual ~Gpio() {}
   virtual bool initialize() = 0;
   virtual void configureInput(int bcmGpio) = 0;
-  virtual void configureOutput(int bcmGpio) = 0;
+  virtual void configureOutput(int bcmGpio, GpioValue initialValue) = 0;
   virtual GpioValue read(int bcmGpio) = 0;
   virtual void write(int bcmGpio, GpioValue value) = 0;
   virtual void delayMilliseconds(unsigned int duration) = 0;
 };
 ```
 
-The separate output-direction operation preserves the exact legacy call order
-in Phase 1. Phase 2 must establish safe initial levels from operation traces,
-after which the interface should support applying direction and initial value
-together where the backend can do so. These details remain required before a
-modern backend is deployed:
+Phase 1 used a separate output-direction operation to preserve the exact legacy
+call order. Phase 2 established the safe initial levels from protocol traces
+and added the initial value to `configureOutput`. The WiringPi fallback retains
+its legacy `pinMode`-then-`digitalWrite` order; a modern backend must apply the
+direction and initial value together where its API supports it. These details
+remain required before a modern backend is deployed:
 
 - output direction and initial value must be applied together where the backend
   supports it, avoiding a startup glitch;
@@ -225,6 +226,12 @@ and should emit the same GPIO operation traces as the baseline implementation.
 This phase provides isolation, not a new deployment.
 
 ### Phase 2: make protocol behavior testable
+
+**Status: complete.** The deterministic protocol suite and the full Incus
+validation passed on 2026-07-31 UTC. See the
+[Phase 2 protocol report](wiringpi-phase2-protocol-tests.md) for the startup
+levels, fake-backend API, wire-level assertions, cleanup contract, and
+validation evidence.
 
 Enhance the fake backend so tests can configure input values and record ordered
 operations. Add focused tests for:

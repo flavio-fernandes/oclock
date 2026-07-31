@@ -112,10 +112,10 @@ void HT1632Class::begin(int pinCS, int pinWR, int pinDATA, int pinCLK) {
     if (mem[i] == nullptr) throw std::bad_alloc();
   }
 
-  gpio.configureOutput(_pinForCS);
-  gpio.configureOutput(_pinWR);
-  gpio.configureOutput(_pinDATA);
-  gpio.configureOutput(_pinCLK);
+  gpio.configureOutput(_pinForCS, GpioValue::high);
+  gpio.configureOutput(_pinWR, GpioValue::low);
+  gpio.configureOutput(_pinDATA, GpioValue::low);
+  gpio.configureOutput(_pinCLK, GpioValue::low);
 
   initialize();
 

@@ -17,7 +17,8 @@ passed. Phase 1 is complete.
 
 ## Interface and ownership
 
-`src/gpio/Gpio.h` owns these platform-neutral operations:
+At the end of Phase 1, `src/gpio/Gpio.h` owned these platform-neutral
+operations:
 
 - initialize BCM-numbered GPIO access;
 - configure a pin as input or output;
@@ -53,17 +54,19 @@ include `wiringPi.h` or call `wiringPiSetupGpio`, `pinMode`, `digitalRead`,
 same WiringPi operation. The fake returns the same default low input value as
 the previous fake and retains its C++ millisecond sleep.
 
-## Preserved operation ordering
+## Preserved Phase 1 operation ordering
 
 Phase 1 intentionally preserves separate “configure output” and “write value”
 operations. Adding an initial write while changing direction would alter the
 known-good call sequence without evidence for every safe idle level.
 
-Phase 2 will record the exact initialization and protocol traces. Before a
-modern backend is enabled, the interface can then be extended to request an
-explicit initial output value atomically where supported, with a proven
-legacy-equivalent fallback. No initial level should be inferred solely from
-the instantaneous Phase 0 `gpio readall` snapshot.
+Phase 2 subsequently recorded exact initialization and protocol traces and
+extended the interface to request an explicit initial output value. See the
+[Phase 2 protocol report](wiringpi-phase2-protocol-tests.md). The WiringPi
+fallback keeps the legacy `pinMode`-then-write order; a modern backend can
+apply direction and initial value atomically. The values came from device
+protocol behavior, not solely from the instantaneous Phase 0 `gpio readall`
+snapshot.
 
 The source conversion retains:
 
@@ -84,8 +87,8 @@ The source conversion retains:
 - the hardware dry-run does not compile the legacy backend and link WiringPi;
 - the sandbox dry-run selects or links WiringPi.
 
-The check is part of `make test`. Phase 2 will add semantic GPIO trace tests;
-the Phase 1 boundary test prevents new platform coupling in the meantime.
+The check is part of `make test`. Phase 2 added semantic GPIO trace tests while
+retaining this boundary check.
 
 ## Pi Zero confirmation
 

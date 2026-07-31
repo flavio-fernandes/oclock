@@ -14,8 +14,9 @@ public:
     pinMode(bcmGpio, INPUT);
   }
 
-  virtual void configureOutput(int bcmGpio) {
+  virtual void configureOutput(int bcmGpio, GpioValue initialValue) {
     pinMode(bcmGpio, OUTPUT);
+    digitalWrite(bcmGpio, initialValue == GpioValue::high ? HIGH : LOW);
   }
 
   virtual GpioValue read(int bcmGpio) {

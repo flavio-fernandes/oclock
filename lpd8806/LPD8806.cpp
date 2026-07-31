@@ -45,8 +45,8 @@ void LPD8806::updatePins(Int8U dpin, Int8U cpin) {
 void LPD8806::startBitbang() const {
   std::lock_guard<std::recursive_mutex> guard(gpioLockMutex);
 
-  gpio.configureOutput(datapin);
-  gpio.configureOutput(clkpin);
+  gpio.configureOutput(datapin, GpioValue::low);
+  gpio.configureOutput(clkpin, GpioValue::low);
 
   _bitBangLatchSignal();
 }

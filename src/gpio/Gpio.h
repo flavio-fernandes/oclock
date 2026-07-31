@@ -14,7 +14,7 @@ public:
 
   virtual bool initialize() = 0;
   virtual void configureInput(int bcmGpio) = 0;
-  virtual void configureOutput(int bcmGpio) = 0;
+  virtual void configureOutput(int bcmGpio, GpioValue initialValue) = 0;
   virtual GpioValue read(int bcmGpio) = 0;
   virtual void write(int bcmGpio, GpioValue value) = 0;
   virtual void delayMilliseconds(unsigned int duration) = 0;
