@@ -75,4 +75,23 @@ if misc/verifyPhase1Hardware.sh --binary /missing --commit invalid \
     exit 1
 fi
 
+# The Phase 3 target collector must remain parseable on both the legacy host
+# and the candidate image. Its inspection path must not request or drive GPIO.
+bash -n misc/collectGpioTarget.sh
+misc/collectGpioTarget.sh --help >"${test_dir}/phase3-help.txt"
+grep -q -- '--debian-version VERSION' "${test_dir}/phase3-help.txt"
+grep -q -- '--libgpiod-major VERSION' "${test_dir}/phase3-help.txt"
+if misc/collectGpioTarget.sh --libgpiod-major invalid \
+        >"${test_dir}/phase3-invalid.txt" 2>&1; then
+    echo "Phase 3 collector accepted an invalid libgpiod major" >&2
+    exit 1
+fi
+grep -q 'O_RDONLY | O_CLOEXEC' misc/collectGpioTarget.sh
+grep -q 'GPIO_V2_GET_LINEINFO_IOCTL' misc/collectGpioTarget.sh
+if grep -Eq '(^|[[:space:]])(gpioget|gpioset|gpiomon|gpionotify)([[:space:]]|$)' \
+        misc/collectGpioTarget.sh; then
+    echo "Phase 3 collector contains a GPIO line-access command" >&2
+    exit 1
+fi
+
 echo "legacy compatibility tests passed"

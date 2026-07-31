@@ -250,6 +250,13 @@ freeze incidental C++ call structure into the tests.
 
 ### Phase 3: select and add the modern backend
 
+**Status: target selection in progress.** The current candidate is standard
+Raspberry Pi OS Lite (32-bit), Debian 13/Trixie, because Raspberry Pi lists the
+32-bit image for all models and Debian provides libgpiod 2.2 for `armhf`.
+Selection remains provisional until the read-only target collector passes on
+the original Pi Zero. See the
+[Phase 3 target-selection handoff](wiringpi-phase3-target-selection.md).
+
 Select the production OS and kernel before selecting a `libgpiod` API version:
 
 1. Boot a separate SD card on the same Pi Zero model; do not upgrade the
