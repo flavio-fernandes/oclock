@@ -139,14 +139,17 @@ sudo "${phase1_verifier}" \
 
 Read the summary before typing the required `RUN` confirmation. During the
 60-second observation window, watch the display and LED strip, cover and
-uncover the light sensor, and move into and out of the PIR field.
+uncover the light sensor, move into and out of the PIR field, and trigger the
+normal external data feed.
 
 The script:
 
 1. stops the service;
-2. runs this candidate as root on a loopback test port;
-3. checks display, LED strip, light changes, motion changes, status, and clean
-   HTTP shutdown;
+2. runs this candidate as root on the normal production-compatible
+   `0.0.0.0:80` HTTP endpoint, allowing the existing external controller to
+   reach it;
+3. checks display, LED strip, light changes, motion changes, MQTT broker
+   connectivity, the external data feed, status, and clean HTTP shutdown;
 4. restarts the unchanged production service;
 5. confirms it is active and the known-good hardware is normal.
 
@@ -155,3 +158,23 @@ stop the candidate and restart the production service in every case. It
 produces a timestamped archive and checksum containing the status samples and
 operator answers. The Phase 0 binary remains the rollback artifact throughout
 this check.
+
+The first maintenance run on 2026-07-30 provided useful but non-acceptance
+evidence. The candidate exited cleanly after HTTP shutdown, production was
+restored, the status endpoint showed both motion states and light values from 0
+through 694, and 51 of 52 samples reported a healthy MQTT broker connection.
+The operator also observed normal display, LED-strip, motion-sensor, and
+light-sensor behavior.
+
+That run exposed two verifier defects:
+
+- prompts emitted on standard output were captured with their answers, causing
+  every affirmative operator observation to be reported as a failure;
+- the loopback-only test endpoint prevented the normal external controller
+  from reaching the candidate, so its data-driven display update could not be
+  checked.
+
+The verifier now emits prompts on standard error and runs the candidate on the
+same HTTP bind address and port as production during the guarded maintenance
+window. A repeat run is required to close the operator and external-input
+acceptance gates. The raw result archive remains outside Git.

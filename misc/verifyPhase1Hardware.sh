@@ -10,7 +10,8 @@ set -o pipefail
 binary_path=
 candidate_commit=
 duration=60
-port=18080
+bind_address=0.0.0.0
+port=80
 service_name=oclock
 output_dir=
 
@@ -25,7 +26,8 @@ Required:
 
 Options:
   --duration SECONDS  Candidate observation window (default: ${duration})
-  --port PORT         Loopback-only candidate HTTP port (default: ${port})
+  --bind ADDRESS      Candidate HTTP bind address (default: ${bind_address})
+  --port PORT         Candidate HTTP port (default: ${port})
   --service NAME      Production service to restore (default: ${service_name})
   --output DIRECTORY  New result directory (default: secure directory in /tmp)
   -h, --help          Show this help
@@ -58,6 +60,11 @@ while (($# > 0)); do
         --duration)
             (($# >= 2)) || die "--duration requires a value"
             duration=$2
+            shift 2
+            ;;
+        --bind)
+            (($# >= 2)) || die "--bind requires a value"
+            bind_address=$2
             shift 2
             ;;
         --port)
@@ -93,9 +100,11 @@ done
     die "--duration must be an integer"
 ((duration >= 15 && duration <= 600)) ||
     die "--duration must be between 15 and 600 seconds"
+[[ -n ${bind_address} && ${bind_address} != -* ]] ||
+    die "--bind must be a non-option address"
 [[ ${port} =~ ^[0-9]+$ ]] || die "--port must be an integer"
-((port >= 1024 && port <= 65535)) ||
-    die "--port must be between 1024 and 65535"
+((port >= 1 && port <= 65535)) ||
+    die "--port must be between 1 and 65535"
 ((EUID == 0)) || die "run this script with sudo"
 
 for required_command in awk curl file grep ldd readlink sha256sum sort \
@@ -128,13 +137,10 @@ stop_url="http://127.0.0.1:${port}/stop"
 production_status_url=http://127.0.0.1:80/status
 timestamp=$(date -u +%Y%m%dT%H%M%SZ)
 
-if curl --fail --silent --max-time 1 "${status_url}" >/dev/null 2>&1; then
-    die "test port ${port} is already serving HTTP"
-fi
-
 echo "Candidate:          ${binary_path}"
 echo "Candidate commit:   ${candidate_commit}"
 echo "Production service: ${service_name}"
+echo "Candidate HTTP:     ${bind_address}:${port}"
 echo "Observation window: ${duration} seconds"
 echo
 echo "The production clock will be unavailable during this check."
@@ -241,7 +247,8 @@ trap 'exit 143' TERM
     echo "candidate_binary: ${binary_path}"
     echo "candidate_sha256: $(sha256sum "${binary_path}" | awk '{ print $1 }')"
     echo "duration_seconds: ${duration}"
-    echo "test_port: ${port}"
+    echo "bind_address: ${bind_address}"
+    echo "http_port: ${port}"
 } >"${output_dir}/context.txt"
 
 file "${binary_path}" >"${output_dir}/candidate-file.txt" 2>&1
@@ -255,15 +262,18 @@ systemctl stop "${service_name}" ||
 if systemctl is-active --quiet "${service_name}"; then
     die "${service_name} is still active; refusing to start candidate"
 fi
+if curl --fail --silent --max-time 1 "${status_url}" >/dev/null 2>&1; then
+    die "HTTP port ${port} is still serving after ${service_name} stopped"
+fi
 
 runtime_dir="${output_dir}/runtime"
 mkdir "${runtime_dir}"
 mkdir "${runtime_dir}/log"
 
-echo "Starting Phase 1 candidate on 127.0.0.1:${port}..."
+echo "Starting Phase 1 candidate on ${bind_address}:${port}..."
 (
     cd "${runtime_dir}" || exit 1
-    exec "${binary_path}" -b 127.0.0.1 -p "${port}" \
+    exec "${binary_path}" -b "${bind_address}" -p "${port}" \
         -l "${output_dir}/candidate.log"
 ) >"${output_dir}/candidate-stdout.txt" \
   2>"${output_dir}/candidate-stderr.txt" &
@@ -288,7 +298,8 @@ echo
 echo "Candidate is running. During the next ${duration} seconds:"
 echo "  - watch the four-panel display and LED-strip animation;"
 echo "  - cover and uncover the light sensor;"
-echo "  - walk into and out of the motion sensor field."
+echo "  - walk into and out of the motion sensor field;"
+echo "  - trigger the normal external data feed and verify its display update."
 
 status_samples="${output_dir}/status-samples.txt"
 sample_started=$(date +%s)
@@ -310,14 +321,16 @@ while :; do
 done
 
 grep -E \
-    '^(motion|motion_last_change|light_sensor|display_mode|led_strip_mode):' \
+    '^(motion|motion_last_change|light_sensor|display_mode|led_strip_mode|mqttBrokerConnected|mqttMessages|dictAdds):' \
     "${status_samples}" >"${output_dir}/observed-status-summary.txt" || true
 
 prompt_yes()
 {
     local prompt=$1
     local answer
-    printf '%s [yes/no]: ' "${prompt}"
+    # The function's stdout is captured as its return value. Keep the prompt
+    # visible on the terminal by writing it to stderr.
+    printf '%s [yes/no]: ' "${prompt}" >&2
     IFS= read -r answer || answer=not-recorded
     printf '%s' "${answer}"
 }
@@ -330,12 +343,15 @@ light_observation=$(prompt_yes \
     "Did the light value respond when the sensor was covered?")
 motion_observation=$(prompt_yes \
     "Did the motion state respond when you moved?")
+external_input_observation=$(prompt_yes \
+    "Did the normal external data feed update the display?")
 
 cat >"${output_dir}/operator-notes.txt" <<EOF
 display: ${display_observation}
 led_strip: ${strip_observation}
 light_sensor: ${light_observation}
 motion_sensor: ${motion_observation}
+external_input: ${external_input_observation}
 EOF
 
 echo "Requesting clean candidate shutdown..."
@@ -405,6 +421,11 @@ status_has_light_change()
     ((count >= 2))
 }
 
+status_has_mqtt_connection()
+{
+    grep -q '^mqttBrokerConnected: yes$' "${status_samples}"
+}
+
 result_check "candidate returned success after HTTP shutdown" \
     test "${candidate_exit_status}" -eq 0
 result_check "candidate status endpoint was sampled" \
@@ -413,6 +434,8 @@ result_check "status samples include a motion transition" \
     status_has_motion_transition
 result_check "status samples include changing light values" \
     status_has_light_change
+result_check "candidate connected to the configured MQTT broker" \
+    status_has_mqtt_connection
 result_check "display observation passed" \
     answer_is_yes "${display_observation}"
 result_check "LED-strip observation passed" \
@@ -421,6 +444,8 @@ result_check "light-sensor observation passed" \
     answer_is_yes "${light_observation}"
 result_check "motion-sensor observation passed" \
     answer_is_yes "${motion_observation}"
+result_check "external data-feed observation passed" \
+    answer_is_yes "${external_input_observation}"
 result_check "production service was restored" \
     test "${service_restored}" = yes
 result_check "restored production observation passed" \

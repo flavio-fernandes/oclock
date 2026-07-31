@@ -202,7 +202,8 @@ backends can be measured under the same procedure.
 
 ### Phase 1: introduce the interface with no production change
 
-**Status: implemented; Jessie build passed; Pi Zero functional check pending.**
+**Status: implemented; Jessie build and partial Pi Zero functional check
+passed; corrected acceptance rerun pending.**
 See the
 [Phase 1 interface report](wiringpi-phase1-interface.md) for the concrete API,
 backend selection, preserved behavior, repository enforcement, and safe

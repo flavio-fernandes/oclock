@@ -59,6 +59,16 @@ grep -q -- '--commit SHA' "${test_dir}/phase1-help.txt"
 # A `grep -q` pipeline can make the producer receive SIGPIPE under pipefail.
 grep -Fq 'candidate_dependencies=$(ldd "${binary_path}" 2>&1)' \
     misc/verifyPhase1Hardware.sh
+# Prompts run inside command substitutions, so they must not contaminate the
+# answer returned on stdout.
+grep -Fq "printf '%s [yes/no]: ' \"\${prompt}\" >&2" \
+    misc/verifyPhase1Hardware.sh
+# The compatibility run must expose the same HTTP endpoint as production so
+# the existing external controller can reach it.
+grep -q '^bind_address=0\.0\.0\.0$' misc/verifyPhase1Hardware.sh
+grep -q '^port=80$' misc/verifyPhase1Hardware.sh
+grep -Fq 'candidate connected to the configured MQTT broker' \
+    misc/verifyPhase1Hardware.sh
 if misc/verifyPhase1Hardware.sh --binary /missing --commit invalid \
         >"${test_dir}/phase1-invalid.txt" 2>&1; then
     echo "Phase 1 verifier accepted invalid arguments" >&2
