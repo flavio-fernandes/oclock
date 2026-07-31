@@ -3,9 +3,9 @@
 ## Status and decision
 
 Phase 0 is complete; its results are recorded in the
-[production baseline](wiringpi-phase0-baseline.md). Phase 1 is implemented and
-documented in the [GPIO interface report](wiringpi-phase1-interface.md). Its
-Jessie hardware build passed and its Pi Zero functional check is pending. This
+[production baseline](wiringpi-phase0-baseline.md). Phase 1 is complete and
+documented in the [GPIO interface report](wiringpi-phase1-interface.md): its
+Jessie hardware build and Pi Zero functional acceptance both passed. This
 document proposes the remaining migration and does not yet select a new
 production GPIO implementation.
 
@@ -202,8 +202,8 @@ backends can be measured under the same procedure.
 
 ### Phase 1: introduce the interface with no production change
 
-**Status: implemented; Jessie build and partial Pi Zero functional check
-passed; corrected acceptance rerun pending.**
+**Status: complete.** The Jessie build and corrected Pi Zero functional
+acceptance passed on 2026-07-31 UTC.
 See the
 [Phase 1 interface report](wiringpi-phase1-interface.md) for the concrete API,
 backend selection, preserved behavior, repository enforcement, and safe

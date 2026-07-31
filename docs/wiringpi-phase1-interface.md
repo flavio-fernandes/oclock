@@ -12,6 +12,9 @@ This phase is deliberately a one-for-one refactor. It does not change BCM pin
 numbers, directions, read/write ordering, the global recursive mutex, service
 configuration, privileges, wiring, or boot settings.
 
+The Jessie hardware build and the corrected Pi Zero functional acceptance both
+passed. Phase 1 is complete.
+
 ## Interface and ownership
 
 `src/gpio/Gpio.h` owns these platform-neutral operations:
@@ -176,5 +179,33 @@ That run exposed two verifier defects:
 
 The verifier now emits prompts on standard error and runs the candidate on the
 same HTTP bind address and port as production during the guarded maintenance
-window. A repeat run is required to close the operator and external-input
-acceptance gates. The raw result archive remains outside Git.
+window.
+
+### Corrected maintenance result: passed
+
+The corrected acceptance run began at `2026-07-31T02:20:22Z` using the same
+commit `cf8e543e5638abc76732ca7247a1d65dacab981d` binary that passed the Jessie
+build. The binary checksum was
+`f7a8484ffcd7beacc876f255babc1ef07da0bec8a48e4be88312ee745dc9f84f`;
+it remained a 32-bit ARM EABI5 executable and resolved WiringPi from
+`/usr/local/lib/libwiringPi.so`.
+
+All twelve acceptance checks passed:
+
+- all 51 status requests succeeded;
+- motion produced both states and 14 transitions;
+- light readings ranged from 0 through 691, with a mean of 661.4;
+- display modes included `basicClock` and `message`;
+- LED-strip modes included `rainbow`, `fill`, and `manual`;
+- the MQTT broker was connected in 50 of 51 samples, after the normal startup
+  connection interval;
+- the operator confirmed normal display, LED-strip, light-sensor,
+  motion-sensor, and external-data behavior;
+- the candidate returned success after the requested HTTP shutdown;
+- candidate standard output and standard error were empty;
+- the unchanged production service was restored and visually confirmed
+  healthy.
+
+The retained off-repository result archive has SHA-256
+`dd39cf176966d69c89a86ae98440cddc16d8e625ee562b59dcfd0b66fba0cfa9`.
+The raw archive contains runtime and network details and remains outside Git.
