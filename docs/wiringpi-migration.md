@@ -4,9 +4,10 @@
 
 Phase 0 is complete; its results are recorded in the
 [production baseline](wiringpi-phase0-baseline.md). Phase 1 is implemented and
-documented in the [GPIO interface report](wiringpi-phase1-interface.md), with
-Pi Zero confirmation pending. This document proposes the remaining migration
-and does not yet select a new production GPIO implementation.
+documented in the [GPIO interface report](wiringpi-phase1-interface.md). Its
+Jessie hardware build passed and its Pi Zero functional check is pending. This
+document proposes the remaining migration and does not yet select a new
+production GPIO implementation.
 
 The migration should remove direct WiringPi use from the application and device
 drivers without making a new GPIO stack a prerequisite for the existing
@@ -201,7 +202,8 @@ backends can be measured under the same procedure.
 
 ### Phase 1: introduce the interface with no production change
 
-**Status: implemented; Pi Zero confirmation pending.** See the
+**Status: implemented; Jessie build passed; Pi Zero functional check pending.**
+See the
 [Phase 1 interface report](wiringpi-phase1-interface.md) for the concrete API,
 backend selection, preserved behavior, repository enforcement, and safe
 hardware build handoff.

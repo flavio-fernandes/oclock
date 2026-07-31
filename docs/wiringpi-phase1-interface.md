@@ -86,6 +86,20 @@ the Phase 1 boundary test prevents new platform coupling in the meantime.
 
 ## Pi Zero confirmation
 
+### Jessie build: passed
+
+The non-disruptive production build was completed on 2026-07-30 from commit
+`cf8e543e5638abc76732ca7247a1d65dacab981d`. It compiled and linked on the Pi
+Zero in 3 minutes 38 seconds. The result was a dynamically linked, 32-bit ARM
+EABI5 executable targeting GNU/Linux 2.6.32, and `ldd` resolved
+`libwiringPi.so` to `/usr/local/lib/libwiringPi.so`.
+
+The source was extracted with `git archive`, so the resulting directory
+intentionally had no `.git` metadata. A `git status` failure in that directory
+is expected and does not affect the build evidence.
+
+### Reproducing the build
+
 Automated x86 validation cannot prove that the Jessie compiler accepts the
 hardware backend or that virtual dispatch preserves timing on the Pi Zero.
 Perform the following build without changing or stopping the deployed
@@ -105,14 +119,39 @@ printf 'phase1_commit=%s\nphase1_dir=%s\n' \
     "${phase1_commit}" "${phase1_dir}"
 ```
 
-Do not start that candidate while `oclock.service` is running. Share the
-command output first. A short maintenance-window functional check will then:
+Do not start that candidate while `oclock.service` is running.
 
-1. stop the service;
-2. run this candidate as root on a loopback test port;
-3. check display, LED strip, light changes, motion changes, status, and clean
+### Maintenance-window functional check
+
+Extract the guarded verifier from the PR without changing the deployed
+worktree, then run it against the already-built candidate:
+
+```sh
+cd /home/pi/oclock.git
+git fetch origin agent/plan-wiringpi-migration
+phase1_verifier=/tmp/verifyPhase1Hardware.sh
+git show FETCH_HEAD:misc/verifyPhase1Hardware.sh >"${phase1_verifier}"
+chmod 0755 "${phase1_verifier}"
+sudo "${phase1_verifier}" \
+    --binary /tmp/oclock-phase1-build-mileEVez/oclock \
+    --commit cf8e543e5638abc76732ca7247a1d65dacab981d
+```
+
+Read the summary before typing the required `RUN` confirmation. During the
+60-second observation window, watch the display and LED strip, cover and
+uncover the light sensor, and move into and out of the PIR field.
+
+The script:
+
+1. stops the service;
+2. runs this candidate as root on a loopback test port;
+3. checks display, LED strip, light changes, motion changes, status, and clean
    HTTP shutdown;
-4. restart the unchanged production service;
-5. confirm it is active and the known-good hardware is normal.
+4. restarts the unchanged production service;
+5. confirms it is active and the known-good hardware is normal.
 
-The Phase 0 binary remains the rollback artifact throughout this check.
+It traps normal exit, errors, interruption, and terminal hangup and attempts to
+stop the candidate and restart the production service in every case. It
+produces a timestamped archive and checksum containing the status samples and
+operator answers. The Phase 0 binary remains the rollback artifact throughout
+this check.

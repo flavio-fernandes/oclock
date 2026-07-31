@@ -49,4 +49,16 @@ if misc/collectHardwareBaseline.sh --duration 0 \
     exit 1
 fi
 
+# Keep the guarded Phase 1 verifier parseable on Jessie without allowing its
+# help and argument checks to touch systemd or GPIO.
+bash -n misc/verifyPhase1Hardware.sh
+misc/verifyPhase1Hardware.sh --help >"${test_dir}/phase1-help.txt"
+grep -q -- '--binary PATH' "${test_dir}/phase1-help.txt"
+grep -q -- '--commit SHA' "${test_dir}/phase1-help.txt"
+if misc/verifyPhase1Hardware.sh --binary /missing --commit invalid \
+        >"${test_dir}/phase1-invalid.txt" 2>&1; then
+    echo "Phase 1 verifier accepted invalid arguments" >&2
+    exit 1
+fi
+
 echo "legacy compatibility tests passed"
