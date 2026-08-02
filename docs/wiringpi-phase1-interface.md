@@ -1,5 +1,10 @@
 # WiringPi migration Phase 1 interface
 
+> Historical checkpoint: build-selection statements below describe Phase 1.
+> The current tree follows the
+> [modern-only build policy](wiringpi-modern-build-policy.md); rollback is the
+> preserved physical Zero/Jessie unit.
+
 ## Result
 
 Phase 1 isolates platform GPIO access without selecting a new production GPIO

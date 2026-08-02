@@ -4,8 +4,8 @@
 
 The exact-board gate passed all eight checks and explicit rollback restored
 the original unbound state. See the accepted
-[binding result](wiringpi-phase5-lpd8806-binding-result.md). Implementation of
-the hardware-free SPI transport and frame tests is now authorized; the first
+[binding result](wiringpi-phase5-lpd8806-binding-result.md). The hardware-free
+SPI transport, frame tests, and native ARM build have also passed; the first
 hardware transfer remains a separate gate.
 
 ## Purpose
@@ -88,8 +88,8 @@ in [`wiringpi-phase5-spi-live-boot.md`](wiringpi-phase5-spi-live-boot.md).
 
 ## Next gate
 
-The repository now contains the hardware-free
-[SPI transport and frame tests](wiringpi-phase5-lpd8806-transport.md). Its
-native ARM build must pass next. The first hardware transfer remains a
-separate guarded trial that preserves the 720 GRB data bytes and eight zero
-latch bytes and measures full-frame time.
+The repository contains the hardware-free
+[SPI transport and frame tests](wiringpi-phase5-lpd8806-transport.md), and its
+[native ARM build](wiringpi-phase5-lpd8806-build-result.md) passed. The first
+hardware transfer remains a separate guarded trial that preserves the 720 GRB
+data bytes and eight zero latch bytes and measures full-frame time.

@@ -1,5 +1,9 @@
 # WiringPi migration Phase 5 initial hardware result
 
+> Historical experiment: references to selectable backends below describe the
+> state at this checkpoint. See the current
+> [modern build policy](wiringpi-modern-build-policy.md).
+
 ## Decision
 
 The initial Zero W/Trixie `libgpiod` candidate did **not** pass Phase 5.

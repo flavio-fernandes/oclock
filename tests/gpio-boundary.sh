@@ -37,54 +37,24 @@ grep -Fqx 'const int LightSensor::pinChipSelect = 4;' src/lightSensor.cpp
 grep -Fqx 'const int MotionSensor::sensorGpioPin = 10; // 18;' \
     src/motionSensor.cpp
 
+default_build=$(make -Bn)
 hardware_build=$(make -Bn hardware)
-gpiod_build=$(make -Bn GPIO_BACKEND=gpiod hardware)
-gpiod_mmap_build=$(make -Bn GPIO_BACKEND=gpiod-mmap hardware)
-spidev_strip_build=$(make -Bn GPIO_BACKEND=gpiod-mmap \
-    STRIP_TRANSPORT=spidev hardware)
 sandbox_build=$(make -Bn sandbox)
 
-grep -q 'src/gpio/wiringPiGpio.cpp' <<<"${hardware_build}"
-grep -q -- '-lwiringPi' <<<"${hardware_build}"
-grep -q 'src/spi/noSpiOutput.cpp' <<<"${hardware_build}"
-if grep -q 'src/spi/linuxSpidevOutput.cpp' <<<"${hardware_build}"; then
-    echo "legacy build unexpectedly selects the spidev strip transport" >&2
-    exit 1
-fi
-grep -q 'src/gpio/gpiodV2Gpio.cpp' <<<"${gpiod_build}"
-grep -q 'src/gpio/gpiodV2Factory.cpp' <<<"${gpiod_build}"
-grep -q -- '-lgpiod' <<<"${gpiod_build}"
-grep -q -- '-latomic' <<<"${gpiod_build}"
-if grep -q 'bcm2835MmapValueIo.cpp' <<<"${gpiod_build}" ||
-        grep -q 'gpiodMmapFactory.cpp' <<<"${gpiod_build}"; then
-    echo "pure libgpiod build unexpectedly selects the mmap value path" >&2
-    exit 1
-fi
-if grep -q 'src/gpio/wiringPiGpio.cpp' <<<"${gpiod_build}" ||
-        grep -q -- '-lwiringPi' <<<"${gpiod_build}"; then
-    echo "libgpiod build unexpectedly selects or links WiringPi" >&2
-    exit 1
-fi
-grep -q 'src/gpio/gpiodV2Gpio.cpp' <<<"${gpiod_mmap_build}"
-grep -q 'src/gpio/bcm2835GpioRegisters.cpp' <<<"${gpiod_mmap_build}"
-grep -q 'src/gpio/bcm2835MmapValueIo.cpp' <<<"${gpiod_mmap_build}"
-grep -q 'src/gpio/gpiodMmapFactory.cpp' <<<"${gpiod_mmap_build}"
-grep -q -- '-lgpiod' <<<"${gpiod_mmap_build}"
-grep -q -- '-latomic' <<<"${gpiod_mmap_build}"
-if grep -q 'src/gpio/wiringPiGpio.cpp' <<<"${gpiod_mmap_build}" ||
-        grep -q -- '-lwiringPi' <<<"${gpiod_mmap_build}"; then
-    echo "gpiod-mmap build unexpectedly selects or links WiringPi" >&2
-    exit 1
-fi
-if grep -q -- '-latomic' <<<"${hardware_build}"; then
-    echo "legacy WiringPi build unexpectedly links the modern ARM dependency" >&2
-    exit 1
-fi
-grep -q 'src/spi/linuxSpidevOutput.cpp' <<<"${spidev_strip_build}"
-if grep -q 'src/spi/noSpiOutput.cpp' <<<"${spidev_strip_build}" ||
-        grep -q 'src/gpio/wiringPiGpio.cpp' <<<"${spidev_strip_build}" ||
-        grep -q -- '-lwiringPi' <<<"${spidev_strip_build}"; then
-    echo "spidev strip build contains a legacy transport" >&2
+for source in src/gpio/gpiodV2Gpio.cpp \
+        src/gpio/bcm2835GpioRegisters.cpp \
+        src/gpio/bcm2835MmapValueIo.cpp \
+        src/gpio/gpiodMmapFactory.cpp \
+        src/spi/linuxSpidevOutput.cpp; do
+    grep -q "${source}" <<<"${hardware_build}"
+    grep -q "${source}" <<<"${default_build}"
+done
+grep -q -- '-lgpiod' <<<"${hardware_build}"
+grep -q -- '-latomic' <<<"${hardware_build}"
+if grep -q 'src/gpio/wiringPiGpio.cpp' <<<"${hardware_build}" ||
+        grep -q 'src/spi/noSpiOutput.cpp' <<<"${hardware_build}" ||
+        grep -q -- '-lwiringPi' <<<"${hardware_build}"; then
+    echo "modern hardware build contains a retired transport" >&2
     exit 1
 fi
 grep -q 'src/gpio/fakeGpio.cpp' <<<"${sandbox_build}"
@@ -95,16 +65,12 @@ if grep -q 'src/gpio/wiringPiGpio.cpp' <<<"${sandbox_build}" ||
     exit 1
 fi
 
-if make -Bn GPIO_BACKEND=unknown hardware >/dev/null 2>&1; then
-    echo "unknown GPIO backend was accepted" >&2
-    exit 1
-fi
-if make -Bn STRIP_TRANSPORT=unknown hardware >/dev/null 2>&1; then
-    echo "unknown strip transport was accepted" >&2
+if make -Bn GPIO_BACKEND=wiringpi hardware >/dev/null 2>&1; then
+    echo "retired GPIO_BACKEND knob was accepted" >&2
     exit 1
 fi
 if make -Bn STRIP_TRANSPORT=spidev hardware >/dev/null 2>&1; then
-    echo "spidev strip transport was accepted with the legacy GPIO backend" >&2
+    echo "retired STRIP_TRANSPORT knob was accepted" >&2
     exit 1
 fi
 

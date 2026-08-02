@@ -8,9 +8,10 @@ Tree path, bound explicitly, exposed one character device, and then returned
 to its original unbound state. The MCP3002 remained bound to `mcp320x`, the
 service remained inactive, and no device was opened or transferred through.
 
-This result authorizes implementation and hardware-free testing of the
-project-owned SPI output transport and LPD8806 frame assembly. It does not
-authorize a hardware transfer or application candidate yet.
+This result authorized implementation and hardware-free testing of the
+project-owned SPI output transport and LPD8806 frame assembly. That work and
+the native ARM build have now passed. It still does not authorize a hardware
+transfer or whole-application candidate.
 
 ## Evidence
 
@@ -51,7 +52,7 @@ The harmless `spidev` module was deliberately left loaded.
 
 ## Next gate
 
-Add the SPI output boundary and deterministic fake, convert the LPD8806 to
-assemble one 720-byte GRB payload followed by eight zero latch bytes, and run
-hardware-free tests plus a native ARM build. Only after those pass should a
-separate verifier bind, open, and send the first measured frame.
+The SPI output boundary, 720-byte GRB plus eight-byte latch assembly,
+hardware-free tests, and [native ARM build](wiringpi-phase5-lpd8806-build-result.md)
+have passed. The next gate is a separate verifier that binds, opens, and sends
+one measured all-off frame, then closes and unbinds on every exit path.

@@ -1,5 +1,9 @@
 # WiringPi migration Phase 3 backend handoff
 
+> Historical checkpoint: the explicit backend command below records the
+> Phase 3 experiment. The selector is no longer supported; see the
+> [modern build policy](wiringpi-modern-build-policy.md).
+
 ## Status
 
 The libgpiod v2 backend is implemented as an explicit build option. It compiles

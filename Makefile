@@ -4,11 +4,11 @@ endif
 
 .DEFAULT_GOAL := all
 .SUFFIXES:
-.PHONY: all sudo_oclock hardware sandbox gpio-backend-preflight \
+.PHONY: all hardware sandbox hardware-preflight \
 	compatibility gpio-boundary test \
-	test-core test-gpio-protocols test-gpio-registers test-wiringpi-compile \
+	test-core test-gpio-protocols test-gpio-registers \
 	test-spi-output test-spi-overlay check-arm-warnings \
-	smoke test-shutdown valgrind spi-overlay clean FORCE
+	smoke test-shutdown valgrind spi-overlay clean
 
 # Keep the original CC override working even though every source is C++.
 CC = g++
@@ -19,24 +19,11 @@ CXXFLAGS += -std=gnu++11 -Winline -pipe -Wall -Wextra
 LDFLAGS ?=
 DTC ?= dtc
 
-GPIO_BACKEND ?= wiringpi
-VALID_GPIO_BACKENDS := wiringpi gpiod gpiod-mmap
-ifeq ($(filter $(GPIO_BACKEND),$(VALID_GPIO_BACKENDS)),)
-$(error unsupported GPIO_BACKEND '$(GPIO_BACKEND)'; expected one of: $(VALID_GPIO_BACKENDS))
+ifneq ($(origin GPIO_BACKEND),undefined)
+$(error GPIO_BACKEND was removed; hardware builds use the selected modern GPIO path)
 endif
-
-STRIP_TRANSPORT ?= gpio
-VALID_STRIP_TRANSPORTS := gpio spidev
-ifeq ($(filter $(STRIP_TRANSPORT),$(VALID_STRIP_TRANSPORTS)),)
-$(error unsupported STRIP_TRANSPORT '$(STRIP_TRANSPORT)'; expected one of: $(VALID_STRIP_TRANSPORTS))
-endif
-ifeq ($(STRIP_TRANSPORT),spidev)
-ifneq ($(GPIO_BACKEND),gpiod-mmap)
-$(error STRIP_TRANSPORT=spidev is an experimental modern profile and requires GPIO_BACKEND=gpiod-mmap)
-endif
-HARDWARE_SPI_SRC = src/spi/linuxSpidevOutput.cpp
-else
-HARDWARE_SPI_SRC = src/spi/noSpiOutput.cpp
+ifneq ($(origin STRIP_TRANSPORT),undefined)
+$(error STRIP_TRANSPORT was removed; hardware builds use the selected spidev strip path)
 endif
 
 PULSAR_SRC = \
@@ -66,59 +53,37 @@ CPP_SRC = \
 	src/main.cpp
 
 SRC = $(PULSAR_SRC) $(CPP_SRC)
-ifeq ($(GPIO_BACKEND),gpiod)
-HARDWARE_GPIO_SRC = src/gpio/gpiodV2Gpio.cpp src/gpio/gpiodV2Factory.cpp
-# ARMv6 cannot implement every 64-bit std::atomic operation inline. GCC emits
-# calls into libatomic for the modern target toolchain, so keep that dependency
-# scoped to the opt-in Trixie build and leave the Jessie/WiringPi link intact.
-HARDWARE_GPIO_LIB = -lgpiod -latomic
-else ifeq ($(GPIO_BACKEND),gpiod-mmap)
 HARDWARE_GPIO_SRC = src/gpio/gpiodV2Gpio.cpp \
 	src/gpio/bcm2835GpioRegisters.cpp \
 	src/gpio/bcm2835MmapValueIo.cpp \
 	src/gpio/gpiodMmapFactory.cpp
-HARDWARE_GPIO_LIB = -lgpiod -latomic
-else
-HARDWARE_GPIO_SRC = src/gpio/wiringPiGpio.cpp
-HARDWARE_GPIO_LIB = -lwiringPi
-endif
+HARDWARE_SPI_SRC = src/spi/linuxSpidevOutput.cpp
 HARDWARE_SRC = $(SRC) $(HARDWARE_GPIO_SRC) $(HARDWARE_SPI_SRC)
 SANDBOX_SRC = $(SRC) src/gpio/fakeGpio.cpp src/spi/noSpiOutput.cpp
 HARDWARE_OBJ = $(addprefix build/hardware/,$(addsuffix .o,$(HARDWARE_SRC)))
 SANDBOX_OBJ = $(addprefix build/sandbox/,$(addsuffix .o,$(SANDBOX_SRC)))
 ARM_WARNING_OBJ = $(addprefix build/arm-warnings/,$(addsuffix .o,$(SANDBOX_SRC)))
 
-HARDWARE_LIBS = $(HARDWARE_GPIO_LIB) -lpthread -levent -lmosquitto
+# ARMv6 cannot implement every 64-bit std::atomic operation inline. GCC emits
+# calls into libatomic for the selected Trixie toolchain.
+HARDWARE_LIBS = -lgpiod -latomic -lpthread -levent -lmosquitto
 SANDBOX_LIBS = -lpthread -levent -lmosquitto
 
-all: sudo_oclock
-
-# Keep the original `make` workflow intact for the deployed Raspberry Pi.
-# `make hardware` is the build-only alternative for development and packaging.
-sudo_oclock: oclock
-	$Q sudo chown root:root oclock
-	$Q sudo chmod u+s oclock
+all: hardware
 
 hardware: oclock
 
-gpio-backend-preflight:
-ifneq ($(filter $(GPIO_BACKEND),gpiod gpiod-mmap),)
+hardware-preflight:
 	$Q version=$$(pkg-config --modversion libgpiod 2>/dev/null) || { \
 		echo "error: libgpiod v2 development files are required" >&2; exit 1; }; \
 	case "$${version}" in 2.*) ;; *) \
 		echo "error: libgpiod v2 is required (found $${version})" >&2; exit 1;; esac
-endif
 
 sandbox: oclock-sandbox
 
-oclock: $(HARDWARE_OBJ) FORCE
+oclock: $(HARDWARE_OBJ)
 	$Q echo "[Link] $@"
 	$Q $(CXX) -o $@ $(HARDWARE_OBJ) $(LDFLAGS) $(HARDWARE_LIBS)
-
-# Backend selection changes the object and library lists without changing the
-# output filename. Relink every requested hardware build so switching an
-# existing tree between WiringPi and libgpiod cannot leave a stale executable.
-FORCE:
 
 oclock-sandbox: $(SANDBOX_OBJ)
 	$Q echo "[Link] $@"
@@ -126,12 +91,12 @@ oclock-sandbox: $(SANDBOX_OBJ)
 
 # Pulsar's .c sources include the C++ request-handler boundary, so they are
 # intentionally compiled as C++ until that interface is split cleanly.
-build/hardware/%.cpp.o: %.cpp | gpio-backend-preflight
+build/hardware/%.cpp.o: %.cpp | hardware-preflight
 	$Q echo "[Compile] $<"
 	$Q mkdir -p $(@D)
 	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
 
-build/hardware/%.c.o: %.c | gpio-backend-preflight
+build/hardware/%.c.o: %.c | hardware-preflight
 	$Q echo "[Compile] $<"
 	$Q mkdir -p $(@D)
 	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
@@ -208,17 +173,15 @@ build/tests/spi_output_tests: tests/spi_output_tests.cpp \
 		-fsanitize=address,undefined -fno-omit-frame-pointer \
 		$^ -o $@ -lpthread
 
-test-spi-output: build/tests/spi_output_tests
-	$Q ASAN_OPTIONS=detect_leaks=1 ./build/tests/spi_output_tests
-
-build/tests/wiringPiGpio.cpp.o: src/gpio/wiringPiGpio.cpp \
-		tests/support/wiringPi.h
-	$Q echo "[Compile legacy backend] $<"
+build/tests/linuxSpidevOutput.cpp.o: src/spi/linuxSpidevOutput.cpp
+	$Q echo "[Compile spidev transport] $<"
 	$Q mkdir -p $(@D)
-	$Q $(CXX) -c -Itests/support $(CPPFLAGS) $(CXXFLAGS) \
+	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) \
 		-funsigned-char -Werror $< -o $@
 
-test-wiringpi-compile: build/tests/wiringPiGpio.cpp.o
+test-spi-output: build/tests/spi_output_tests \
+		build/tests/linuxSpidevOutput.cpp.o
+	$Q ASAN_OPTIONS=detect_leaks=1 ./build/tests/spi_output_tests
 
 smoke: oclock-sandbox
 	$Q ./tests/smoke.sh ./oclock-sandbox
@@ -237,7 +200,7 @@ check-arm-warnings: build/tests/oclock-arm-warnings
 
 test: compatibility gpio-boundary test-core test-gpio-protocols \
 	test-gpio-registers test-spi-output \
-	test-wiringpi-compile check-arm-warnings smoke test-shutdown
+	check-arm-warnings smoke test-shutdown
 
 valgrind: oclock-sandbox
 	$Q ./tests/valgrind-smoke.sh ./oclock-sandbox

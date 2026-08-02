@@ -1,5 +1,10 @@
 # WiringPi migration Phase 0 baseline
 
+> Historical checkpoint: build-selection statements below describe Phase 0.
+> The current tree follows the
+> [modern-only build policy](wiringpi-modern-build-policy.md); rollback is the
+> preserved physical Zero/Jessie unit.
+
 ## Result
 
 Phase 0 was completed on the production Raspberry Pi Zero on 2026-07-30.

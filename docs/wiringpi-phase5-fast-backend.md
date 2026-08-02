@@ -1,5 +1,9 @@
 # Phase 5 BCM2835 fast-value-path experiment
 
+> Historical experiment: the build selectors below are retained as evidence
+> of this phase, not as current commands. See the
+> [modern build policy](wiringpi-modern-build-policy.md).
+
 ## Scope and status
 
 The initial pure-libgpiod Phase 5 candidate was functionally correct but failed

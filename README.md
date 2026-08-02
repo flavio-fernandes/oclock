@@ -18,40 +18,28 @@ I had the honor of [talking about what I did](https://youtu.be/LXa7T5t3hmA?t=7m2
 
 ## Building
 
-On a Raspberry Pi with WiringPi installed:
-
-```sh
-make
-```
-
-The default target preserves the original deployment behavior: it builds
-`oclock`, changes it to `root:root`, and enables the owner setuid bit. Use
-`make hardware` when only a hardware binary is wanted without changing its
-owner or mode.
-
-On the modern Raspberry Pi Zero W target running Raspberry Pi OS 32-bit
-(Debian 13/Trixie), install the application and GPIO development packages and
-select the modern backend explicitly:
+The supported hardware target is a Raspberry Pi Zero W running Raspberry Pi
+OS Lite 32-bit (Debian 13/Trixie). Install the application and GPIO development
+packages, then build the selected modern hardware stack:
 
 ```sh
 sudo apt install -y build-essential pkg-config libevent-dev \
     libmosquitto-dev libgpiod-dev
-make GPIO_BACKEND=gpiod hardware
+make
 ```
 
-This produces the same `oclock` filename but links libgpiod v2 instead of
-WiringPi. Plain `make` and `make hardware` continue to select WiringPi for the
-existing Jessie deployment.
+`make` and `make hardware` are equivalent build-only targets. They select
+libgpiod v2 for GPIO ownership, the restricted `/dev/gpiomem` value path for
+the current high-rate GPIO operations, and Linux `spidev` for the LPD8806
+strip. They do not change the binary's owner or setuid mode. The former
+`GPIO_BACKEND` and `STRIP_TRANSPORT` build knobs have been removed; supplying
+either is an error.
 
-The Zero W timing investigation also has an experimental exact-board build:
-
-```sh
-make GPIO_BACKEND=gpiod-mmap hardware
-```
-
-It retains libgpiod line ownership/configuration but uses the Raspberry Pi
-`/dev/gpiomem` value registers. It is not portable or deployment-approved;
-see [the Phase 5 fast-backend report](docs/wiringpi-phase5-fast-backend.md).
+This is still an in-progress migration profile. Do not run the whole hardware
+application while the Office Clock Device Tree overlay owns the MCP3002 pins;
+the application ADC path has not yet moved to IIO. See the
+[migration plan](docs/wiringpi-migration.md) and
+[modern build policy](docs/wiringpi-modern-build-policy.md).
 
 On a development machine without GPIO hardware:
 
@@ -70,7 +58,8 @@ so it should only be exposed on a trusted network.
 See [docs/development.md](docs/development.md) for the reproducible Incus VM
 workflow and the limits of fake-GPIO testing.
 
-The proposed removal of direct WiringPi dependencies is deliberately phased so
-the deployed Pi Zero remains recoverable. See
+The original Pi Zero/Jessie/WiringPi hardware stack is preserved as the
+physical rollback unit rather than as a supported build from the current
+tree. See
 [docs/wiringpi-migration.md](docs/wiringpi-migration.md) for the pin inventory,
 compatibility contract, implementation sequence, and hardware acceptance gates.

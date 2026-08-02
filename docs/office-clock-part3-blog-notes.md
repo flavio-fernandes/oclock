@@ -29,19 +29,20 @@ Raspberry Pi OS Lite 32-bit Trixie and is the selected modernization target.
 It keeps the physical clock wiring while replacing the USB Wi-Fi dongle with
 the Zero W's onboard radio.
 
-The application now has a project-owned GPIO boundary, deterministic fake
-hardware tests, a legacy WiringPi backend, and experimental libgpiod/mmap
-backends. The first pure-libgpiod and mapped hardware trials were functional
-but too slow, especially for the 240-pixel LPD8806 strip. Automatic dimming
-also did not pass because the observed light values did not cross the existing
-dark threshold.
+The application now has project-owned GPIO and SPI boundaries plus
+deterministic fake-hardware tests. Historical WiringPi, pure-libgpiod, and
+bit-banged implementations remain in the source for diagnosis, but the current
+tree supports only the selected modern build. The first pure-libgpiod and
+mapped hardware trials were functional but too slow, especially for the
+240-pixel LPD8806 strip. Automatic dimming also did not pass because the
+observed light values did not cross the existing dark threshold.
 
 The selected next architecture is mixed:
 
 | Device | Selected modern transport | Existing BCM GPIOs | Status |
 | --- | --- | --- | --- |
 | Motion sensor | libgpiod v2 input | 10 | Implemented and functionally tested |
-| LPD8806 strip | kernel `spi-gpio` plus explicit `spidev` binding | clock 20, data 21 | Transport and exact fake frame implemented; native build pending |
+| LPD8806 strip | kernel `spi-gpio` plus explicit `spidev` binding | clock 20, data 21 | Transport, exact fake frame, and native ARM build passed; first transfer pending |
 | MCP3002 ADC | second `spi-gpio` plus native `mcp320x`/IIO | clock 17, MISO 27, MOSI 22, CS 4 | Live native binding and IIO attributes verified; value reads wait |
 | HT1632 matrix | narrow bulk mmap transport | CS 6, WR 13, data 19, select clock 26 | Selected direction; not implemented |
 
@@ -77,6 +78,14 @@ and preserved the native ADC binding. The collector performed no device open
 or transfer. Explicit unbind then removed the node and cleared the override,
 returning the strip to its original unbound state.
 
+The following native ARMv6 build at commit `37b6797` passed seven metadata
+checks. Its preserved binary links libgpiod and libatomic without WiringPi,
+discovers the strip by Device Tree suffix, and has SHA-256
+`834191828a27ac801e0e959435e0397068b4b9b2335455b4128d29256dbd8807`.
+It was not executed. After that gate, the project intentionally removed its
+backend-selection knobs: plain `make` now means the selected modern profile,
+and the original physical unit—not a current-tree WiringPi build—is rollback.
+
 ## The story worth telling
 
 The useful narrative is not “replace one GPIO library with another.” It is:
@@ -93,8 +102,9 @@ The useful narrative is not “replace one GPIO library with another.” It is:
 5. The failed timing trials informed a better design: use Linux's SPI
    subsystem for byte-oriented devices, retain libgpiod for ordinary GPIO,
    and keep only the truly nonstandard display protocol on a narrow bulk path.
-6. Backward compatibility means the modern deployed unit can stop loading
-   WiringPi while the old unit and legacy build remain usable as recovery.
+6. Backward compatibility means preserving the complete known-good physical
+   unit while allowing the current source and deployment to stop carrying
+   WiringPi as a supported build dependency.
 
 Include the failed experiments. They explain why the final design is mixed
 instead of pretending the destination was obvious from the beginning.
@@ -148,12 +158,12 @@ Update the final column only after Phase 6 acceptance.
 | Default `pi`/`raspberry` credentials | Obsolete and unsafe | Create credentials through the current imaging/first-boot flow; do not publish real credentials |
 | USB Wi-Fi dongle | No longer needed on the modern unit | Use Zero W onboard 2.4 GHz Wi-Fi |
 | Edit `wpa_supplicant.conf`; run `ifdown`/`ifup` | Obsolete on selected image | Use Trixie's NetworkManager flow; document the final headless provisioning commands after cold-boot validation |
-| Clone WiringPi from `git.drogon.net`; run `./build` | Not needed for the modern build | Keep WiringPi only on the preserved Jessie rollback unit and for the explicit legacy source target |
+| Clone WiringPi from `git.drogon.net`; run `./build` | Not needed for the modern build | Keep it only on the preserved Jessie rollback unit; the current tree no longer supports a WiringPi target |
 | Install only `git libevent-dev` | Insufficient now | Install modern compiler/build, MQTT, GPIO, and overlay dependencies listed below |
 | Clone branch `rpi-0.1.y` | Historical reproducibility branch | Link the merged modernization release/tag after PR 3 and deployment are complete |
-| Plain `make` | Still intentionally means legacy WiringPi | Use the final explicit modern build profile; exact name is pending SPI implementation |
+| Plain `make` | Now selects the modern Zero W profile | Build with `make` or `make hardware`; transport selector variables are retired |
 | Copy unit to `/lib/systemd/system` | Works historically, final path TBD | Prefer the packaged/reviewed unit and `systemctl`; record exact install path used on Trixie |
-| Root/setuid executable | Preserved during migration | Do not claim privilege cleanup; service identity/device permissions are a separate decision |
+| Root/setuid executable | No longer a compiler side effect | The Makefile does not chown or setuid; define and test final service identity/device permissions separately |
 | Software-bit-bang every peripheral | Too expensive through pure libgpiod | Use subsystem-specific transports: libgpiod, kernel SPI, and a narrow matrix bulk path |
 
 ## Installation details to preserve now
@@ -192,8 +202,8 @@ The discovery image already has the required inspection/build tools:
 - `device-tree-compiler` provides `dtc` and `fdtoverlay`;
 - `raspi-utils-dt` provides the working `dtoverlay` tool;
 - the selected kernel packages provide `spi-gpio`, `spidev`, and `mcp320x`;
-- Linux SPI userspace headers for `SPI_IOC_MESSAGE`; determine which existing
-  development package owns the header on the accepted image;
+- `linux-libc-dev` provides the Linux SPI userspace header for
+  `SPI_IOC_MESSAGE` on the accepted image;
 - a project-owned overlay file installed under the authoritative Trixie boot
   overlay directory;
 - a reviewed boot configuration line enabling that overlay;
@@ -210,18 +220,9 @@ instructions until the transport and deployment procedure pass.
 These commands describe the current tree:
 
 ```sh
-# Preserved original behavior: WiringPi hardware build.
+# Selected modern Zero W hardware build.
 make
 make hardware
-
-# Explicit pure-libgpiod experiment.
-make GPIO_BACKEND=gpiod hardware
-
-# Explicit libgpiod plus BCM2835 mmap-value experiment.
-make GPIO_BACKEND=gpiod-mmap hardware
-
-# Partial modern profile: new strip transport; build/test only until ADC/IIO.
-make GPIO_BACKEND=gpiod-mmap STRIP_TRANSPORT=spidev hardware
 
 # Hardware-free development and tests.
 make sandbox
@@ -229,10 +230,11 @@ make test
 make check-arm-warnings
 ```
 
-The strip selector now exists, but this is not the final modern profile or
-install command because the ADC and matrix conversions remain pending. Plain
-`make` must continue to mean WiringPi throughout PR 3 so a checkout cannot
-silently change the legacy deployment contract.
+`GPIO_BACKEND` and `STRIP_TRANSPORT` are retired; supplying either is an error.
+The WiringPi and slow experimental commands remain valid only when checking
+out the historical commits that introduced them. The current build is still
+not an install command or deployment approval because the ADC and matrix
+conversions remain pending.
 
 ### Boot overlay procedure — live enable and inspection passed
 
@@ -275,9 +277,10 @@ Restart=on-failure
 After=network.target
 ```
 
-The service still runs as root because no `User=` or `Group=` is set. The
-legacy executable is root-owned and owner-setuid. PR 3 intentionally does not
-combine GPIO migration with privilege hardening.
+The existing service runs as root because no `User=` or `Group=` is set. The
+legacy executable is root-owned and owner-setuid. The current Makefile no
+longer applies ownership or setuid changes during compilation, but PR 3 has not
+yet selected a new service identity or completed privilege hardening.
 
 Before the final post, decide and verify whether the Trixie service needs:
 
@@ -307,9 +310,9 @@ Once the modern deployment passes—and not before—the follow-up can state:
 - no assumption that the Broadcom GPIO controller is always
   `/dev/gpiochip0` or `/dev/gpiochip4`.
 
-Do not say that WiringPi disappeared from the repository. The compatibility
-backend, default legacy build, original binary, Jessie SD card, and original
-Pi remain intentional recovery assets.
+Do not say that every historical WiringPi source file disappeared from the
+repository. Those sources remain diagnostic references, while the original
+binary, Jessie SD card, and original Pi are the intentional recovery assets.
 
 ## What the final modern installation will need
 
@@ -320,7 +323,7 @@ tested command or file before drafting the article:
 - [x] Raspberry Pi OS Lite 32-bit Trixie on ARMv6/armhf.
 - [x] Onboard Wi-Fi connected without the USB dongle.
 - [x] GCC 14, libevent, libmosquitto, libgpiod v2, and libatomic-capable build.
-- [x] Project-owned GPIO API and explicit modern build selection.
+- [x] Project-owned GPIO API and single modern hardware build.
 - [x] Deterministic fake protocol tests and Incus validation.
 - [x] `raspi-utils-dt` identified as the installed provider of `dtoverlay`.
 - [x] Disabled-by-default Office Clock Device Tree overlay added to the repo.
@@ -334,15 +337,16 @@ tested command or file before drafting the article:
 - [ ] Normal-disable procedure exercised.
 - [ ] Final overlay uninstall procedure exercised after the live gates.
 - [x] Project-owned SPI userspace transport plus deterministic fake.
-- [x] Opt-in LPD8806 conversion preserving 720 GRB bytes and eight latch bytes
+- [x] LPD8806 conversion preserving 720 GRB bytes and eight latch bytes
   in one hardware-free verified transfer.
-- [ ] Native Zero W build of the opt-in strip profile.
+- [x] Native Zero W build of the strip profile, with dependency evidence and
+  no WiringPi.
 - [ ] LPD8806 Zero W timing acceptance at the existing 12 ms application tick.
 - [ ] MCP3002 native-IIO conversion and raw channel verification.
 - [ ] Controlled dark/bright samples and a separate threshold decision.
 - [ ] HT1632 bulk transport and timing acceptance.
-- [ ] Final modern build profile name and binary dependency evidence showing
-  no WiringPi.
+- [x] Backend/transport build knobs retired; `make` and `make hardware` select
+  the modern profile.
 - [ ] Cold-boot NetworkManager, HTTP, MQTT, and service-order validation.
 - [ ] Overnight soak with CPU, latency, throttling, and Wi-Fi evidence.
 - [ ] Physical rollback exercise using the preserved Zero/Jessie unit.
@@ -402,9 +406,14 @@ tested command or file before drafting the article:
   node appeared, the ADC binding was unchanged, no transfer occurred, and
   explicit rollback restored the unbound state.
 - A project-owned SPI output, deterministic fake, dynamic Device Tree
-  discovery, and opt-in LPD8806 path now preserve the exact 720 GRB plus eight
-  latch bytes in one transfer. Incus tests and an x86 Trixie build pass; native
-  ARM build and all hardware transfers remain pending.
+  discovery, and LPD8806 path now preserve the exact 720 GRB plus eight latch
+  bytes in one transfer. Incus tests and an x86 Trixie build pass. The native
+  ARMv6 build also passed at commit `37b6797`; all hardware transfers remain
+  pending.
+- Current-tree build policy now supports only the selected modern profile.
+  The old selector knobs and WiringPi compile check are gone; historical
+  implementations remain only for comparison, and physical rollback remains
+  the complete original unit.
 
 ### Phase 6/7 — pending
 
@@ -412,7 +421,8 @@ tested command or file before drafting the article:
 - The overlay is enabled only on the experimental Zero W; no modern
   application has been run against it.
 - No soak or physical rollback exercise has passed.
-- The modern backend must not become the default until these gates complete.
+- The modern profile is the current source default, but must not be deployed
+  until these gates complete.
 
 ## Technical explanations to prepare for readers
 
@@ -464,8 +474,8 @@ or whether the old threshold simply does not fit the new physical setup.
    - Same panels, strip, ADC, PIR, power, wiring, HTTP modes, and animations.
    - Obsolete OS/toolchain/GPIO library and unnecessary Wi-Fi dongle.
 3. **The compatibility contract**
-   - Separate Zero W, no wiring change, legacy default retained, measurements
-     before deployment.
+   - Separate Zero W, no wiring change, complete physical rollback retained,
+     measurements before deployment.
 4. **Building a seam around the hardware**
    - `Gpio` interface, WiringPi/libgpiod/fake implementations, protocol tests.
 5. **The experiment that worked but was too slow**

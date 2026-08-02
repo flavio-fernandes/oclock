@@ -10,10 +10,11 @@ is now the captured Raspberry Pi Zero W Rev 1.1 running Raspberry Pi OS Lite
 32-bit Trixie; the original Zero/Jessie unit remains the complete rollback
 system. See the [retarget decision](wiringpi-zero-w-retarget.md).
 
-The migration should remove direct WiringPi use from the application and device
-drivers without making a new GPIO stack a prerequisite for the existing
-Raspberry Pi Zero. The legacy build must keep working while the modern Zero W
-replacement is proven on the same wiring and electrical load.
+The migration removes WiringPi from the supported current-tree hardware build.
+The original Raspberry Pi Zero is protected as a complete physical rollback
+unit rather than by requiring the modern branch to rebuild its Jessie stack.
+The separate Zero W must still be proven on the same wiring and electrical
+load before deployment.
 
 Keep the future public narrative synchronized with the living
 [Office Clock follow-up blog notes](office-clock-part3-blog-notes.md). Update
@@ -24,12 +25,12 @@ The recommended design is:
 
 - put a small, project-owned GPIO interface between the application and all
   platform libraries;
-- retain a legacy WiringPi backend for the existing Raspbian 8 (Jessie) system;
+- retain historical backend sources only where they help comparison and
+  debugging; do not carry them as supported build profiles;
 - retain and improve the fake backend for development and protocol tests;
-- add a `libgpiod` backend as an explicit opt-in for a supported modern
-  Raspberry Pi OS;
+- use `libgpiod` on the supported modern Raspberry Pi OS;
 - migrate the two standard clocked devices through separate kernel `spi-gpio`
-  controllers as an explicit modern profile, preserving their current
+  controllers in the sole hardware profile, preserving their current
   arbitrary GPIO wiring; use explicit `spidev` binding for the LPD8806 and the
   native IIO driver for the MCP3002; keep the nonstandard HT1632 transport
   separate.
@@ -38,27 +39,32 @@ Do not replace WiringPi calls with `libgpiod` calls throughout the existing
 drivers. That would couple device protocols to another platform API and make
 rollback difficult.
 
-## Compatibility contract
+## Compatibility and rollback contract
 
-Until the Zero W replacement passes hardware acceptance and soak, all of these
-are requirements:
+The 2026-08-02 lean-build decision supersedes the earlier requirement to keep
+a current-tree WiringPi build working:
 
-1. Plain `make` still builds the WiringPi-backed `oclock` binary, then preserves
-   the existing `root:root` and owner-setuid installation behavior.
-2. The Jessie systemd unit, executable path, command-line options, network
-   defaults, HTTP behavior, MQTT behavior, and GPIO numbering do not change.
-3. No existing wire moves. The legacy unit requires no boot-overlay change;
-   the separate modern Zero W uses only an explicit, reversible overlay gate.
-4. The original Zero, Jessie card, and known-good binary remain together and
-   available as the physical rollback unit.
-5. `make sandbox`, `make test`, and `make check-arm-warnings` continue to work
-   without GPIO hardware or WiringPi.
-6. A modern build can be selected explicitly and must not link WiringPi.
-7. The WiringPi backend is not deleted when the modern backend becomes usable.
-   It becomes a compatibility backend receiving only maintenance fixes.
+1. Plain `make` and `make hardware` build the selected modern profile and do
+   not link WiringPi. Backend and transport selection knobs are rejected.
+2. The original Zero, Jessie card, WiringPi installation, service
+   configuration, and known-good binary remain together as the physical
+   rollback unit. Rollback does not require a current source rebuild.
+3. No existing wire moves. The original unit requires no overlay; the
+   separate Zero W uses only the explicit, reversible overlay gates.
+4. Application command-line options, network defaults, HTTP behavior, MQTT
+   behavior, and Broadcom GPIO numbering remain compatible unless a later gate
+   explicitly authorizes a change.
+5. `make sandbox`, `make test`, and `make check-arm-warnings` work without GPIO
+   hardware or WiringPi.
+6. Historical WiringPi, pure-libgpiod, and bit-banged transport sources may
+   remain for comparison but are not supported, linked, or compile-tested
+   hardware profiles.
+7. Compilation no longer changes binary ownership or setuid mode. Final
+   installation and service permissions require their own tested procedure.
 
-Changing the default backend is a final deployment decision, not an early
-refactor step.
+See the [modern build policy](wiringpi-modern-build-policy.md). Changing the
+source default does not authorize deployment; Phase 5 acceptance, Phase 6
+installation, and physical rollback gates remain mandatory.
 
 ## Current hardware inventory
 
@@ -229,12 +235,12 @@ hardware build handoff.
 3. Convert `main`, `MotionSensor`, `Mcp300x`, `HT1632Class`, and `LPD8806` to use
    the injected interface.
 4. Convert `fakeWiringPi` into a fake implementation of the same interface.
-5. Keep `make`, `make hardware`, binary names, link flags, pin values, locking,
-   and service behavior unchanged.
+5. Keep the then-current `make`, `make hardware`, binary names, link flags, pin
+   values, locking, and service behavior unchanged.
 6. Add a repository check that rejects direct WiringPi includes or calls
    outside the legacy backend.
 
-At the end of this phase, the production executable should still use WiringPi
+At the end of this historical phase, the production executable still used WiringPi
 and should emit the same GPIO operation traces as the baseline implementation.
 This phase provides isolation, not a new deployment.
 
@@ -291,14 +297,15 @@ Select the production OS and kernel before selecting a `libgpiod` API version:
    v1 and v2 implementation details in separate translation units rather than
    scattering version conditionals through device drivers.
 
-The modern build should be explicit, for example:
+At this historical phase checkpoint, the modern build was explicit:
 
 ```sh
 make GPIO_BACKEND=gpiod hardware
 ```
 
-It must fail clearly when the requested API or GPIO chip is unavailable. An
-unknown backend value must also fail instead of silently falling back.
+That selector was retired after the native mixed-transport build passed. The
+current tree uses plain `make` and rejects the old variable. It must still fail
+clearly when the required API or GPIO chip is unavailable.
 
 Initially preserve polling, pin directions, bit order, and mutex behavior.
 Using edge events for motion is a possible later optimization, not part of the
@@ -381,14 +388,14 @@ LPD8806 child is deliberately unbound, and `oclock.service` remains inactive.
 The guarded, runtime-only
 [LPD8806 spidev binding](wiringpi-phase5-lpd8806-binding.md) then passed with
 eight checks and explicit rollback; see its accepted
-[result](wiringpi-phase5-lpd8806-binding-result.md). No device has been opened
-or transferred through. The next gate is the project-owned SPI output
-boundary, deterministic frame tests, and a native ARM build. The boundary and
-tests are now implemented behind the explicit
-`GPIO_BACKEND=gpiod-mmap STRIP_TRANSPORT=spidev` build; see the
-[transport checkpoint](wiringpi-phase5-lpd8806-transport.md). Its native ARM
-build is the next gate. The resulting full application must not run yet
-because its MCP3002 path still conflicts with the overlay-owned ADC GPIOs.
+[result](wiringpi-phase5-lpd8806-binding-result.md). The project-owned SPI
+output boundary and deterministic frame tests are implemented, and the exact
+Zero W [native build](wiringpi-phase5-lpd8806-build-result.md) passed seven
+checks at commit `37b6797`; see the
+[transport checkpoint](wiringpi-phase5-lpd8806-transport.md). No device has
+yet been opened or transferred through. The next gate is one guarded all-off
+strip transfer. The resulting full application must not run yet because its
+MCP3002 path still conflicts with the overlay-owned ADC GPIOs.
 
 Run every follow-up modern transport profile on the Zero W and compare it with
 Phase 0, Phase 1, and protocol-trace evidence from the preserved Zero/Jessie
@@ -432,39 +439,40 @@ Only after Phase 5 passes:
    Zero/Jessie unit. No package downgrade or source rebuild should be required.
 
 The Zero W, Trixie, GCC 14, libgpiod, and onboard Wi-Fi are the approved target
-change. Do not additionally combine this with removal of setuid, service-user
-changes, application-default changes, or rewiring. Those may be good follow-up
-projects, but they make failures harder to attribute and rollback harder to
-trust.
+change. Compilation no longer applies owner/setuid changes as a side effect,
+but do not additionally combine deployment with service-user changes,
+application-default changes, privilege hardening, or rewiring. Those may be
+good follow-up projects, but they make failures harder to attribute and
+rollback harder to trust.
 
-### Phase 7: make modern hardware the preferred path
+### Phase 7: complete and document the modern deployment
 
 After a sustained successful deployment:
 
 - document the tested Pi image, kernel, `libgpiod`, and firmware versions;
-- make the modern backend the preferred target for that OS;
-- keep an explicit legacy target that reproduces the current Pi Zero build;
+- keep the modern profile as the only supported current-tree hardware build;
 - archive the baseline binary, SD-card image, wiring record, and acceptance
   results;
-- stop adding features to the WiringPi backend, but keep it buildable and
-  covered by interface-level tests.
+- keep historical backends only as long as they remain useful diagnostic
+  references; do not restore a compatibility build obligation.
 
 “No longer using WiringPi” should mean the actively deployed modern image and
-normal modern builds do not load or link it. It should not mean removing the
-only tested recovery path for the original hardware.
+normal builds do not load or link it. Recovery remains the separately
+preserved original hardware stack.
 
 ## PR acceptance checklist
 
 Every migration PR should answer all of these:
 
-- Does plain `make` still preserve the legacy deployment contract?
-- Is the production backend choice explicit in the diff and build output?
+- Does plain `make` select only the documented modern hardware profile?
+- Do stale backend/transport selector variables fail clearly?
+- Does the hardware binary avoid WiringPi?
 - Can the sandbox and tests run without WiringPi?
 - Are all GPIO numbers still Broadcom numbers with the same directions?
 - Are initial output values and release behavior defined?
 - Are errors actionable and free of silent fallback?
 - Does the PR avoid unrelated service, network, privilege, and wiring changes?
-- Is rollback possible by selecting the previous binary or backend?
+- Is physical rollback possible with the preserved original unit?
 - Were Incus checks run?
 - If GPIO behavior changed, were Pi Zero hardware and timing checks run?
 
@@ -472,11 +480,9 @@ Every migration PR should answer all of these:
 
 The following should remain open until measured:
 
-- whether character-device GPIO is fast and stable enough for the HT1632,
-  LPD8806, and MCP3002 software clocks on a Pi Zero;
-- which current Raspberry Pi OS image is the supportable modern baseline;
-- whether a libgpiod v1 transition backend has enough value to justify its
-  maintenance;
+- whether the selected bulk HT1632 path meets its timing budget;
+- whether kernel `spi-gpio` meets the LPD8806 timing budget;
+- whether native MCP3002/IIO values preserve useful light-sensor behavior;
 - whether the LED strip and ADC should eventually be rewired for hardware SPI;
 - whether pin ownership can be split per device without changing scheduling.
 

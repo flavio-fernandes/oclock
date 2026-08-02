@@ -2,8 +2,7 @@
 
 ## Resume anchor
 
-- Draft PR: [#3 — Migrate GPIO to Zero W/Trixie without breaking legacy Pi
-  Zero](https://github.com/flavio-fernandes/oclock/pull/3)
+- Draft PR: [#3 — migrate the Office Clock hardware stack to Zero W/Trixie](https://github.com/flavio-fernandes/oclock/pull/3)
 - Branch: `agent/plan-wiringpi-migration`
 - Last completed evidence commit before this handoff: `fa28cbd`
   (`Record failed mapped GPIO trial`)
@@ -49,9 +48,15 @@ transport abstraction merely to make the design look uniform.
 
 ## Compatibility and safety boundaries
 
-- Plain `make` and `make hardware` must continue to select WiringPi.
 - The original Zero/Jessie card, WiringPi installation, service configuration,
   and Phase 0 binary remain the complete rollback unit.
+- The current tree has one supported hardware build. Plain `make` and
+  `make hardware` select the modern gpiod/mmap plus spidev profile; the former
+  `GPIO_BACKEND` and `STRIP_TRANSPORT` variables are rejected.
+- Historical WiringPi, pure-libgpiod, and bit-banged transport sources may
+  remain for comparison and debugging, but they are not supported or tested
+  build profiles. See the
+  [modern build policy](wiringpi-modern-build-policy.md).
 - No wiring change is authorized.
 - No modern candidate is deployment-approved; Phase 6 remains blocked.
 - Do not change the light thresholds until raw MCP3002 channels are compared
@@ -75,9 +80,9 @@ transport abstraction merely to make the design look uniform.
 - Phase 2 added deterministic fake-GPIO protocol and serialization coverage.
 - Phase 3 selected the Zero W Rev 1.1, ARMv6/armhf Trixie, libgpiod 2.2 stack
   and produced a native modern build.
-- Phase 4 passed the isolated Trixie Incus compatibility, boundary,
-  sanitizer-backed core/protocol, legacy compile, ARM warning, smoke, and
-  repeated graceful-shutdown coverage.
+- Phase 4 passed the isolated Trixie Incus application/boundary,
+  sanitizer-backed core/protocol, ARM warning, smoke, and repeated
+  graceful-shutdown coverage.
 - Phase 5 pure libgpiod passed functional I/O but failed dimming and timing.
 - Phase 5 `gpiod-mmap` was definitely faster and still passed functional I/O,
   but it also failed dimming and timing, especially on the 240-pixel strip.
@@ -157,17 +162,19 @@ inactive.
 The hardware-free [LPD8806 transport](wiringpi-phase5-lpd8806-transport.md)
 now provides dynamic Device Tree discovery, verified spidev configuration, a
 deterministic fake, and a single 720-byte GRB plus eight-byte latch transfer.
-The legacy GPIO constructor and default WiringPi build remain unchanged.
-Incus tests and an x86 Trixie opt-in build pass.
+Its exact-board [native build](wiringpi-phase5-lpd8806-build-result.md) passed
+at commit `37b6797`. The preserved binary SHA-256 is
+`834191828a27ac801e0e959435e0397068b4b9b2335455b4128d29256dbd8807`.
+It links libgpiod and libatomic without WiringPi and discovers the strip by
+Device Tree suffix. The old build selectors were then retired in favor of one
+modern hardware build; historical sources remain only as diagnostic evidence.
 
-1. Build the exact opt-in profile natively on the Zero W, preserve the binary,
-   and do not run it.
-2. Add and run the separate all-off first-transfer timing gate. It must always
+1. Add and run the separate all-off first-transfer timing gate. It must always
    close and unbind before exit.
-3. Convert the MCP3002 only after the strip path is proven. Read both IIO raw
+2. Convert the MCP3002 only after the strip path is proven. Read both IIO raw
    channels and record them separately so light calibration can be separated
    from transport correctness.
-4. Revisit the HT1632 only after the two standard SPI devices are settled.
+3. Revisit the HT1632 only after the two standard SPI devices are settled.
 
 If the kernel `spi-gpio` strip still cannot meet the 12 ms animation cadence,
 record that result before considering rewiring to hardware SPI. Do not reduce

@@ -3,29 +3,30 @@
 ## Status
 
 The project-owned SPI output boundary, deterministic fake, Linux `spidev`
-implementation, and opt-in LPD8806 integration are implemented. Hardware-free
-tests prove that each 240-pixel `show()` submits one 728-byte transfer: 720 GRB
-bytes followed by eight zero latch bytes. The legacy GPIO implementation and
-default build remain unchanged.
+implementation, and LPD8806 integration are implemented. Hardware-free tests
+prove that each 240-pixel `show()` submits one 728-byte transfer: 720 GRB bytes
+followed by eight zero latch bytes. The exact-board native build also passed;
+see the [accepted build result](wiringpi-phase5-lpd8806-build-result.md).
 
-This checkpoint is not hardware acceptance. It must build natively on the
-Zero W before a separate guarded verifier is allowed to bind, open, and send
-the first frame.
+This checkpoint is not hardware acceptance. A separate guarded verifier must
+bind, open, and send the first controlled frame before the transport can be
+accepted on hardware.
 
 ## Build selection
 
-Plain `make` and `make hardware` still select WiringPi and the original
-bit-banged strip. The experimental strip transport requires an exact explicit
-pair:
+Plain `make` and `make hardware` select the modern gpiod/mmap plus spidev
+profile:
 
 ```sh
-make GPIO_BACKEND=gpiod-mmap STRIP_TRANSPORT=spidev hardware
+make hardware
 ```
 
-The Makefile rejects `STRIP_TRANSPORT=spidev` with the legacy or pure-libgpiod
-backend. This is deliberately still a partial modern profile: the MCP3002
-application path has not moved to native IIO, so do not run the resulting
-whole application while the overlay owns the ADC GPIOs.
+The old `GPIO_BACKEND` and `STRIP_TRANSPORT` knobs are rejected. Historical
+backend sources remain only for comparison and debugging; see the
+[modern build policy](wiringpi-modern-build-policy.md). This is deliberately
+still a partial modern profile: the MCP3002 application path has not moved to
+native IIO, so do not run the resulting whole application while the overlay
+owns the ADC GPIOs.
 
 ## Transport behavior
 
@@ -86,10 +87,10 @@ verify:
 - preserved millisecond-delay delegation;
 - no transfer for a zero-length strip.
 
-The original GPIO protocol test still proves the bit-banged wire sequence and
-pin replacement. Build-boundary tests prove that the legacy and sandbox
-profiles select the null SPI factory, while only the explicit modern pair
-selects the Linux implementation.
+The original GPIO protocol test still proves the historical bit-banged wire
+sequence and pin replacement. Build-boundary tests prove that the hardware
+build selects the Linux implementation while the sandbox selects the null SPI
+factory.
 
 ## Native build gate
 
@@ -97,7 +98,7 @@ Build from an archive of the expected PR commit on the Zero W, but do not bind
 the strip and do not run the binary. Then use the metadata-only collector:
 
 ```sh
-time make GPIO_BACKEND=gpiod-mmap STRIP_TRANSPORT=spidev hardware
+time make hardware
 file ./oclock
 ldd ./oclock | grep -E 'libgpiod|libatomic|libwiringPi'
 strings ./oclock | grep -F '/oclock-strip-spi/lpd8806@0'
@@ -109,9 +110,10 @@ misc/collectPhase5Lpd8806Build.sh \
   --commit "${transport_commit}"
 ```
 
-The accepted binary must be ARM EABI5, link libgpiod and libatomic without
-WiringPi, and contain the Device Tree discovery suffix. Preserve that binary
-for the subsequent first-transfer gate.
+The accepted binary met all of these requirements and is preserved for the
+subsequent first-transfer gate. See the
+[native result](wiringpi-phase5-lpd8806-build-result.md) for checksums and
+exact evidence.
 
 ## First-transfer gate requirements
 
