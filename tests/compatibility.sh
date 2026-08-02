@@ -112,8 +112,9 @@ if misc/verifyPhase5GpiodHardware.sh --binary \
     echo "Phase 5 verifier accepted a missing option value" >&2
     exit 1
 fi
-grep -Fq 'Raspberry Pi Zero Rev 1.2' misc/verifyPhase5GpiodHardware.sh
-grep -Fq '[[ ${revision} == 900092 ]]' misc/verifyPhase5GpiodHardware.sh
+grep -Fq 'Raspberry Pi Zero W Rev 1.1' misc/verifyPhase5GpiodHardware.sh
+grep -Fq '[[ ${revision} == 9000c1 ]]' misc/verifyPhase5GpiodHardware.sh
+grep -Fq "wifi:connected" misc/verifyPhase5GpiodHardware.sh
 grep -Fq "grep -q 'libgpiod\\.so\\.3 =>'" \
     misc/verifyPhase5GpiodHardware.sh
 grep -Fq "! grep -q 'libwiringPi'" misc/verifyPhase5GpiodHardware.sh

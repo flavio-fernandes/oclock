@@ -2,17 +2,18 @@
 
 ## Status and decision
 
-Phase 0 is complete; its results are recorded in the
-[production baseline](wiringpi-phase0-baseline.md). Phase 1 is complete and
-documented in the [GPIO interface report](wiringpi-phase1-interface.md): its
-Jessie hardware build and Pi Zero functional acceptance both passed. This
-document proposes the remaining migration and does not yet select a new
-production GPIO implementation.
+Phase 0 and Phase 1 preserve the original Zero/Jessie production baseline and
+are recorded in the [production baseline](wiringpi-phase0-baseline.md) and
+[GPIO interface report](wiringpi-phase1-interface.md). Phases 2 through 4
+selected, implemented, and built the modern backend. The intended replacement
+is now the captured Raspberry Pi Zero W Rev 1.1 running Raspberry Pi OS Lite
+32-bit Trixie; the original Zero/Jessie unit remains the complete rollback
+system. See the [retarget decision](wiringpi-zero-w-retarget.md).
 
 The migration should remove direct WiringPi use from the application and device
 drivers without making a new GPIO stack a prerequisite for the existing
-Raspberry Pi Zero. The deployed build must keep working while a modern backend
-is developed and proven on the same electrical load.
+Raspberry Pi Zero. The legacy build must keep working while the modern Zero W
+replacement is proven on the same wiring and electrical load.
 
 The recommended design is:
 
@@ -32,14 +33,16 @@ rollback difficult.
 
 ## Compatibility contract
 
-Until the new backend passes hardware acceptance, all of these are requirements:
+Until the Zero W replacement passes hardware acceptance and soak, all of these
+are requirements:
 
 1. Plain `make` still builds the WiringPi-backed `oclock` binary, then preserves
    the existing `root:root` and owner-setuid installation behavior.
 2. The Jessie systemd unit, executable path, command-line options, network
    defaults, HTTP behavior, MQTT behavior, and GPIO numbering do not change.
 3. No existing wire moves and no boot-overlay changes are required.
-4. The known-good production binary remains available for immediate rollback.
+4. The original Zero, Jessie card, and known-good binary remain together and
+   available as the physical rollback unit.
 5. `make sandbox`, `make test`, and `make check-arm-warnings` continue to work
    without GPIO hardware or WiringPi.
 6. A modern build can be selected explicitly and must not link WiringPi.
@@ -259,14 +262,14 @@ libatomic without WiringPi. See the sanitized
 backend and its host-side validation are described in the
 [Phase 3 backend handoff](wiringpi-phase3-backend.md).
 
-The capture ran on a BCM2835 Zero W rather than the production non-W Zero. It
-is accepted for OS, API, chip-label, and offset selection, but not for timing
-or deployment acceptance. Phase 5 remains an exact production-board gate.
+The capture and build ran on the intended BCM2835 Zero W target. They establish
+OS, compiler, API, chip-label, offset, and binary compatibility, but not timing
+against the real peripheral load. Phase 5 remains the physical acceptance gate.
 
 Select the production OS and kernel before selecting a `libgpiod` API version:
 
-1. Boot a separate SD card on the same Pi Zero model; do not upgrade the
-   working production card in place.
+1. Boot a separate modern target and SD card; do not upgrade the working
+   Zero/Jessie rollback unit in place.
 2. Confirm the image supports ARMv6 and exposes GPIO character devices.
 3. Record `uname -a`, `gpiodetect`, and `gpioinfo`.
 4. Confirm which `libgpiod` major version the image supports.
@@ -323,25 +326,15 @@ operation history.
 
 An x86 VM result is never evidence that Pi Zero pulse timing is acceptable.
 
-### Phase 5: run a side-by-side Pi hardware trial
+### Phase 5: run the Zero W hardware trial
 
-**Status: exact production-board trial pending.** The accepted software capture
-and build used a Zero W. The candidate Trixie card must now be booted on the
-production non-W Raspberry Pi Zero Rev 1.2. See the guarded
+**Status: target peripheral trial pending.** The accepted software capture and
+build used the intended Zero W/Trixie target. It must now drive the unchanged
+office-clock wiring without the USB Wi-Fi dongle. See the guarded
 [Phase 5 hardware-trial handoff](wiringpi-phase5-hardware-trial.md).
 
-Build both backends from the same commit:
-
-```sh
-make GPIO_BACKEND=wiringpi hardware
-make GPIO_BACKEND=gpiod hardware
-```
-
-Give the binaries distinct filenames and do not replace `oclock` yet. Stop the
-service before either hardware binary runs so only one process owns the pins.
-
-Run the WiringPi binary first, capture its results, then run the modern binary
-against the same hardware and workload. Compare:
+Run the accepted libgpiod binary on the Zero W and compare it with Phase 0,
+Phase 1, and protocol-trace evidence from the preserved Zero/Jessie unit:
 
 - startup and shutdown pin levels, including visible glitches;
 - HT1632 bit order, clock idle state, pulse widths, and full render time;
@@ -351,6 +344,8 @@ against the same hardware and workload. Compare:
 - motion transitions;
 - CPU and memory use;
 - HTTP response latency while display and strip updates are busy;
+- onboard Wi-Fi association, boot-time reconnection, signal stability, HTTP,
+  and MQTT behavior without the USB dongle;
 - logs and recovery after intentional initialization failures;
 - at least an overnight soak test.
 
@@ -358,24 +353,26 @@ Use a logic analyzer for waveform comparison where possible. The acceptance
 criterion is correct device behavior with margin and no missed application
 deadlines, not identical nanosecond timing.
 
-If the GPIO backend cannot meet the timing budget, keep WiringPi for the current
-wiring and move the affected device to a kernel driver or `spidev` in a later
-rewired profile. Do not hide a timing failure by reducing refresh behavior.
+If the GPIO backend or onboard Wi-Fi cannot meet the acceptance budget,
+reconnect the preserved Zero/Jessie unit. Move affected devices to a kernel
+driver or `spidev` only in a later rewired profile. Do not hide a timing failure
+by reducing refresh behavior.
 
 ### Phase 6: opt-in deployment with rollback
 
 Only after Phase 5 passes:
 
-1. Install the modern binary beside the legacy and known-good binaries.
-2. Add a temporary service override pointing to the modern binary; preserve all
-   arguments, user, capabilities, and restart behavior.
-3. Restart and repeat the functional checklist.
-4. Monitor it for several days.
-5. Roll back by restoring the original service path and restarting. No package
-   downgrade or source rebuild should be required.
+1. Install the modern binary and service on the Zero W/Trixie unit; preserve
+   application arguments, paths, and runtime defaults initially.
+2. Confirm NetworkManager reconnects onboard Wi-Fi after a cold boot and the
+   service starts only after usable networking.
+3. Repeat the functional checklist and monitor it for several days.
+4. Exercise rollback by powering off the Zero W and reconnecting the preserved
+   Zero/Jessie unit. No package downgrade or source rebuild should be required.
 
-Do not combine the GPIO migration with removal of setuid, service-user changes,
-network changes, OS in-place upgrades, or rewiring. Those may be good follow-up
+The Zero W, Trixie, GCC 14, libgpiod, and onboard Wi-Fi are the approved target
+change. Do not additionally combine this with removal of setuid, service-user
+changes, application-default changes, or rewiring. Those may be good follow-up
 projects, but they make failures harder to attribute and rollback harder to
 trust.
 

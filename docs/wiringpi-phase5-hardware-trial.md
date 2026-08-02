@@ -1,23 +1,24 @@
-# WiringPi migration Phase 5 exact-board hardware trial
+# WiringPi migration Phase 5 Zero W hardware trial
 
 ## Purpose and rollback boundary
 
-Phase 3 selected and built the modern stack on a Raspberry Pi Zero W proxy.
-Phase 5 must run the libgpiod candidate on the actual production Raspberry Pi
-Zero Rev 1.2, revision `900092`, with the office-clock wiring unchanged.
+Phase 3 selected and built the modern stack on a Raspberry Pi Zero W Rev 1.1,
+revision `9000c1`. That Zero W is now the intended modern deployment board.
+Phase 5 must connect it to the office-clock wiring unchanged and run the
+libgpiod candidate against the real electrical load.
 
-The Trixie candidate and Jessie production environments are separate SD cards.
-That makes a same-boot WiringPi-versus-libgpiod comparison impossible: Jessie
-does not provide the selected GPIO v2/libgpiod 2.2 stack, while the clean
-Trixie card intentionally has no preserved WiringPi installation. The modern
-run is therefore compared with the accepted Phase 0 and Phase 1 production
-evidence on the same physical board.
+The modern Zero W/Trixie and legacy Zero/Jessie environments are separate
+complete units. A same-boot WiringPi-versus-libgpiod comparison is neither
+possible nor desirable: Jessie does not provide the selected GPIO v2/libgpiod
+2.2 stack, while the clean Trixie card intentionally has no preserved WiringPi
+installation. The modern run is compared with the accepted Phase 0 and Phase 1
+legacy evidence and deterministic protocol traces.
 
 Rollback crosses a physical boundary and cannot be fully automated. The trial
-script stops and restores any service that was active on the candidate card,
-but the operator must power off before reinstalling the untouched Jessie card.
+script stops and restores any service active on the Trixie card, but the
+operator must power off before reconnecting the preserved Zero/Jessie unit.
 
-## Before moving the card
+## Before connecting the target
 
 Preserve these identifiers from the accepted build:
 
@@ -30,36 +31,40 @@ Preserve these identifiers from the accepted build:
 | Atomic dependency | `libatomic.so.1` |
 | Forbidden dependency | WiringPi |
 
-Copy or otherwise retain that exact binary on the Trixie card. Fetch the
-current PR branch as well so its verifier is available. Do not rebuild between
-copying the checksum and running the trial unless the new binary is inspected
-and recorded separately.
+Retain that exact binary persistently on the Zero W's Trixie card. Fetch the
+current PR branch so its verifier is available. Do not rebuild between copying
+the checksum and running the trial unless the new binary is inspected and
+recorded separately. Remove the USB Wi-Fi dongle; onboard Wi-Fi is part of the
+target acceptance.
 
 ## Physical procedure
 
-1. Confirm the known-good Jessie card is labelled and the Phase 0 rollback
-   binary remains preserved.
-2. Gracefully shut down and remove power from the production Pi Zero.
-3. Remove the Jessie card and keep it outside the trial system.
-4. Insert the Trixie candidate card and boot the same non-W Pi Zero Rev 1.2.
-5. Do not start `oclock` manually. Fetch the verifier and let it check the
-   model, revision, OS, architecture, GPIO chip, throttling, binary checksum,
-   dependencies, and port/service state before it requests confirmation.
+1. Confirm the original Zero, Jessie card, and Phase 0 binary remain together,
+   labelled, and known-good as the rollback unit.
+2. Gracefully shut down both boards and remove power.
+3. Transfer the unchanged office-clock GPIO harness and normal power connection
+   from the original Zero to the Zero W. Leave the USB Wi-Fi dongle detached.
+4. Boot the Zero W from its Trixie card and reconnect over onboard Wi-Fi.
+5. Do not start `oclock` manually. Fetch the verifier and let it check the Zero
+   W model/revision, OS, architecture, GPIO chip, throttling, connected Wi-Fi,
+   binary checksum, dependencies, and port/service state.
 6. Run the short trial and exercise display, strip, light, motion, and the
    normal MQTT data feed when prompted.
 7. Share the generated archive even if a check fails.
-8. Run `sudo poweroff`, wait until activity stops, and remove power.
-9. Reinstall the Jessie card, boot, and confirm its WiringPi service, display,
-   strip, light, motion, HTTP status, and MQTT behavior.
+8. On failure, run `sudo poweroff`, wait until activity stops, disconnect the
+   Zero W, and reconnect the preserved Zero/Jessie unit.
+9. Confirm rollback health: WiringPi service, display, strip, light, motion,
+   HTTP status, and MQTT behavior.
 
 ## Safety behavior
 
 `misc/verifyPhase5GpiodHardware.sh` refuses to drive lines unless all of these
 preconditions hold:
 
-- model `Raspberry Pi Zero Rev 1.2`, revision `900092`;
+- model `Raspberry Pi Zero W Rev 1.1`, revision `9000c1`;
 - `armv6l` with `armhf` packages on Trixie;
 - a discoverable `pinctrl-bcm2835` GPIO chip;
+- a Wi-Fi device connected through NetworkManager, with no USB dongle attached;
 - no firmware throttling indication when `vcgencmd` is available;
 - the supplied binary is 32-bit ARM and matches the operator-supplied SHA-256;
 - libgpiod 3 ABI and libatomic resolve, WiringPi does not, and no dependency is
@@ -67,16 +72,17 @@ preconditions hold:
 
 The script requires the literal confirmation `RUN`, records status and process
 samples, requests clean HTTP shutdown, escalates signals only during cleanup,
-and restores a service that it stopped on the candidate card. Its EXIT and
+and restores a service that it stopped on the Trixie card. Its EXIT and
 signal traps remain active after GPIO use begins.
 
 ## Acceptance and later gates
 
 The initial trial passes only if display and strip output are visually correct
 and responsive, light and motion transitions appear in status samples, MQTT
-connects, the external feed updates the display, and HTTP shutdown is clean.
+connects, the external feed updates the display, onboard Wi-Fi remains stable,
+and HTTP shutdown is clean.
 
 A 60-second functional result is not soak or waveform evidence. After the
-short exact-board check passes, retain the Jessie card as rollback and plan a
-longer candidate-card soak plus logic-analyzer comparison before Phase 6
-service deployment.
+short check passes, retain the complete Zero/Jessie rollback unit and run a
+longer Zero W network/application soak plus logic-analyzer comparison before
+Phase 6 service deployment.

@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Guarded functional trial of the libgpiod candidate on the exact production
-# Raspberry Pi Zero Rev 1.2. This script can restore a service active on the
-# candidate card, but a physical return to the preserved Jessie card remains a
-# manual, powered-off rollback step.
+# Guarded functional trial of the libgpiod candidate on the intended modern
+# Raspberry Pi Zero W Rev 1.1 target. This script can restore a service active
+# on the Trixie card, but a physical return to the preserved Zero/Jessie unit
+# remains a manual, powered-off rollback step.
 
 set -u
 set -o pipefail
@@ -41,9 +41,10 @@ Options:
   --output DIRECTORY    New result directory (default: secure directory in /tmp)
   -h, --help            Show this help
 
-This script refuses to run unless the host reports the production non-W
-Raspberry Pi Zero Rev 1.2 identity and the Trixie ARMv6/armhf target. It never
-modifies the preserved Jessie card and cannot reinstall that card for you.
+This script refuses to run unless the host reports the intended Raspberry Pi
+Zero W Rev 1.1 identity, the Trixie ARMv6/armhf target, and a connected Wi-Fi
+device. Run it without a USB Wi-Fi dongle. It never modifies the preserved
+Zero/Jessie rollback unit and cannot reconnect that unit for you.
 EOF
 }
 
@@ -115,8 +116,8 @@ if [[ ! ${mqtt_port} =~ ^[0-9]+$ ]] ||
 fi
 ((EUID == 0)) || die "run this script with sudo"
 
-for command_name in awk curl date dpkg file gpiodetect grep ldd ps readlink \
-        sha256sum sort systemctl tail tar tr uname wc; do
+for command_name in awk curl date dpkg file gpiodetect grep ldd nmcli ps \
+        readlink sha256sum sort systemctl tail tar tr uname wc; do
     command -v "${command_name}" >/dev/null 2>&1 ||
         die "required command is missing: ${command_name}"
 done
@@ -125,10 +126,10 @@ done
 model=$(tr -d '\0' </proc/device-tree/model) || die "cannot read Raspberry Pi model"
 revision=$(awk -F: '/^Revision/ { gsub(/[[:space:]]/, "", $2); print tolower($2) }' \
     /proc/cpuinfo | tail -1)
-[[ ${model} == "Raspberry Pi Zero Rev 1.2" ]] ||
-    die "wrong hardware: expected Raspberry Pi Zero Rev 1.2, found ${model}"
-[[ ${revision} == 900092 ]] ||
-    die "wrong board revision: expected 900092, found ${revision:-unknown}"
+[[ ${model} == "Raspberry Pi Zero W Rev 1.1" ]] ||
+    die "wrong hardware: expected Raspberry Pi Zero W Rev 1.1, found ${model}"
+[[ ${revision} == 9000c1 ]] ||
+    die "wrong board revision: expected 9000c1, found ${revision:-unknown}"
 [[ $(uname -m) == armv6l ]] || die "target is not running ARMv6"
 [[ $(dpkg --print-architecture) == armhf ]] ||
     die "target package architecture is not armhf"
@@ -136,11 +137,19 @@ revision=$(awk -F: '/^Revision/ { gsub(/[[:space:]]/, "", $2); print tolower($2)
 # shellcheck disable=SC1091
 source /etc/os-release
 [[ ${VERSION_CODENAME:-} == trixie ]] ||
-    die "candidate card is not Debian/Raspbian Trixie"
+    die "target card is not Debian/Raspbian Trixie"
 
 gpio_chips=$(gpiodetect 2>&1) || die "gpiodetect failed"
 grep -q '\[pinctrl-bcm2835\]' <<<"${gpio_chips}" ||
     die "pinctrl-bcm2835 GPIO chip was not found"
+
+network_devices=$(nmcli -t -f DEVICE,TYPE,STATE device status 2>&1) ||
+    die "NetworkManager device inspection failed"
+grep -Eq '^[^:]+:wifi:connected' <<<"${network_devices}" ||
+    die "no connected Wi-Fi device was found"
+wifi_signal=$(nmcli -t -f IN-USE,SIGNAL device wifi list --rescan no 2>&1 |
+    awk -F: '$1 == "yes" { print $2; exit }')
+[[ ${wifi_signal} =~ ^[0-9]+$ ]] || wifi_signal=unknown
 
 if command -v vcgencmd >/dev/null 2>&1; then
     throttling=$(vcgencmd get_throttled 2>&1) ||
@@ -187,8 +196,9 @@ echo "Candidate-card svc: ${service_name} (${service_was_active})"
 echo "Observation window: ${duration} seconds"
 echo
 echo "This will drive the real office-clock GPIO lines."
-echo "The preserved Jessie card must be powered off and outside this Pi."
-echo "Afterward, power off before reinstalling the Jessie card."
+echo "The USB Wi-Fi dongle must be disconnected for this target trial."
+echo "The preserved Zero/Jessie rollback unit must be powered off."
+echo "Afterward, power off before reconnecting the rollback unit."
 printf 'Type RUN to begin the exact-board candidate trial: '
 IFS= read -r confirmation || die "confirmation was not read"
 [[ ${confirmation} == RUN ]] || die "confirmation was not RUN; no change made"
@@ -299,12 +309,14 @@ trap 'exit 143' TERM
     echo "duration_seconds: ${duration}"
     echo "startup_timeout_seconds: ${startup_timeout}"
     echo "mqtt: ${mqtt_host}:${mqtt_port}"
+    echo "active_wifi_signal_percent: ${wifi_signal}"
     echo "service_was_active: ${service_was_active}"
 } >"${output_dir}/context.txt"
 printf '%s\n' "${candidate_file}" >"${output_dir}/candidate-file.txt"
 printf '%s\n' "${candidate_dependencies}" \
     >"${output_dir}/candidate-dependencies.txt"
 printf '%s\n' "${gpio_chips}" >"${output_dir}/gpiodetect.txt"
+printf '%s\n' "${network_devices}" >"${output_dir}/network-devices.txt"
 systemctl status "${service_name}" --no-pager \
     >"${output_dir}/service-before.txt" 2>&1 || true
 
@@ -392,6 +404,8 @@ external_observation=$(prompt_yes \
     "Did the normal external MQTT feed update the display?")
 timing_observation=$(prompt_yes \
     "Were display and LED response times acceptable versus production?")
+wifi_observation=$(prompt_yes \
+    "Did onboard Wi-Fi remain stable and responsive throughout the trial?")
 
 cat >"${output_dir}/operator-notes.txt" <<EOF
 display: ${display_observation}
@@ -400,6 +414,7 @@ light_sensor: ${light_observation}
 motion_sensor: ${motion_observation}
 external_input: ${external_observation}
 timing: ${timing_observation}
+onboard_wifi: ${wifi_observation}
 EOF
 
 echo "Requesting clean candidate shutdown..."
@@ -457,6 +472,7 @@ result_check "light-sensor observation passed" answer_is_yes "${light_observatio
 result_check "motion-sensor observation passed" answer_is_yes "${motion_observation}"
 result_check "external-data observation passed" answer_is_yes "${external_observation}"
 result_check "operator timing observation passed" answer_is_yes "${timing_observation}"
+result_check "onboard Wi-Fi observation passed" answer_is_yes "${wifi_observation}"
 if [[ ${service_was_active} == yes ]]; then
     result_check "candidate-card service was restored" test "${service_restored}" = yes
 fi
@@ -465,8 +481,8 @@ fi
     echo
     echo "failures: ${failures}"
     echo
-    echo "Manual rollback still required: power off this Pi, reinstall the"
-    echo "preserved Jessie card, boot it, and verify the WiringPi clock."
+    echo "Manual rollback remains available: power off this Zero W, reconnect"
+    echo "the preserved Zero/Jessie unit, and verify the WiringPi clock."
 } >>"${result_file}"
 
 systemctl status "${service_name}" --no-pager \

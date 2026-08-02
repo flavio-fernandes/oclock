@@ -47,15 +47,15 @@ and covered by its compatibility test.
 ## Board qualification
 
 The target capture ran on a **Raspberry Pi Zero W Rev 1.1**, revision `9000c1`.
-The production Phase 0 baseline is a **Raspberry Pi Zero Rev 1.2**, revision
-`900092`. Both report an ARMv6 BCM2835 and expose the required GPIO controller
-and offsets, so the Zero W capture is accepted for operating-system, compiler,
-libgpiod API, chip-discovery, and line-offset selection.
+It is now the intended modern deployment board. The Phase 0 legacy baseline is
+a **Raspberry Pi Zero Rev 1.2**, revision `900092`; that board and its Jessie
+card remain the complete rollback unit. Both report an ARMv6 BCM2835 and expose
+the same required GPIO controller and offsets.
 
-It is not exact-board timing evidence. Phase 5 must still build and run both
-backends on the production non-W Zero Rev 1.2 with the real display, LED strip,
-ADC, and motion sensor. No timing, CPU-budget, or deployment conclusion is
-drawn from the Zero W capture.
+The read-only capture and build are not peripheral timing evidence. Phase 5
+must connect the Zero W to the real display, LED strip, ADC, and motion sensor
+and measure the modern binary under network load. Legacy comparisons use the
+accepted Phase 0 and Phase 1 evidence from the preserved original unit.
 
 The Zero W kernel exposes `/dev/gpiochip0` plus a compatibility symlink
 `/dev/gpiochip4`. This confirms why the backend must identify the chip by its
@@ -108,5 +108,5 @@ The modern backend target is now:
   label and line count are validated.
 
 WiringPi remains the default hardware backend for the Jessie card. The new
-backend remains an explicit opt-in until the exact production-board trial and
-rollback gates pass.
+backend remains an explicit opt-in until the Zero W peripheral trial, onboard
+Wi-Fi checks, soak, and rollback gates pass.

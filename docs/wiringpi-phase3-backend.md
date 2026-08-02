@@ -96,12 +96,14 @@ No WiringPi dependency was present. The binary SHA-256 was
 
 ## Remaining gates
 
-1. Move the separately labelled Trixie card to the production Raspberry Pi
-   Zero Rev 1.2 while it is powered off; retain the Jessie card unchanged.
-2. In Phase 5, run the guarded modern candidate on that exact board.
+1. Connect the Zero W/Trixie replacement to the unchanged office-clock wiring;
+   retain the original Zero/Jessie unit unchanged and powered off.
+2. In Phase 5, run the guarded modern candidate on the Zero W target.
 3. Validate display, LED strip, ADC/light, motion, MQTT, shutdown, and timing.
-4. Power off, reinstall the Jessie card, and confirm the WiringPi production
-   service and physical outputs are healthy.
+4. Validate boot-time onboard Wi-Fi reconnection and complete an overnight
+   network and application soak.
+5. Exercise rollback by powering off the Zero W and reconnecting the preserved
+   Zero/Jessie unit.
 
-The Zero W capture selects the software stack but is not a substitute for the
-exact production-board trial.
+The Zero W capture selects the exact modern platform but is not a substitute
+for driving the real peripheral load.

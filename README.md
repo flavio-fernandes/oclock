@@ -29,9 +29,9 @@ The default target preserves the original deployment behavior: it builds
 `make hardware` when only a hardware binary is wanted without changing its
 owner or mode.
 
-On the Phase 3 Raspberry Pi OS 32-bit (Debian 13/Trixie) target, install the
-application and GPIO development packages and select the modern backend
-explicitly:
+On the modern Raspberry Pi Zero W target running Raspberry Pi OS 32-bit
+(Debian 13/Trixie), install the application and GPIO development packages and
+select the modern backend explicitly:
 
 ```sh
 sudo apt install -y build-essential pkg-config libevent-dev \

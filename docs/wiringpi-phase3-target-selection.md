@@ -1,9 +1,9 @@
 # WiringPi migration Phase 3 target selection
 
-## Selected candidate
+## Selected target
 
-As of 2026-07-31, the target candidate is the standard **Raspberry Pi OS Lite
-(32-bit)** image:
+As of 2026-08-02, the intended modern deployment target is a **Raspberry Pi
+Zero W Rev 1.1** running the standard **Raspberry Pi OS Lite (32-bit)** image:
 
 - Raspberry Pi identifies the standard 32-bit image as compatible with all
   Raspberry Pi models.
@@ -21,21 +21,18 @@ Primary references:
 - [Debian Trixie libgpiod development package](https://packages.debian.org/trixie/libgpiod-dev)
 - [libgpiod command-line tools](https://libgpiod.readthedocs.io/en/master/gpio_tools.html)
 
-This selection is provisional until the exact original Pi Zero boots it and the
-collector passes. The dated facts above must be rechecked if a later image is
-used.
+The Zero W capture, ARMv6 build, and explicit deployment decision accepted this
+selection. The dated OS facts above must be rechecked if a later image is used.
 
 ## Safety boundary
 
-Use a separate microSD card. Do not upgrade, alter, or install packages on the
-known-good Jessie card. Keep the Phase 0 rollback executable and Jessie card
-together.
+Use a separate Zero W and microSD card. Do not upgrade, alter, or install
+packages on the known-good original Zero/Jessie unit. Keep that board, card,
+and Phase 0 rollback executable together as the legacy rollback system.
 
-The production board is an original Raspberry Pi Zero Rev 1.2 without onboard
-Wi-Fi. Preparing and updating the candidate therefore requires either:
-
-- a local console plus a supported USB network adapter; or
-- another safe way to provide network and terminal access to the spare image.
+The Zero W's onboard 2.4 GHz Wi-Fi replaces the original unit's USB Wi-Fi
+dongle. Configure and test the built-in radio through NetworkManager; do not
+attach the dongle during target acceptance.
 
 The hardware may remain wired as documented. Do not start the office-clock
 application from the candidate card during target collection. The collector
@@ -46,16 +43,15 @@ direction.
 
 In Raspberry Pi Imager:
 
-1. Select the original Raspberry Pi Zero.
+1. Select Raspberry Pi Zero W.
 2. Select Raspberry Pi OS Lite (32-bit), using the standard image rather than
    Raspberry Pi OS (Legacy).
 3. Select the spare microSD card after verifying its identity and capacity.
-4. Configure a username and SSH only if the chosen network/console setup
-   supports them.
+4. Configure the onboard Wi-Fi, username, and SSH for headless access.
 5. Write and verify the image.
 
-Label the old and new cards before removing the Jessie card. Shut the Pi down,
-remove power, swap only the microSD card, then restore power.
+Label the original Zero/Jessie unit and the Zero W/Trixie replacement. Prepare
+and update the Trixie card in the Zero W without modifying the legacy unit.
 
 On the candidate image:
 
@@ -103,8 +99,7 @@ Share the reported `.tar.gz` and `.sha256` files. A successful result must show:
 The archive intentionally omits hostname, IP configuration, network sockets,
 SSH configuration, and the device serial. Raw evidence remains outside Git.
 
-The accepted capture and the distinction between its Zero W host and the
-production non-W Zero are recorded in the
+The accepted Zero W capture is recorded in the
 [target baseline](wiringpi-phase3-target-baseline.md).
 
 ## Decision after capture
@@ -112,7 +107,9 @@ production non-W Zero are recorded in the
 Every required check passed. Phase 3 therefore selected and implemented a
 libgpiod v2 backend against the captured 2.2 API and verified chip-label/offset
 mapping. The backend remains opt-in, and WiringPi remains the default for
-Jessie.
+Jessie. The Zero W/Trixie combination was subsequently selected as the intended
+modern deployment; the original Zero/Jessie combination remains the rollback
+target.
 
 If the standard Trixie image does not boot reliably or the collector fails, do
 not modify the Jessie card. Retain the archive, restore the old card, and
