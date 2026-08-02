@@ -328,10 +328,13 @@ An x86 VM result is never evidence that Pi Zero pulse timing is acceptable.
 
 ### Phase 5: run the Zero W hardware trial
 
-**Status: target peripheral trial pending.** The accepted software capture and
-build used the intended Zero W/Trixie target. It must now drive the unchanged
-office-clock wiring without the USB Wi-Fi dongle. See the guarded
-[Phase 5 hardware-trial handoff](wiringpi-phase5-hardware-trial.md).
+**Status: initial target peripheral trial failed.** The 2026-08-02 exact-board
+run passed functional display, strip, ADC response, motion, MQTT, HTTP, and
+onboard-Wi-Fi checks, but failed automatic-dimming and acceptable-timing
+observations. See the [initial Phase 5 result](wiringpi-phase5-initial-result.md)
+and guarded [hardware-trial handoff](wiringpi-phase5-hardware-trial.md).
+Phase 6 remains blocked, the pure `libgpiod` candidate must not be deployed,
+and the preserved Zero/Jessie unit remains the production baseline.
 
 Run the accepted libgpiod binary on the Zero W and compare it with Phase 0,
 Phase 1, and protocol-trace evidence from the preserved Zero/Jessie unit:

@@ -11,7 +11,7 @@ set -o pipefail
 binary_path=
 candidate_commit=
 expected_sha256=
-duration=60
+duration=90
 startup_timeout=120
 bind_address=0.0.0.0
 port=80
@@ -19,6 +19,8 @@ mqtt_host=192.168.10.238
 mqtt_port=1883
 service_name=oclock
 output_dir=
+dark_threshold=360
+bright_threshold=500
 
 usage()
 {
@@ -261,7 +263,11 @@ archive_results()
     archive_path="${output_dir}.tar.gz"
     tar -czf "${archive_path}" -C "$(dirname "${output_dir}")" \
         "$(basename "${output_dir}")" || return 1
-    sha256sum "${archive_path}" >"${archive_path}.sha256" || return 1
+    (
+        cd "$(dirname "${archive_path}")" || exit 1
+        sha256sum "$(basename "${archive_path}")" \
+            >"$(basename "${archive_path}").sha256"
+    ) || return 1
     if [[ -n ${SUDO_UID:-} && -n ${SUDO_GID:-} ]]; then
         chown "${SUDO_UID}:${SUDO_GID}" "${archive_path}" \
             "${archive_path}.sha256" 2>/dev/null || true
@@ -307,6 +313,8 @@ trap 'exit 143' TERM
     echo "architecture: $(dpkg --print-architecture)"
     echo "throttling: ${throttling}"
     echo "duration_seconds: ${duration}"
+    echo "dark_threshold: ${dark_threshold}"
+    echo "bright_threshold: ${bright_threshold}"
     echo "startup_timeout_seconds: ${startup_timeout}"
     echo "mqtt: ${mqtt_host}:${mqtt_port}"
     echo "active_wifi_signal_percent: ${wifi_signal}"
@@ -358,26 +366,63 @@ echo
 echo "Candidate is running. During the next ${duration} seconds:"
 echo "  - watch all four display panels for refresh and corruption;"
 echo "  - watch LED-strip colors, smoothness, and responsiveness;"
-echo "  - cover and uncover the light sensor;"
+echo "  - fully cover the light sensor for at least 12 seconds, until the"
+echo "    status average passes below ${dark_threshold} and the outputs dim;"
+echo "  - then uncover it for at least 12 seconds, until the average passes"
+echo "    ${bright_threshold} and the outputs return to normal brightness;"
 echo "  - enter and leave the motion-sensor field;"
 echo "  - trigger the normal external MQTT data feed."
 
 status_samples="${output_dir}/status-samples.txt"
 process_samples="${output_dir}/process-samples.txt"
+cpu_samples="${output_dir}/candidate-cpu-samples.tsv"
 sample_started=$(date +%s)
 sample_number=0
+previous_process_ticks=$(awk '{ print $14 + $15 }' \
+    "/proc/${candidate_pid}/stat")
+previous_total_ticks=$(awk '/^cpu / {
+    total = 0
+    for (field = 2; field <= NF; ++field) total += $field
+    print total
+}' /proc/stat)
+printf 'elapsed_seconds\tprocess_ticks\ttotal_ticks\thost_cpu_percent\n' \
+    >"${cpu_samples}"
 while :; do
     elapsed=$(($(date +%s) - sample_started))
     ((elapsed < duration)) || break
     sample_number=$((sample_number + 1))
     {
         echo "===== sample ${sample_number} $(date -u +%Y-%m-%dT%H:%M:%SZ) ====="
-        curl --silent --show-error --max-time 3 "${status_url}"
+        curl --silent --show-error --max-time 3 \
+            --write-out '\ncurl_http_code: %{http_code}\ncurl_time_total_seconds: %{time_total}\n' \
+            "${status_url}"
         echo "curl_exit_status: $?"
         echo
     } >>"${status_samples}" 2>&1
     ps -p "${candidate_pid}" -o pid=,etime=,%cpu=,%mem=,rss=,vsz=,stat= \
         >>"${process_samples}" 2>&1 || true
+    if [[ -r /proc/${candidate_pid}/stat ]]; then
+        current_process_ticks=$(awk '{ print $14 + $15 }' \
+            "/proc/${candidate_pid}/stat")
+        current_total_ticks=$(awk '/^cpu / {
+            total = 0
+            for (field = 2; field <= NF; ++field) total += $field
+            print total
+        }' /proc/stat)
+        process_delta=$((current_process_ticks - previous_process_ticks))
+        total_delta=$((current_total_ticks - previous_total_ticks))
+        cpu_percent=$(awk -v process_delta="${process_delta}" \
+            -v total_delta="${total_delta}" 'BEGIN {
+                if (total_delta > 0)
+                    printf "%.2f", 100 * process_delta / total_delta
+                else
+                    printf "0.00"
+            }')
+        printf '%d\t%d\t%d\t%s\n' "${elapsed}" "${process_delta}" \
+            "${total_delta}" "${cpu_percent}" >>"${cpu_samples}"
+        previous_process_ticks=${current_process_ticks}
+        previous_total_ticks=${current_total_ticks}
+    fi
     kill -0 "${candidate_pid}" 2>/dev/null ||
         die "candidate exited during observation"
     sleep 1
@@ -397,7 +442,7 @@ display_observation=$(prompt_yes \
 strip_observation=$(prompt_yes \
     "Was the LED-strip animation smooth with normal colors?")
 light_observation=$(prompt_yes \
-    "Did the light value respond when the sensor was covered?")
+    "Did sustained cover dim both outputs and uncover restore brightness?")
 motion_observation=$(prompt_yes \
     "Did the motion state respond when you moved?")
 external_observation=$(prompt_yes \
@@ -455,6 +500,16 @@ status_has_light_change()
 {
     [[ $(awk '/^light_sensor: / { print $2 }' "${status_samples}" | sort -u | wc -l) -ge 2 ]]
 }
+status_crosses_light_thresholds()
+{
+    awk -v dark="${dark_threshold}" -v bright="${bright_threshold}" '
+        /^light_sensor: / {
+            if ($2 < dark) saw_dark = 1
+            if ($2 >= bright) saw_bright = 1
+        }
+        END { exit !(saw_dark && saw_bright) }
+    ' "${status_samples}"
+}
 
 result_check "candidate returned success after HTTP shutdown" \
     test "${candidate_exit_status}" -eq 0
@@ -464,6 +519,8 @@ result_check "status samples include a motion transition" \
     status_has_motion_transition
 result_check "status samples include changing light values" \
     status_has_light_change
+result_check "status samples cross both dimming thresholds" \
+    status_crosses_light_thresholds
 result_check "candidate connected to the MQTT broker" \
     grep -q '^mqttBrokerConnected: yes$' "${status_samples}"
 result_check "display observation passed" answer_is_yes "${display_observation}"

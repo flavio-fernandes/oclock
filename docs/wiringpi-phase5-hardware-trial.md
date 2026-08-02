@@ -77,12 +77,19 @@ signal traps remain active after GPIO use begins.
 
 ## Acceptance and later gates
 
+The first exact-board trial on 2026-08-02 did not pass. Functional I/O and
+onboard Wi-Fi worked, but the operator rejected dimming behavior and the
+noticeably slower display/strip timing. See the
+[initial Phase 5 result](wiringpi-phase5-initial-result.md). Phase 6 remains
+blocked while a bounded fast-value-path experiment is evaluated; the pure
+`libgpiod` candidate is not a deployment candidate.
+
 The initial trial passes only if display and strip output are visually correct
 and responsive, light and motion transitions appear in status samples, MQTT
 connects, the external feed updates the display, onboard Wi-Fi remains stable,
 and HTTP shutdown is clean.
 
-A 60-second functional result is not soak or waveform evidence. After the
-short check passes, retain the complete Zero/Jessie rollback unit and run a
+A short functional result is not soak or waveform evidence. After the guarded
+check passes, retain the complete Zero/Jessie rollback unit and run a
 longer Zero W network/application soak plus logic-analyzer comparison before
 Phase 6 service deployment.
