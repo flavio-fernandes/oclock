@@ -47,7 +47,7 @@ The selected next architecture is mixed:
 | Device | Selected modern transport | Existing BCM GPIOs | Status |
 | --- | --- | --- | --- |
 | Motion sensor | libgpiod v2 input | 10 | Implemented and functionally tested |
-| LPD8806 strip | kernel `spi-gpio` plus explicit `spidev` binding | clock 20, data 21 | Accepted on timing at 2 MHz: 25/25 all-off frames inside the 12 ms budget, 3.001 ms median, after 1 MHz was rejected at 0/25; colored-frame gate still pending |
+| LPD8806 strip | kernel `spi-gpio` plus explicit `spidev` binding | clock 20, data 21 | Accepted at 2 MHz on both timing (25/25 all-off frames inside 12 ms, 3.001 ms median) and colored correctness (uniform RGB, 4.424 ms worst frame); production speed promoted to 2 MHz |
 | MCP3002 ADC | second `spi-gpio` plus native `mcp320x`/IIO | clock 17, MISO 27, MOSI 22, CS 4 | Native reads and controlled covered response accepted; thresholds retained pending room trial |
 | HT1632 matrix | narrow bulk mmap transport | CS 6, WR 13, data 19, select clock 26 | Selected direction; not implemented |
 
@@ -680,3 +680,13 @@ backward compatibility.”
   on timing and removes hardware-SPI rewiring from the expected plan. It does
   not authorize deployment: the production speed is still 1 MHz and no colored
   frame has been latched at the higher rate.
+- **2026-08-02:** Accepted the guarded colored sequence with all 23 checks,
+  zero failures, and zero warnings. All 240 pixels showed uniform red, then
+  green, then blue at half brightness (63/127), then went dark. Frame times
+  were 3.036 ms red, 4.424 ms green, 4.334 ms blue, and 4.377 ms for the final
+  all-off, so the worst case kept better than 2.7x margin on the 12 ms tick.
+  This is the first gate to latch non-zero pixel data and it closes the
+  signal-integrity question: red rendered as red confirms the GRB wire order
+  survived kernel `spidev`, and no stray, dead, or flickering pixel appeared.
+  Firmware still reported `throttled=0x0`. Production strip speed was then
+  promoted from 1 MHz to 2 MHz.

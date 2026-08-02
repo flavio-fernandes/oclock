@@ -77,11 +77,13 @@ effective clock rate.
 
 Record these honestly before treating 2 MHz as settled:
 
-- Every frame was **all-off** (720 bytes of `0x80`). Bit-banged transfer time
-  is data-independent, so the timing should carry over, but no colored frame
-  has yet been latched at 2 MHz. Signal integrity on the existing arbitrary-pin
-  wiring at double the clock rate is therefore not yet demonstrated for
-  non-trivial data.
+- Every frame in *this* gate was **all-off** (720 bytes of `0x80`). That
+  limitation has since been resolved: the
+  [colored sequence gate](wiringpi-phase5-lpd8806-colors-result.md) passed on
+  2026-08-02, latching uniform red, green, and blue across all 240 pixels with
+  correct GRB byte order and no signal-integrity failure. Its slowest frame was
+  4,424 microseconds, so treat roughly 4.4 ms rather than the 3.0 ms all-off
+  median as the observed worst case for a single frame.
 - The measurement covers `show()` only. It excludes the HT1632 matrix work, ADC
   reads, and the rest of the application tick, so it is a necessary but not
   sufficient condition for meeting the cadence in production.

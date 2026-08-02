@@ -506,9 +506,9 @@ Every migration PR should answer all of these:
 The following should remain open until measured:
 
 - whether the selected bulk HT1632 path meets its timing budget;
-- whether kernel `spi-gpio` at 2 MHz latches **colored** LPD8806 frames
-  correctly on the existing arbitrary-pin wiring, and holds its timing under
-  the real application tick (the all-off cadence budget is already met);
+- whether the 2 MHz strip holds its timing under the real application tick
+  alongside matrix and ADC work, and during sustained animation (single-frame
+  cadence and colored correctness are both already accepted);
 - whether native MCP3002/IIO values preserve useful light-sensor behavior;
 - whether the LED strip and ADC should eventually be rewired for hardware SPI;
 - whether pin ownership can be split per device without changing scheduling.

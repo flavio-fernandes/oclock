@@ -1,5 +1,12 @@
 # Phase 5 guarded LPD8806 colored sequence
 
+## Status
+
+Passed on 2026-08-02 with all 23 checks, zero failures, and zero warnings. The
+strip showed uniform red, green, and blue and ended dark; the slowest frame was
+4,424 microseconds. See the
+[colored sequence result](wiringpi-phase5-lpd8806-colors-result.md).
+
 ## Purpose
 
 Every strip frame measured so far has been all-off. That proved transfer

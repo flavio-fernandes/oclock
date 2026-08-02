@@ -187,11 +187,15 @@ modern hardware build; historical sources remain only as diagnostic evidence.
    arbitrary-pin `spi-gpio` strip path is accepted on timing and rewiring is
    not required.
 
-   Still do not run the full application. The next narrow gates are, in order:
-   promote the production speed in `src/spi/StripSpeed.h` to 2 MHz as a
-   reviewed change, then a guarded **colored** frame gate, which is the first
-   test that can expose a signal-integrity problem at the higher clock rate.
-   All frames measured so far were all-off.
+   The [colored sequence gate](wiringpi-phase5-lpd8806-colors-result.md) then
+   **passed all 23 checks on 2026-08-02**, latching uniform red, green, and
+   blue across all 240 pixels at half brightness with correct GRB byte order,
+   ending dark, slowest frame 4,424 microseconds. Signal integrity at 2 MHz on
+   the existing arbitrary-pin wiring is no longer an open question, and the
+   production speed has been promoted to 2 MHz.
+
+   Still do not run the full application. Remaining Phase 5 work is the narrow
+   HT1632 bulk transport, then a guarded whole-application run.
 2. The MCP3002 application path now uses native IIO and its guarded first read
    passed all 13 checks. The controlled ten-sample windows then averaged 997.3
    uncovered, 179.0 fully covered, and 995.0 restored. Preserve the 360/500
