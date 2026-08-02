@@ -393,8 +393,10 @@ output boundary and deterministic frame tests are implemented, and the exact
 Zero W [native build](wiringpi-phase5-lpd8806-build-result.md) passed seven
 checks at commit `37b6797`; see the
 [transport checkpoint](wiringpi-phase5-lpd8806-transport.md). No device has
-yet been opened or transferred through. The next gate is one guarded all-off
-strip transfer. The resulting full application must not run yet because its
+yet been opened or transferred through. The standalone
+[guarded all-off transfer](wiringpi-phase5-lpd8806-first-transfer.md) is now
+implemented and is the next exact-board gate. The resulting full application
+must not run yet because its
 MCP3002 path still conflicts with the overlay-owned ADC GPIOs.
 
 Run every follow-up modern transport profile on the Zero W and compare it with

@@ -131,4 +131,25 @@ if grep -Eq '^[[:space:]]*(modprobe|dtoverlay|reboot|shutdown|gpioset|gpioget|gp
     exit 1
 fi
 
+# The first-transfer gate must use the standalone all-off tool, retain an
+# explicit human confirmation, and make unbind part of its exit path. It must
+# never use the partial application as a transfer vehicle.
+bash -n misc/verifyPhase5Lpd8806FirstTransfer.sh
+misc/verifyPhase5Lpd8806FirstTransfer.sh --help \
+    >"${test_dir}/phase5-lpd-transfer-help.txt"
+grep -Fq 'Type TRANSFER' misc/verifyPhase5Lpd8806FirstTransfer.sh
+grep -Fq 'Emergency rollback: unbinding the strip' \
+    misc/verifyPhase5Lpd8806FirstTransfer.sh
+grep -Fq 'timeout --signal=TERM --kill-after=5s 15s "${transfer_tool}"' \
+    misc/verifyPhase5Lpd8806FirstTransfer.sh
+grep -Fq 'runtime strip binding was removed before the operator prompt' \
+    misc/verifyPhase5Lpd8806FirstTransfer.sh
+grep -Fq 'const Int16U ledCount = 240;' \
+    misc/phase5Lpd8806AllOff.cpp
+grep -Fq 'strip.show();' misc/phase5Lpd8806AllOff.cpp
+if grep -Fq 'strip.begin();' misc/phase5Lpd8806AllOff.cpp; then
+    echo "all-off tool contains an extra initial latch transfer" >&2
+    exit 1
+fi
+
 echo "application compatibility tests passed"

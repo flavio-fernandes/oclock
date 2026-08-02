@@ -8,7 +8,8 @@ endif
 	compatibility gpio-boundary test \
 	test-core test-gpio-protocols test-gpio-registers \
 	test-spi-output test-spi-overlay check-arm-warnings \
-	smoke test-shutdown valgrind spi-overlay clean
+	smoke test-shutdown valgrind spi-overlay \
+	phase5-lpd8806-all-off clean
 
 # Keep the original CC override working even though every source is C++.
 CC = g++
@@ -179,8 +180,19 @@ build/tests/linuxSpidevOutput.cpp.o: src/spi/linuxSpidevOutput.cpp
 	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) \
 		-funsigned-char -Werror $< -o $@
 
+build/phase5-lpd8806-all-off: misc/phase5Lpd8806AllOff.cpp \
+		lpd8806/LPD8806.cpp src/gpio/fakeGpio.cpp \
+		src/spi/linuxSpidevOutput.cpp
+	$Q echo "[Build Phase 5 all-off transfer tool] $@"
+	$Q mkdir -p $(@D)
+	$Q $(CXX) $(CPPFLAGS) $(CXXFLAGS) \
+		-funsigned-char -Werror $^ -o $@ -lpthread
+
+phase5-lpd8806-all-off: build/phase5-lpd8806-all-off
+
 test-spi-output: build/tests/spi_output_tests \
-		build/tests/linuxSpidevOutput.cpp.o
+		build/tests/linuxSpidevOutput.cpp.o \
+		build/phase5-lpd8806-all-off
 	$Q ASAN_OPTIONS=detect_leaks=1 ./build/tests/spi_output_tests
 
 smoke: oclock-sandbox

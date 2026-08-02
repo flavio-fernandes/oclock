@@ -169,8 +169,9 @@ It links libgpiod and libatomic without WiringPi and discovers the strip by
 Device Tree suffix. The old build selectors were then retired in favor of one
 modern hardware build; historical sources remain only as diagnostic evidence.
 
-1. Add and run the separate all-off first-transfer timing gate. It must always
-   close and unbind before exit.
+1. Build and run the implemented
+   [all-off first-transfer timing gate](wiringpi-phase5-lpd8806-first-transfer.md).
+   It must always close and unbind before exit.
 2. Convert the MCP3002 only after the strip path is proven. Read both IIO raw
    channels and record them separately so light calibration can be separated
    from transport correctness.

@@ -58,8 +58,9 @@ hardware or WiringPi.
 This build-policy decision is not deployment approval. The current whole
 application must not run while the live Office Clock overlay owns the MCP3002
 GPIOs: its ADC code still tries to request those lines directly. The next
-hardware gate is a standalone, guarded LPD8806 all-off transfer. MCP3002/IIO
-and HT1632 work follow before a full application trial.
+hardware gate is the standalone,
+[guarded LPD8806 all-off transfer](wiringpi-phase5-lpd8806-first-transfer.md).
+MCP3002/IIO and HT1632 work follow before a full application trial.
 
 No wiring change, threshold change, privilege change, or production service
 change is implied by this policy. The Zero W remains experimental and

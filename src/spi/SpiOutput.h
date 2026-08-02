@@ -13,9 +13,8 @@ public:
   virtual void transfer(const std::uint8_t *data, std::size_t length) = 0;
 };
 
-// The build selects exactly one factory. Legacy and sandbox builds return an
-// empty pointer and keep the LPD8806 GPIO path. The opt-in modern strip build
-// returns the Linux spidev transport.
+// The hardware build supplies the Linux spidev factory. The sandbox supplies
+// an empty factory and keeps hardware-free application tests isolated.
 std::unique_ptr<SpiOutput> createStripSpiOutput();
 
 #endif

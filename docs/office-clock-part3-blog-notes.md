@@ -42,7 +42,7 @@ The selected next architecture is mixed:
 | Device | Selected modern transport | Existing BCM GPIOs | Status |
 | --- | --- | --- | --- |
 | Motion sensor | libgpiod v2 input | 10 | Implemented and functionally tested |
-| LPD8806 strip | kernel `spi-gpio` plus explicit `spidev` binding | clock 20, data 21 | Transport, exact fake frame, and native ARM build passed; first transfer pending |
+| LPD8806 strip | kernel `spi-gpio` plus explicit `spidev` binding | clock 20, data 21 | Transport, exact fake frame, and native ARM build passed; guarded all-off verifier ready |
 | MCP3002 ADC | second `spi-gpio` plus native `mcp320x`/IIO | clock 17, MISO 27, MOSI 22, CS 4 | Live native binding and IIO attributes verified; value reads wait |
 | HT1632 matrix | narrow bulk mmap transport | CS 6, WR 13, data 19, select clock 26 | Selected direction; not implemented |
 
@@ -341,6 +341,8 @@ tested command or file before drafting the article:
   in one hardware-free verified transfer.
 - [x] Native Zero W build of the strip profile, with dependency evidence and
   no WiringPi.
+- [x] Standalone 728-byte all-off tool and guarded bind/transfer/unbind
+  verifier implemented.
 - [ ] LPD8806 Zero W timing acceptance at the existing 12 ms application tick.
 - [ ] MCP3002 native-IIO conversion and raw channel verification.
 - [ ] Controlled dark/bright samples and a separate threshold decision.
@@ -414,6 +416,10 @@ tested command or file before drafting the article:
   The old selector knobs and WiringPi compile check are gone; historical
   implementations remain only for comparison, and physical rollback remains
   the complete original unit.
+- A standalone first-transfer tool and guarded verifier are ready. They reuse
+  the exact application frame assembly, send one all-off frame under an
+  explicit prompt and timeout, and unbind before the operator answers. The
+  exact-board transfer itself remains pending.
 
 ### Phase 6/7 — pending
 

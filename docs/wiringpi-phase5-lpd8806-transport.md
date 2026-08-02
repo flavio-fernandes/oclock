@@ -117,7 +117,8 @@ exact evidence.
 
 ## First-transfer gate requirements
 
-After the native build passes, add a separate verifier that:
+The [guarded first-transfer gate](wiringpi-phase5-lpd8806-first-transfer.md)
+implements these requirements and is ready for the exact-board run. It:
 
 1. keeps `oclock.service` inactive;
 2. binds only the discovered strip child;
