@@ -1,4 +1,5 @@
 #include "spi/SpiOutput.h"
+#include "spi/StripSpeed.h"
 
 #include <linux/spi/spidev.h>
 
@@ -20,7 +21,6 @@ namespace {
 
 const char *const spiDevicesPattern = "/sys/bus/spi/devices/spi*.*";
 const char *const stripDeviceTreeSuffix = "/oclock-strip-spi/lpd8806@0";
-const std::uint32_t stripSpeedHz = 1000000;
 const std::uint8_t stripBitsPerWord = 8;
 
 std::runtime_error spiError(const std::string &operation,
@@ -137,7 +137,7 @@ public:
     transfer.tx_buf = static_cast<__u64>(
         reinterpret_cast<std::uintptr_t>(data));
     transfer.len = static_cast<__u32>(length);
-    transfer.speed_hz = stripSpeedHz;
+    transfer.speed_hz = oclockSpi::stripSpeedHz;
     transfer.bits_per_word = stripBitsPerWord;
 
     int result;
@@ -159,7 +159,7 @@ private:
     std::uint32_t mode = SPI_MODE_0;
     std::uint8_t bits = stripBitsPerWord;
     std::uint8_t lsbFirst = 0;
-    std::uint32_t speed = stripSpeedHz;
+    std::uint32_t speed = oclockSpi::stripSpeedHz;
 
     if (ioctl(fd_, SPI_IOC_WR_MODE32, &mode) < 0)
       throw spiError("mode configuration", devicePath_, errno);

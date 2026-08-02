@@ -583,6 +583,7 @@ backward compatibility.”
 - LPD8806 SPI transport: [`wiringpi-phase5-lpd8806-transport.md`](wiringpi-phase5-lpd8806-transport.md)
 - LPD8806 first-transfer result: [`wiringpi-phase5-lpd8806-first-transfer-result.md`](wiringpi-phase5-lpd8806-first-transfer-result.md)
 - LPD8806 cadence result: [`wiringpi-phase5-lpd8806-cadence-result.md`](wiringpi-phase5-lpd8806-cadence-result.md)
+- Guarded LPD8806 2 MHz experiment: [`wiringpi-phase5-lpd8806-2mhz-experiment.md`](wiringpi-phase5-lpd8806-2mhz-experiment.md)
 - MCP3002 native IIO: [`wiringpi-phase5-mcp3002-iio.md`](wiringpi-phase5-mcp3002-iio.md)
 - MCP3002 first-read result: [`wiringpi-phase5-mcp3002-iio-result.md`](wiringpi-phase5-mcp3002-iio-result.md)
 - MCP3002 controlled light result: [`wiringpi-phase5-mcp3002-calibration-result.md`](wiringpi-phase5-mcp3002-calibration-result.md)

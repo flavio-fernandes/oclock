@@ -9,7 +9,8 @@ endif
 	test-core test-gpio-protocols test-gpio-registers \
 	test-spi-output test-iio-analog test-spi-overlay check-arm-warnings \
 	smoke test-shutdown valgrind spi-overlay \
-	phase5-lpd8806-all-off phase5-mcp3002-read clean
+	phase5-lpd8806-all-off phase5-lpd8806-all-off-2mhz \
+	phase5-mcp3002-read clean
 
 # Keep the original CC override working even though every source is C++.
 CC = g++
@@ -191,6 +192,17 @@ build/phase5-lpd8806-all-off: misc/phase5Lpd8806AllOff.cpp \
 		-funsigned-char -Werror $^ -o $@ -lpthread
 
 phase5-lpd8806-all-off: build/phase5-lpd8806-all-off
+
+build/phase5-lpd8806-all-off-2mhz: misc/phase5Lpd8806AllOff.cpp \
+		lpd8806/LPD8806.cpp src/gpio/fakeGpio.cpp \
+		src/spi/linuxSpidevOutput.cpp
+	$Q echo "[Build Phase 5 2 MHz all-off transfer tool] $@"
+	$Q mkdir -p $(@D)
+	$Q $(CXX) $(CPPFLAGS) $(CXXFLAGS) \
+		-DOCLOCK_STRIP_SPEED_HZ=2000000U \
+		-funsigned-char -Werror $^ -o $@ -lpthread
+
+phase5-lpd8806-all-off-2mhz: build/phase5-lpd8806-all-off-2mhz
 
 build/phase5-mcp3002-read: misc/phase5Mcp3002Read.cpp \
 		src/adc/linuxIioAnalogInput.cpp

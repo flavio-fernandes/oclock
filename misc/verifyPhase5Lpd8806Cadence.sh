@@ -10,6 +10,7 @@ frame_count=25
 tick_budget_microseconds=12000
 tool=
 commit=
+speed_hz=1000000
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 manager=${script_dir}/managePhase5Lpd8806Binding.sh
 binding_active=0
@@ -18,7 +19,7 @@ output_dir=
 usage() {
     cat <<'EOF'
 Usage: sudo misc/verifyPhase5Lpd8806Cadence.sh \
-  --tool PATH --commit GIT_COMMIT
+  --tool PATH --commit GIT_COMMIT [--speed-hz HZ]
 
 Requires the accepted Zero W/Trixie overlay, inactive service, native MCP3002
 binding, and an initially unbound strip. After the explicit BENCHMARK prompt,
@@ -52,6 +53,11 @@ while (($# > 0)); do
             commit=$2
             shift 2
             ;;
+        --speed-hz)
+            (($# >= 2)) || die "--speed-hz requires a value"
+            speed_hz=$2
+            shift 2
+            ;;
         --help|-h)
             usage
             exit 0
@@ -68,6 +74,8 @@ done
     exit 2
 }
 [[ ${commit} =~ ^[0-9a-f]{40}$ ]] || die "commit must be a full Git SHA"
+[[ ${speed_hz} == 1000000 || ${speed_hz} == 2000000 ]] ||
+    die "--speed-hz must be 1000000 or the reviewed 2000000 experiment"
 [[ -x ${manager} ]] || die "binding manager is missing: ${manager}"
 tool=$(realpath "${tool}")
 [[ -x ${tool} ]] || die "all-off helper is not executable: ${tool}"
@@ -112,6 +120,7 @@ printf 'frame\telapsed_microseconds\n' >"${samples_file}"
     printf 'architecture=%s/%s\n' "$(uname -m)" "$(dpkg --print-architecture)"
     printf 'os_codename=%s\n' "${VERSION_CODENAME}"
     printf 'frame_count=%d\n' "${frame_count}"
+    printf 'speed_hz=%d\n' "${speed_hz}"
     printf 'tick_budget_microseconds=%d\n' "${tick_budget_microseconds}"
 } >"${output_dir}/context.txt"
 file "${tool}" >"${output_dir}/tool-file.txt"
@@ -122,7 +131,7 @@ vcgencmd get_throttled >"${output_dir}/throttling-before.txt" 2>&1 || true
 
 echo "Candidate helper:   ${tool}"
 echo "Candidate commit:   ${commit}"
-echo "Authorized output:  ${frame_count} all-off frames at 1 MHz"
+echo "Authorized output:  ${frame_count} all-off frames at ${speed_hz} Hz"
 echo "Acceptance budget:  every show() call <= ${tick_budget_microseconds} us"
 echo
 echo "The entire strip should remain completely dark and stable."
@@ -147,7 +156,7 @@ for ((frame = 1; frame <= frame_count; ++frame)); do
             ! grep -Fqx 'data_bytes=720' <<<"${output}" ||
             ! grep -Fqx 'latch_bytes=8' <<<"${output}" ||
             ! grep -Fqx 'payload_bytes=728' <<<"${output}" ||
-            ! grep -Fqx 'speed_hz=1000000' <<<"${output}" ||
+            ! grep -Fqx "speed_hz=${speed_hz}" <<<"${output}" ||
             [[ ! ${elapsed} =~ ^[1-9][0-9]*$ ]]; then
         echo "invalid frame=${frame} status=${status}" \
             >>"${output_dir}/sample-errors.txt"

@@ -147,6 +147,13 @@ grep -Fq 'runtime strip binding was removed before the operator prompt' \
 grep -Fq 'const Int16U ledCount = 240;' \
     misc/phase5Lpd8806AllOff.cpp
 grep -Fq 'strip.show();' misc/phase5Lpd8806AllOff.cpp
+grep -Fq 'OCLOCK_STRIP_SPEED_HZ 1000000U' src/spi/StripSpeed.h
+make -n phase5-lpd8806-all-off-2mhz \
+    >"${test_dir}/phase5-lpd-2mhz-build.txt"
+grep -Fq -- '-DOCLOCK_STRIP_SPEED_HZ=2000000U' \
+    "${test_dir}/phase5-lpd-2mhz-build.txt"
+grep -Fq -- '--speed-hz must be 1000000 or the reviewed 2000000 experiment' \
+    misc/verifyPhase5Lpd8806FirstTransfer.sh
 grep -Fq 'std::uint32_t mode = SPI_MODE_0;' \
     src/spi/linuxSpidevOutput.cpp
 if grep -Fq 'SPI_MODE_0 | SPI_NO_CS' src/spi/linuxSpidevOutput.cpp; then
@@ -204,6 +211,8 @@ grep -Fq 'frame_count=25' misc/verifyPhase5Lpd8806Cadence.sh
 grep -Fq 'tick_budget_microseconds=12000' \
     misc/verifyPhase5Lpd8806Cadence.sh
 grep -Fq 'Type BENCHMARK' misc/verifyPhase5Lpd8806Cadence.sh
+grep -Fq -- '--speed-hz must be 1000000 or the reviewed 2000000 experiment' \
+    misc/verifyPhase5Lpd8806Cadence.sh
 grep -Fq 'Emergency rollback: unbinding the strip' \
     misc/verifyPhase5Lpd8806Cadence.sh
 grep -Fq 'Did the entire LED strip remain off and stable?' \

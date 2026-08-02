@@ -14,6 +14,7 @@ manager=
 result_file=
 failures=0
 warnings=0
+expected_speed_hz=1000000
 
 expected_model="Raspberry Pi Zero W Rev 1.1"
 expected_revision=9000c1
@@ -23,7 +24,7 @@ installed_overlay=/boot/firmware/overlays/oclock-spi.dtbo
 usage()
 {
     cat <<EOF
-Usage: sudo $0 --tool PATH --commit SHA [--output DIRECTORY]
+Usage: sudo $0 --tool PATH --commit SHA [--speed-hz HZ] [--output DIRECTORY]
 
 After an explicit TRANSFER confirmation, bind only the dynamically discovered
 Office Clock strip child, run the standalone all-off tool once, immediately
@@ -54,6 +55,11 @@ while (($# > 0)); do
             source_commit=$2
             shift 2
             ;;
+        --speed-hz)
+            (($# >= 2)) || die "--speed-hz requires a value"
+            expected_speed_hz=$2
+            shift 2
+            ;;
         --output)
             (($# >= 2)) || die "--output requires a value"
             output_dir=$2
@@ -74,6 +80,8 @@ done
 [[ -n ${source_commit} ]] || die "--commit is required"
 [[ ${source_commit} =~ ^[0-9a-f]{40}$ ]] ||
     die "--commit must be a full lowercase SHA"
+[[ ${expected_speed_hz} == 1000000 || ${expected_speed_hz} == 2000000 ]] ||
+    die "--speed-hz must be 1000000 or the reviewed 2000000 experiment"
 
 for command_name in awk basename cat chown date dirname dmesg dpkg file grep \
         ldd mkdir mktemp readlink sed sha256sum stat strings systemctl tail tar \
@@ -184,6 +192,7 @@ strings "${transfer_tool}" >"${output_dir}/tool-strings.txt"
     echo
     echo "collected_utc: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
     echo "source_commit: ${source_commit}"
+    echo "expected_speed_hz: ${expected_speed_hz}"
     echo "transfer_tool: ${transfer_tool}"
     echo "model: ${model}"
     echo "revision: ${revision:-unknown}"
@@ -227,7 +236,7 @@ grep -Fq 'Driver:             none' "${output_dir}/status-before.txt" ||
 
 echo "Candidate tool:      ${transfer_tool}"
 echo "Candidate commit:    ${source_commit}"
-echo "Authorized transfer: one 728-byte all-off LPD8806 frame at 1 MHz"
+echo "Authorized transfer: one 728-byte all-off LPD8806 frame at ${expected_speed_hz} Hz"
 echo
 echo "The strip should remain completely dark and stable."
 printf 'Type TRANSFER to bind, send once, and unbind: ' >&2
@@ -277,7 +286,7 @@ else
 fi
 
 for expected_line in led_count=240 data_bytes=720 latch_bytes=8 \
-        payload_bytes=728 speed_hz=1000000; do
+        payload_bytes=728 speed_hz="${expected_speed_hz}"; do
     if grep -Fqx "${expected_line}" "${output_dir}/transfer.txt"; then
         ok "transfer reported ${expected_line}"
     else

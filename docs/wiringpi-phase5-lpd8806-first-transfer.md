@@ -10,10 +10,12 @@ passed all 17 checks, and restored the safe unbound state. See the
 [first-transfer results](wiringpi-phase5-lpd8806-first-transfer-result.md).
 
 The accepted 20,956-microsecond `show()` measurement proves a real transfer,
-but exceeds the existing 12 ms application tick. A repeatable strip cadence
-benchmark remains required before full Phase 5 performance acceptance.
-`misc/verifyPhase5Lpd8806Cadence.sh` reuses the accepted all-off helper for 25
-measured frames, binds only once, and unbinds before visual confirmation.
+but exceeds the existing 12 ms application tick. The repeatable
+[1 MHz cadence result](wiringpi-phase5-lpd8806-cadence-result.md) subsequently
+rejected that speed after 0/25 frames met the budget. The next guarded
+[2 MHz experiment](wiringpi-phase5-lpd8806-2mhz-experiment.md) reuses the same
+frame and rollback boundaries while exercising the running kernel's undelayed
+`spi-gpio` path. The normal application remains at 1 MHz pending that result.
 
 ## Scope
 
@@ -93,6 +95,7 @@ After the verifier returns, its result must show:
 - `oclock.service` remains inactive;
 - firmware throttling evidence was recorded.
 
-Do not run the full application after this gate. MCP3002/IIO conversion is the
-next application change. Keep final strip cadence acceptance separate from
-this one-frame functional and rollback gate.
+Do not run the full application after this gate. Keep final strip cadence
+acceptance separate from this one-frame functional and rollback gate; the
+1 MHz cadence profile has failed and the separately named 2 MHz helper is the
+next authorized experiment.

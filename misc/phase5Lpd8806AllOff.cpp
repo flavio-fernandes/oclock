@@ -1,6 +1,7 @@
 #include "LPD8806.h"
 #include "gpio/FakeGpio.h"
 #include "spi/SpiOutput.h"
+#include "spi/StripSpeed.h"
 
 #include <chrono>
 #include <exception>
@@ -16,7 +17,6 @@ const std::size_t dataBytes =
     static_cast<std::size_t>(ledCount) * bytesPerLed;
 const std::size_t latchBytes =
     (static_cast<std::size_t>(ledCount) + 31) / 32;
-const unsigned int speedHz = 1000000;
 
 } // namespace
 
@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
               << "data_bytes=" << dataBytes << "\n"
               << "latch_bytes=" << latchBytes << "\n"
               << "payload_bytes=" << dataBytes + latchBytes << "\n"
-              << "speed_hz=" << speedHz << "\n"
+              << "speed_hz=" << oclockSpi::stripSpeedHz << "\n"
               << "elapsed_microseconds=" << elapsedMicroseconds << "\n";
     return 0;
   } catch (const std::exception &error) {
