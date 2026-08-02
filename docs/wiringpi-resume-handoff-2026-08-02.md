@@ -176,9 +176,10 @@ modern hardware build; historical sources remain only as diagnostic evidence.
    the 12 ms tick, so retain a separate strip cadence benchmark before running
    the full application.
 2. The MCP3002 application path now uses native IIO and its guarded first read
-   passed all 13 checks. Channel 0 was 1013, channel 1 was 1016, and the pair
-   took 6,656 microseconds. Prepare controlled uncovered/covered windows while
-   keeping light calibration separate from transport correctness.
+   passed all 13 checks. The controlled ten-sample windows then averaged 997.3
+   uncovered, 179.0 fully covered, and 995.0 restored. Preserve the 360/500
+   thresholds until representative room-light behavior can be observed during
+   a later guarded application run.
 3. Revisit the HT1632 only after the two standard SPI devices are settled.
 
 If the kernel `spi-gpio` strip still cannot meet the 12 ms animation cadence,

@@ -60,9 +60,14 @@ must require the exact Zero W/Trixie target, accepted overlay, native
 It must archive only sanitized hardware evidence.
 
 The first read passed all 13 checks at commit `d47629b`. It establishes
-transport correctness, not calibration. A later
-operator-assisted capture must record controlled covered/uncovered values for
-both channels before deciding whether the existing thresholds are suitable.
+transport correctness, not calibration. The following operator-assisted
+capture recorded controlled covered/uncovered values for both channels before
+making any threshold decision.
 `misc/collectPhase5Mcp3002Calibration.sh` implements three ten-sample windows
 at the application's 600 ms sampling interval: uncovered, covered, and
 uncovered again. It reports channels separately and does not change thresholds.
+
+That capture passed; see the
+[controlled light result](wiringpi-phase5-mcp3002-calibration-result.md). It
+proves a strong covered/uncovered response and preserves the existing
+thresholds pending representative-room observation in a later application gate.

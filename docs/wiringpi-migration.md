@@ -408,8 +408,11 @@ full application must not run yet. Its
 [MCP3002/IIO path](wiringpi-phase5-mcp3002-iio.md) is now implemented without
 requesting the overlay-owned ADC GPIOs. Its guarded
 [exact-board first read](wiringpi-phase5-mcp3002-iio-result.md) passed 13 checks
-and preserved all hardware/service state. Controlled dark/bright calibration
-remains separate and pending.
+and preserved all hardware/service state. The subsequent
+[controlled light capture](wiringpi-phase5-mcp3002-calibration-result.md)
+recorded a 997.3 uncovered mean, 179.0 fully covered mean, and 995.0 restored
+mean. The 360/500 thresholds remain unchanged until representative room-light
+behavior can be observed during a later guarded application run.
 
 Run every follow-up modern transport profile on the Zero W and compare it with
 Phase 0, Phase 1, and protocol-trace evidence from the preserved Zero/Jessie

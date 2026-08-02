@@ -63,8 +63,9 @@ native IIO device instead of requesting those GPIOs directly, and its
 standalone
 [guarded LPD8806 all-off transfer](wiringpi-phase5-lpd8806-first-transfer.md)
 has passed; the [MCP3002/IIO conversion](wiringpi-phase5-mcp3002-iio.md) now has
-hardware-free and live-read evidence. Controlled light calibration, HT1632
-work, and a dedicated strip cadence gate still precede a full application trial.
+hardware-free, live-read, and controlled covered/uncovered evidence.
+Representative-room dimming observation, HT1632 work, and a dedicated strip
+cadence gate still precede a full application trial.
 
 No wiring change, threshold change, privilege change, or production service
 change is implied by this policy. The Zero W remains experimental and

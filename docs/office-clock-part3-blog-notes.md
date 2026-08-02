@@ -48,7 +48,7 @@ The selected next architecture is mixed:
 | --- | --- | --- | --- |
 | Motion sensor | libgpiod v2 input | 10 | Implemented and functionally tested |
 | LPD8806 strip | kernel `spi-gpio` plus explicit `spidev` binding | clock 20, data 21 | Corrected all-off transfer passed; 20.956 ms measured, so cadence acceptance remains open |
-| MCP3002 ADC | second `spi-gpio` plus native `mcp320x`/IIO | clock 17, MISO 27, MOSI 22, CS 4 | Native application path and exact-board first read accepted; calibration waits |
+| MCP3002 ADC | second `spi-gpio` plus native `mcp320x`/IIO | clock 17, MISO 27, MOSI 22, CS 4 | Native reads and controlled covered response accepted; thresholds retained pending room trial |
 | HT1632 matrix | narrow bulk mmap transport | CS 6, WR 13, data 19, select clock 26 | Selected direction; not implemented |
 
 The 2026-08-02 read-only kernel-SPI run established that the exact Zero W
@@ -358,7 +358,8 @@ tested command or file before drafting the article:
 - [x] MCP3002 native-IIO application conversion with dynamic Device Tree
   discovery and deterministic fixture tests.
 - [x] MCP3002 exact-board raw channel verification.
-- [ ] Controlled dark/bright samples and a separate threshold decision.
+- [x] Controlled uncovered/covered/restored samples captured with both channels
+  separate; existing thresholds deliberately retained.
 - [ ] HT1632 bulk transport and timing acceptance.
 - [x] Backend/transport build knobs retired; `make` and `make hardware` select
   the modern profile.
@@ -581,6 +582,7 @@ backward compatibility.”
 - LPD8806 first-transfer result: [`wiringpi-phase5-lpd8806-first-transfer-result.md`](wiringpi-phase5-lpd8806-first-transfer-result.md)
 - MCP3002 native IIO: [`wiringpi-phase5-mcp3002-iio.md`](wiringpi-phase5-mcp3002-iio.md)
 - MCP3002 first-read result: [`wiringpi-phase5-mcp3002-iio-result.md`](wiringpi-phase5-mcp3002-iio-result.md)
+- MCP3002 controlled light result: [`wiringpi-phase5-mcp3002-calibration-result.md`](wiringpi-phase5-mcp3002-calibration-result.md)
 - Exact resume state: [`wiringpi-resume-handoff-2026-08-02.md`](wiringpi-resume-handoff-2026-08-02.md)
 - Original hardware article: [Part 1](https://flaviof.com/blog/hacks/office-clock-part1.html)
 - Original software article: [Part 2](https://flaviof.com/blog/hacks/office-clock-part2.html)
@@ -640,3 +642,9 @@ backward compatibility.”
   and clean-versus-incremental status for subsequent native Pi builds. Prefer
   focused helpers, overlap slow ARM compilation with local work, and do not
   rerun a successful full build just to reconstruct a missing duration.
+- **2026-08-02:** Accepted the three-window MCP3002 light capture with all 30
+  sample pairs valid. Pair means were 997.3 uncovered, 179.0 fully covered,
+  and 995.0 restored. The sensor response and recovery are clear, but a hand
+  covering the sensor is not representative room illumination; retain the
+  360/500 thresholds until the guarded application trial can observe a real
+  bright-to-dark transition.
