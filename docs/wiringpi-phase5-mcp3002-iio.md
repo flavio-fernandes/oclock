@@ -50,8 +50,9 @@ Fixture tests cover:
 
 ## Next exact-board gate
 
-Before any whole-application run, build a standalone reader from a pinned PR
-commit and use a guarded verifier to read each raw channel separately. The gate
+Before any whole-application run, build `phase5-mcp3002-read` from a pinned PR
+commit and use `misc/verifyPhase5Mcp3002FirstRead.sh` to read each raw channel
+separately. The gate
 must require the exact Zero W/Trixie target, accepted overlay, native
 `mcp320x` binding, inactive `oclock.service`, and an unchanged strip binding.
 It must archive only sanitized hardware evidence.

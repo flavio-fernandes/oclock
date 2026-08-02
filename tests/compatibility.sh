@@ -165,6 +165,19 @@ if grep -Eq '/sys/bus/iio/devices/iio:device[0-9]+' \
     echo "IIO ADC path hard-codes a dynamic device number" >&2
     exit 1
 fi
+bash -n misc/verifyPhase5Mcp3002FirstRead.sh
+misc/verifyPhase5Mcp3002FirstRead.sh --help \
+    >"${test_dir}/phase5-mcp3002-read-help.txt"
+grep -Fq 'Type READ' misc/verifyPhase5Mcp3002FirstRead.sh
+grep -Fq 'runuser -u "${operator}" -- "${tool}"' \
+    misc/verifyPhase5Mcp3002FirstRead.sh
+grep -Fq 'No calibration decision or whole-application run was included.' \
+    misc/verifyPhase5Mcp3002FirstRead.sh
+if grep -Eq '(^|[[:space:]])(gpioget|gpioset|gpiomon|gpionotify)[[:space:]]' \
+        misc/verifyPhase5Mcp3002FirstRead.sh; then
+    echo "MCP3002 verifier contains a GPIO line-access command" >&2
+    exit 1
+fi
 if grep -Fq 'strip.begin();' misc/phase5Lpd8806AllOff.cpp; then
     echo "all-off tool contains an extra initial latch transfer" >&2
     exit 1

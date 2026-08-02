@@ -9,7 +9,7 @@ endif
 	test-core test-gpio-protocols test-gpio-registers \
 	test-spi-output test-iio-analog test-spi-overlay check-arm-warnings \
 	smoke test-shutdown valgrind spi-overlay \
-	phase5-lpd8806-all-off clean
+	phase5-lpd8806-all-off phase5-mcp3002-read clean
 
 # Keep the original CC override working even though every source is C++.
 CC = g++
@@ -192,6 +192,15 @@ build/phase5-lpd8806-all-off: misc/phase5Lpd8806AllOff.cpp \
 
 phase5-lpd8806-all-off: build/phase5-lpd8806-all-off
 
+build/phase5-mcp3002-read: misc/phase5Mcp3002Read.cpp \
+		src/adc/linuxIioAnalogInput.cpp
+	$Q echo "[Build Phase 5 MCP3002 reader] $@"
+	$Q mkdir -p $(@D)
+	$Q $(CXX) $(CPPFLAGS) $(CXXFLAGS) \
+		-funsigned-char -Werror $^ -o $@ -lpthread
+
+phase5-mcp3002-read: build/phase5-mcp3002-read
+
 test-spi-output: build/tests/spi_output_tests \
 		build/tests/linuxSpidevOutput.cpp.o \
 		build/phase5-lpd8806-all-off
@@ -206,8 +215,9 @@ build/tests/iio_analog_input_tests: tests/iio_analog_input_tests.cpp \
 		-fsanitize=address,undefined -fno-omit-frame-pointer \
 		$^ -o $@ -lpthread
 
-test-iio-analog: build/tests/iio_analog_input_tests
+test-iio-analog: build/tests/iio_analog_input_tests build/phase5-mcp3002-read
 	$Q ASAN_OPTIONS=detect_leaks=1 ./build/tests/iio_analog_input_tests
+	$Q test -x build/phase5-mcp3002-read
 
 smoke: oclock-sandbox
 	$Q ./tests/smoke.sh ./oclock-sandbox
