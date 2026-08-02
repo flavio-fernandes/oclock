@@ -47,7 +47,7 @@ The selected next architecture is mixed:
 | Device | Selected modern transport | Existing BCM GPIOs | Status |
 | --- | --- | --- | --- |
 | Motion sensor | libgpiod v2 input | 10 | Implemented and functionally tested |
-| LPD8806 strip | kernel `spi-gpio` plus explicit `spidev` binding | clock 20, data 21 | Corrected all-off transfer passed; 20.956 ms measured, so cadence acceptance remains open |
+| LPD8806 strip | kernel `spi-gpio` plus explicit `spidev` binding | clock 20, data 21 | Functionally safe; 1 MHz rejected after 0/25 frames met the 12 ms cadence budget; guarded 2 MHz experiment next |
 | MCP3002 ADC | second `spi-gpio` plus native `mcp320x`/IIO | clock 17, MISO 27, MOSI 22, CS 4 | Native reads and controlled covered response accepted; thresholds retained pending room trial |
 | HT1632 matrix | narrow bulk mmap transport | CS 6, WR 13, data 19, select clock 26 | Selected direction; not implemented |
 
@@ -354,7 +354,9 @@ tested command or file before drafting the article:
   verifier implemented.
 - [x] Corrected mode-0 all-off frame transferred on the Zero W with clean
   rollback and no visible flash.
-- [ ] LPD8806 Zero W timing acceptance at the existing 12 ms application tick.
+- [ ] LPD8806 Zero W timing acceptance at the existing 12 ms application tick;
+  the 1 MHz profile failed 0/25 and a guarded 2 MHz kernel free-run experiment
+  is next.
 - [x] MCP3002 native-IIO application conversion with dynamic Device Tree
   discovery and deterministic fixture tests.
 - [x] MCP3002 exact-board raw channel verification.
@@ -580,6 +582,7 @@ backward compatibility.”
 - LPD8806 binding result: [`wiringpi-phase5-lpd8806-binding-result.md`](wiringpi-phase5-lpd8806-binding-result.md)
 - LPD8806 SPI transport: [`wiringpi-phase5-lpd8806-transport.md`](wiringpi-phase5-lpd8806-transport.md)
 - LPD8806 first-transfer result: [`wiringpi-phase5-lpd8806-first-transfer-result.md`](wiringpi-phase5-lpd8806-first-transfer-result.md)
+- LPD8806 cadence result: [`wiringpi-phase5-lpd8806-cadence-result.md`](wiringpi-phase5-lpd8806-cadence-result.md)
 - MCP3002 native IIO: [`wiringpi-phase5-mcp3002-iio.md`](wiringpi-phase5-mcp3002-iio.md)
 - MCP3002 first-read result: [`wiringpi-phase5-mcp3002-iio-result.md`](wiringpi-phase5-mcp3002-iio-result.md)
 - MCP3002 controlled light result: [`wiringpi-phase5-mcp3002-calibration-result.md`](wiringpi-phase5-mcp3002-calibration-result.md)
@@ -627,6 +630,12 @@ backward compatibility.”
   removed, the ADC stayed on `mcp320x`, and the service stayed inactive. This
   proves the live payload and rollback paths while leaving the 12 ms cadence
   target open.
+- **2026-08-02:** Rejected the 1 MHz LPD8806 profile on repeated cadence. All
+  25 application-path all-off frames were valid and visually stable, but 0/25
+  met 12 ms: median was 20.473 ms and the 95th percentile was 24.722 ms. The
+  exact Raspberry Pi kernel source places 1 MHz on the delayed side of a
+  500-ns half-cycle threshold, so the next isolated test requests 2 MHz to
+  exercise the undelayed path without rewiring or changing the live overlay.
 - **2026-08-02:** Replaced the supported application's GPIO-bit-banged MCP3002
   path with native `mcp320x`/IIO reads. The implementation discovers the IIO
   device by Device Tree identity, validates both single-ended raw attributes,

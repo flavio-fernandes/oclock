@@ -403,8 +403,13 @@ implemented. Its [first-transfer result](wiringpi-phase5-lpd8806-first-transfer-
 records both the safe pre-payload `SPI_NO_CS` failure and the corrected mode-0
 retry. The retry sent one 728-byte all-off frame, passed all 17 checks, and
 restored the unbound state. Its 20,956-microsecond `show()` time exceeds the
-12 ms application tick, so final strip cadence acceptance remains open. The
-full application must not run yet. Its
+12 ms application tick. The subsequent
+[25-frame cadence result](wiringpi-phase5-lpd8806-cadence-result.md) rejected
+the 1 MHz profile: all frames were valid and visually safe, but 0/25 met the
+budget (20,473 microseconds median; 24,722 microseconds at the 95th
+percentile). The full application must not run yet. A guarded 2 MHz all-off
+experiment will test the running kernel's undelayed `spi-gpio` path without
+rewiring or changing the live overlay. Its
 [MCP3002/IIO path](wiringpi-phase5-mcp3002-iio.md) is now implemented without
 requesting the overlay-owned ADC GPIOs. Its guarded
 [exact-board first read](wiringpi-phase5-mcp3002-iio-result.md) passed 13 checks
@@ -439,9 +444,10 @@ If the modern profile or onboard Wi-Fi cannot meet the acceptance budget,
 reconnect the preserved Zero/Jessie unit. The selected follow-up moves the
 LPD8806 and MCP3002 to kernel `spi-gpio` controllers without rewiring. The
 strip uses an explicit `spidev` binding and the ADC uses the native IIO driver.
-If that path also misses the timing budget, record the result before
-considering a fixed hardware-SPI rewiring profile. Do not hide a timing failure
-by reducing refresh behavior.
+The 1 MHz path has now missed that timing budget. Test the carefully isolated
+2 MHz `spi-gpio` path next; if it also lacks stable margin, record the result
+before considering a fixed hardware-SPI rewiring profile. Do not hide a timing
+failure by reducing refresh behavior.
 
 ### Phase 6: opt-in deployment with rollback
 

@@ -173,8 +173,13 @@ modern hardware build; historical sources remain only as diagnostic evidence.
    [all-off first-transfer gate](wiringpi-phase5-lpd8806-first-transfer.md)
    passed all 17 checks. One 728-byte mode-0 frame completed, the strip stayed
    dark, and rollback succeeded. Its 20,956-microsecond `show()` time is above
-   the 12 ms tick, so retain a separate strip cadence benchmark before running
-   the full application.
+   the 12 ms tick. The subsequent
+   [25-frame cadence gate](wiringpi-phase5-lpd8806-cadence-result.md) returned
+   valid, visually safe frames but rejected the 1 MHz profile: 0/25 met the
+   budget, with a 20,473-microsecond median and 24,722-microsecond 95th
+   percentile. Do not run the full application yet. The next narrow gate is a
+   2 MHz all-off experiment against the kernel's undelayed `spi-gpio` path;
+   it requires neither rewiring nor a live-overlay change.
 2. The MCP3002 application path now uses native IIO and its guarded first read
    passed all 13 checks. The controlled ten-sample windows then averaged 997.3
    uncovered, 179.0 fully covered, and 995.0 restored. Preserve the 360/500
@@ -182,9 +187,10 @@ modern hardware build; historical sources remain only as diagnostic evidence.
    a later guarded application run.
 3. Revisit the HT1632 only after the two standard SPI devices are settled.
 
-If the kernel `spi-gpio` strip still cannot meet the 12 ms animation cadence,
-record that result before considering rewiring to hardware SPI. Do not reduce
-the refresh rate to make a failing transport appear acceptable.
+The 1 MHz kernel `spi-gpio` strip cannot meet the 12 ms animation cadence. If
+the guarded 2 MHz undelayed-path experiment also lacks stable margin, record
+that result before considering rewiring to hardware SPI. Do not reduce the
+refresh rate to make a failing transport appear acceptable.
 
 For every subsequent native Pi build, wrap the exact target with
 `/usr/bin/time -p` and record whether it was clean or incremental. Prefer
