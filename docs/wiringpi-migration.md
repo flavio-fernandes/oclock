@@ -328,25 +328,29 @@ An x86 VM result is never evidence that Pi Zero pulse timing is acceptable.
 
 ### Phase 5: run the Zero W hardware trial
 
-**Status: initial target peripheral trial failed.** The 2026-08-02 exact-board
-run passed functional display, strip, ADC response, motion, MQTT, HTTP, and
-onboard-Wi-Fi checks, but failed automatic-dimming and acceptable-timing
-observations. See the [initial Phase 5 result](wiringpi-phase5-initial-result.md)
-and guarded [hardware-trial handoff](wiringpi-phase5-hardware-trial.md).
-Phase 6 remains blocked, the pure `libgpiod` candidate must not be deployed,
-and the preserved Zero/Jessie unit remains the production baseline.
+**Status: pure and first mapped target trials failed.** Both 2026-08-02
+exact-board runs passed functional display, strip, ADC response, motion, MQTT,
+HTTP, and onboard-Wi-Fi checks, but failed automatic-dimming and
+acceptable-timing observations. The mapped backend was clearly faster, but the
+operator still found the strip especially slow. See the
+[initial Phase 5 result](wiringpi-phase5-initial-result.md), the
+[`gpiod-mmap` result](wiringpi-phase5-fast-result.md), and guarded
+[hardware-trial handoff](wiringpi-phase5-hardware-trial.md). Phase 6 remains
+blocked, neither modern candidate may be deployed, and the preserved
+Zero/Jessie unit remains the production baseline.
 
 The exact Zero W subsequently passed the restricted `/dev/gpiomem` target
 probe. A separately named `GPIO_BACKEND=gpiod-mmap` experiment now retains
 libgpiod line validation, configuration, ownership, and cleanup while moving
 only high-rate values to the BCM2835 mapping. See the
-[fast-value-path report](wiringpi-phase5-fast-backend.md). It must pass native
-build and the complete Phase 5 timing gate before it can affect this status.
-The native ARMv6 build has now passed at commit `1f5605d`; the guarded physical
-trial of that exact binary remains pending.
+[fast-value-path report](wiringpi-phase5-fast-backend.md). Its native ARMv6
+build passed at commit `1f5605d`, but its first guarded physical trial failed
+the dimming and timing gates. A bounded bulk clocked-output optimization may be
+tested before abandoning mmap for kernel `spi-gpio`.
 
-Run the accepted `gpiod-mmap` candidate on the Zero W and compare it with Phase 0,
-Phase 1, and protocol-trace evidence from the preserved Zero/Jessie unit:
+Run any follow-up `gpiod-mmap` candidate on the Zero W and compare it with
+Phase 0, Phase 1, and protocol-trace evidence from the preserved Zero/Jessie
+unit:
 
 - startup and shutdown pin levels, including visible glitches;
 - HT1632 bit order, clock idle state, pulse widths, and full render time;

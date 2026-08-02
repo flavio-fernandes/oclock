@@ -136,6 +136,9 @@ libgpiod binary, samples interval CPU and HTTP latency, uses a 90-second
 window, and requires sustained sensor values on both sides of the existing
 `360`/`500` dimming thresholds.
 
-Acceptance still requires normal display refresh and strip animation versus
-the preserved WiringPi unit. A functional pass does not waive the overnight
-soak, cold-boot Wi-Fi/service, or powered-off rollback gates.
+The first guarded exact-board run did not pass: it was faster than pure
+libgpiod, but automatic dimming did not occur and the operator still rejected
+timing, especially on the LED strip. See the
+[`gpiod-mmap` hardware result](wiringpi-phase5-fast-result.md). A bounded bulk
+clocked-output experiment is the remaining mmap follow-up; it must pass the
+same gate before any soak, cold-boot, or deployment work.

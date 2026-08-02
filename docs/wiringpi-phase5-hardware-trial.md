@@ -84,9 +84,13 @@ The first exact-board trial on 2026-08-02 did not pass. Functional I/O and
 onboard Wi-Fi worked, but the operator rejected dimming behavior and the
 noticeably slower display/strip timing. See the
 [initial Phase 5 result](wiringpi-phase5-initial-result.md). Phase 6 remains
-blocked while the separately named
-[`gpiod-mmap` fast-value-path experiment](wiringpi-phase5-fast-backend.md) is
-evaluated; the pure `libgpiod` candidate is not a deployment candidate.
+blocked; the pure `libgpiod` candidate is not a deployment candidate.
+
+The follow-up `gpiod-mmap` run also failed. It improved speed, preserved all
+functional paths, and shut down cleanly, but did not cross the dark threshold
+and still missed the operator's timing gate, particularly for the LED strip.
+See the [`gpiod-mmap` result](wiringpi-phase5-fast-result.md). Phase 6 remains
+blocked.
 
 The follow-up fast-path trial passes only if display and strip output are
 visually correct and responsive, light and motion transitions appear in status
