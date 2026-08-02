@@ -153,6 +153,18 @@ if grep -Fq 'SPI_MODE_0 | SPI_NO_CS' src/spi/linuxSpidevOutput.cpp; then
     echo "spidev transport requests unsupported SPI_NO_CS mode" >&2
     exit 1
 fi
+
+# The supported ADC path must use the native IIO device by Device Tree
+# identity, never a copied dynamic IIO or SPI number.
+grep -Fq '/oclock-adc-spi/mcp3002@0' \
+    src/adc/linuxIioAnalogInput.cpp
+grep -Fq 'in_voltage0_raw' docs/wiringpi-phase5-mcp3002-iio.md
+grep -Fq 'in_voltage1_raw' docs/wiringpi-phase5-mcp3002-iio.md
+if grep -Eq '/sys/bus/iio/devices/iio:device[0-9]+' \
+        src/adc/linuxIioAnalogInput.cpp; then
+    echo "IIO ADC path hard-codes a dynamic device number" >&2
+    exit 1
+fi
 if grep -Fq 'strip.begin();' misc/phase5Lpd8806AllOff.cpp; then
     echo "all-off tool contains an extra initial latch transfer" >&2
     exit 1

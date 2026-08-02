@@ -21,6 +21,7 @@ The hardware build currently combines:
 - the BCM2835 mapping exposed through `/dev/gpiomem` for the remaining
   high-rate value operations;
 - Linux `spi-gpio` and `spidev` for one complete LPD8806 frame per transfer;
+- Linux `mcp320x` and IIO sysfs for both MCP3002 raw channels;
 - libatomic for ARMv6 64-bit atomic operations;
 - the existing libevent and libmosquitto application dependencies.
 
@@ -56,11 +57,13 @@ hardware or WiringPi.
 ## Safety boundary
 
 This build-policy decision is not deployment approval. The current whole
-application must not run while the live Office Clock overlay owns the MCP3002
-GPIOs: its ADC code still tries to request those lines directly. The standalone
+application must not run yet. Its MCP3002 path now uses the overlay-owned
+native IIO device instead of requesting those GPIOs directly, but that path
+still needs an exact-board first-read gate. The standalone
 [guarded LPD8806 all-off transfer](wiringpi-phase5-lpd8806-first-transfer.md)
-has passed; MCP3002/IIO conversion is now the next application change. HT1632
-work and a dedicated strip cadence gate still precede a full application trial.
+has passed; the [MCP3002/IIO conversion](wiringpi-phase5-mcp3002-iio.md) passes
+hardware-free tests. Its first read, HT1632 work, and a dedicated strip cadence
+gate still precede a full application trial.
 
 No wiring change, threshold change, privilege change, or production service
 change is implied by this policy. The Zero W remains experimental and

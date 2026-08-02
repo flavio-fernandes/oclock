@@ -175,9 +175,10 @@ modern hardware build; historical sources remain only as diagnostic evidence.
    dark, and rollback succeeded. Its 20,956-microsecond `show()` time is above
    the 12 ms tick, so retain a separate strip cadence benchmark before running
    the full application.
-2. Convert the MCP3002 now that the strip's live payload path is proven. Read
-   both IIO raw channels and record them separately so light calibration can
-   be separated from transport correctness.
+2. The MCP3002 application path now uses native IIO and passes deterministic
+   discovery/read tests. Build its standalone exact-board reader and record
+   both raw channels separately so light calibration remains separate from
+   transport correctness.
 3. Revisit the HT1632 only after the two standard SPI devices are settled.
 
 If the kernel `spi-gpio` strip still cannot meet the 12 ms animation cadence,

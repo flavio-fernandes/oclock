@@ -5,6 +5,7 @@
 
 class Gpio;
 class SpiOutput;
+class AnalogInput;
 
 typedef enum ThreadId_t {
   threadIdDisplay = 0,
@@ -24,6 +25,7 @@ typedef struct ThreadParam_t {
   std::recursive_mutex* gpioLockMutexP;
   Gpio* gpioP;
   SpiOutput* stripSpiOutputP;
+  AnalogInput* analogInputP;
 } ThreadParam;
 
 

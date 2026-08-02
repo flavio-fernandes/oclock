@@ -7,7 +7,7 @@ endif
 .PHONY: all hardware sandbox hardware-preflight \
 	compatibility gpio-boundary test \
 	test-core test-gpio-protocols test-gpio-registers \
-	test-spi-output test-spi-overlay check-arm-warnings \
+	test-spi-output test-iio-analog test-spi-overlay check-arm-warnings \
 	smoke test-shutdown valgrind spi-overlay \
 	phase5-lpd8806-all-off clean
 
@@ -35,7 +35,6 @@ PULSAR_SRC = \
 	pulsar/pulsar.c
 
 CPP_SRC = \
-	mcp300x/mcp300x.cpp \
 	ht1632/HT1632.cpp \
 	lpd8806/LPD8806.cpp \
 	src/webHandlerInternal.cpp \
@@ -59,8 +58,11 @@ HARDWARE_GPIO_SRC = src/gpio/gpiodV2Gpio.cpp \
 	src/gpio/bcm2835MmapValueIo.cpp \
 	src/gpio/gpiodMmapFactory.cpp
 HARDWARE_SPI_SRC = src/spi/linuxSpidevOutput.cpp
-HARDWARE_SRC = $(SRC) $(HARDWARE_GPIO_SRC) $(HARDWARE_SPI_SRC)
-SANDBOX_SRC = $(SRC) src/gpio/fakeGpio.cpp src/spi/noSpiOutput.cpp
+HARDWARE_ADC_SRC = src/adc/linuxIioAnalogInput.cpp
+HARDWARE_SRC = $(SRC) $(HARDWARE_GPIO_SRC) $(HARDWARE_SPI_SRC) \
+	$(HARDWARE_ADC_SRC)
+SANDBOX_SRC = $(SRC) src/gpio/fakeGpio.cpp src/spi/noSpiOutput.cpp \
+	src/adc/fakeAnalogInput.cpp
 HARDWARE_OBJ = $(addprefix build/hardware/,$(addsuffix .o,$(HARDWARE_SRC)))
 SANDBOX_OBJ = $(addprefix build/sandbox/,$(addsuffix .o,$(SANDBOX_SRC)))
 ARM_WARNING_OBJ = $(addprefix build/arm-warnings/,$(addsuffix .o,$(SANDBOX_SRC)))
@@ -195,6 +197,18 @@ test-spi-output: build/tests/spi_output_tests \
 		build/phase5-lpd8806-all-off
 	$Q ASAN_OPTIONS=detect_leaks=1 ./build/tests/spi_output_tests
 
+build/tests/iio_analog_input_tests: tests/iio_analog_input_tests.cpp \
+		src/adc/linuxIioAnalogInput.cpp
+	$Q echo "[Build test] $@"
+	$Q mkdir -p $(@D)
+	$Q $(CXX) $(CPPFLAGS) $(CXXFLAGS) \
+		-funsigned-char -Werror \
+		-fsanitize=address,undefined -fno-omit-frame-pointer \
+		$^ -o $@ -lpthread
+
+test-iio-analog: build/tests/iio_analog_input_tests
+	$Q ASAN_OPTIONS=detect_leaks=1 ./build/tests/iio_analog_input_tests
+
 smoke: oclock-sandbox
 	$Q ./tests/smoke.sh ./oclock-sandbox
 
@@ -211,7 +225,7 @@ check-arm-warnings: build/tests/oclock-arm-warnings
 	$Q ./tests/smoke.sh ./build/tests/oclock-arm-warnings
 
 test: compatibility gpio-boundary test-core test-gpio-protocols \
-	test-gpio-registers test-spi-output \
+	test-gpio-registers test-spi-output test-iio-analog \
 	check-arm-warnings smoke test-shutdown
 
 valgrind: oclock-sandbox

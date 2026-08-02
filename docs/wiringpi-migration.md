@@ -404,8 +404,10 @@ records both the safe pre-payload `SPI_NO_CS` failure and the corrected mode-0
 retry. The retry sent one 728-byte all-off frame, passed all 17 checks, and
 restored the unbound state. Its 20,956-microsecond `show()` time exceeds the
 12 ms application tick, so final strip cadence acceptance remains open. The
-full application must not run yet because its
-MCP3002 path still conflicts with the overlay-owned ADC GPIOs.
+full application must not run yet. Its
+[MCP3002/IIO path](wiringpi-phase5-mcp3002-iio.md) is now implemented without
+requesting the overlay-owned ADC GPIOs and passes hardware-free tests, but the
+guarded exact-board first read remains pending.
 
 Run every follow-up modern transport profile on the Zero W and compare it with
 Phase 0, Phase 1, and protocol-trace evidence from the preserved Zero/Jessie

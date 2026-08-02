@@ -48,7 +48,7 @@ The selected next architecture is mixed:
 | --- | --- | --- | --- |
 | Motion sensor | libgpiod v2 input | 10 | Implemented and functionally tested |
 | LPD8806 strip | kernel `spi-gpio` plus explicit `spidev` binding | clock 20, data 21 | Corrected all-off transfer passed; 20.956 ms measured, so cadence acceptance remains open |
-| MCP3002 ADC | second `spi-gpio` plus native `mcp320x`/IIO | clock 17, MISO 27, MOSI 22, CS 4 | Live native binding and IIO attributes verified; value reads wait |
+| MCP3002 ADC | second `spi-gpio` plus native `mcp320x`/IIO | clock 17, MISO 27, MOSI 22, CS 4 | Application conversion and fixture tests pass; exact-board value reads wait |
 | HT1632 matrix | narrow bulk mmap transport | CS 6, WR 13, data 19, select clock 26 | Selected direction; not implemented |
 
 The 2026-08-02 read-only kernel-SPI run established that the exact Zero W
@@ -355,7 +355,9 @@ tested command or file before drafting the article:
 - [x] Corrected mode-0 all-off frame transferred on the Zero W with clean
   rollback and no visible flash.
 - [ ] LPD8806 Zero W timing acceptance at the existing 12 ms application tick.
-- [ ] MCP3002 native-IIO conversion and raw channel verification.
+- [x] MCP3002 native-IIO application conversion with dynamic Device Tree
+  discovery and deterministic fixture tests.
+- [ ] MCP3002 exact-board raw channel verification.
 - [ ] Controlled dark/bright samples and a separate threshold decision.
 - [ ] HT1632 bulk transport and timing acceptance.
 - [x] Backend/transport build knobs retired; `make` and `make hardware` select
@@ -620,3 +622,8 @@ backward compatibility.”
   removed, the ADC stayed on `mcp320x`, and the service stayed inactive. This
   proves the live payload and rollback paths while leaving the 12 ms cadence
   target open.
+- **2026-08-02:** Replaced the supported application's GPIO-bit-banged MCP3002
+  path with native `mcp320x`/IIO reads. The implementation discovers the IIO
+  device by Device Tree identity, validates both single-ended raw attributes,
+  and rejects malformed or out-of-range values. Exact-board reads and light
+  calibration remain separate pending gates.

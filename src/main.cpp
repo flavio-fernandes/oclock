@@ -7,6 +7,7 @@
 
 #include "gpio/Gpio.h"
 #include "spi/SpiOutput.h"
+#include "adc/AnalogInput.h"
 #include "threadsMain.h"
 #include "timerTick.h"
 #include "lightSensor.h"
@@ -84,9 +85,10 @@ int main (int argc, char* argv[])
   std::recursive_mutex gpioLockMutex;
   std::unique_ptr<Gpio> gpio = createGpio();
   std::unique_ptr<SpiOutput> stripSpiOutput = createStripSpiOutput();
+  std::unique_ptr<AnalogInput> analogInput = createAnalogInput();
   ThreadInfo* threadInfo = 0;
   ThreadParam threadParam = {argc, argv, &gpioLockMutex, gpio.get(),
-                             stripSpiOutput.get()};
+                             stripSpiOutput.get(), analogInput.get()};
 
   if (!gpio->initialize()) {
     fprintf(stderr, "Unable to initialize GPIO access\n");
@@ -94,6 +96,10 @@ int main (int argc, char* argv[])
   }
   if (stripSpiOutput && !stripSpiOutput->initialize()) {
     fprintf(stderr, "Unable to initialize strip SPI output\n");
+    return EXIT_FAILURE;
+  }
+  if (!analogInput || !analogInput->initialize()) {
+    fprintf(stderr, "Unable to initialize analog input\n");
     return EXIT_FAILURE;
   }
   WebHandlerInternal::bind().start();
