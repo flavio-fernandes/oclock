@@ -48,7 +48,7 @@ The selected next architecture is mixed:
 | --- | --- | --- | --- |
 | Motion sensor | libgpiod v2 input | 10 | Implemented and functionally tested |
 | LPD8806 strip | kernel `spi-gpio` plus explicit `spidev` binding | clock 20, data 21 | Corrected all-off transfer passed; 20.956 ms measured, so cadence acceptance remains open |
-| MCP3002 ADC | second `spi-gpio` plus native `mcp320x`/IIO | clock 17, MISO 27, MOSI 22, CS 4 | Application conversion and fixture tests pass; exact-board value reads wait |
+| MCP3002 ADC | second `spi-gpio` plus native `mcp320x`/IIO | clock 17, MISO 27, MOSI 22, CS 4 | Native application path and exact-board first read accepted; calibration waits |
 | HT1632 matrix | narrow bulk mmap transport | CS 6, WR 13, data 19, select clock 26 | Selected direction; not implemented |
 
 The 2026-08-02 read-only kernel-SPI run established that the exact Zero W
@@ -357,7 +357,7 @@ tested command or file before drafting the article:
 - [ ] LPD8806 Zero W timing acceptance at the existing 12 ms application tick.
 - [x] MCP3002 native-IIO application conversion with dynamic Device Tree
   discovery and deterministic fixture tests.
-- [ ] MCP3002 exact-board raw channel verification.
+- [x] MCP3002 exact-board raw channel verification.
 - [ ] Controlled dark/bright samples and a separate threshold decision.
 - [ ] HT1632 bulk transport and timing acceptance.
 - [x] Backend/transport build knobs retired; `make` and `make hardware` select
@@ -578,6 +578,9 @@ backward compatibility.”
 - Guarded LPD8806 binding: [`wiringpi-phase5-lpd8806-binding.md`](wiringpi-phase5-lpd8806-binding.md)
 - LPD8806 binding result: [`wiringpi-phase5-lpd8806-binding-result.md`](wiringpi-phase5-lpd8806-binding-result.md)
 - LPD8806 SPI transport: [`wiringpi-phase5-lpd8806-transport.md`](wiringpi-phase5-lpd8806-transport.md)
+- LPD8806 first-transfer result: [`wiringpi-phase5-lpd8806-first-transfer-result.md`](wiringpi-phase5-lpd8806-first-transfer-result.md)
+- MCP3002 native IIO: [`wiringpi-phase5-mcp3002-iio.md`](wiringpi-phase5-mcp3002-iio.md)
+- MCP3002 first-read result: [`wiringpi-phase5-mcp3002-iio-result.md`](wiringpi-phase5-mcp3002-iio-result.md)
 - Exact resume state: [`wiringpi-resume-handoff-2026-08-02.md`](wiringpi-resume-handoff-2026-08-02.md)
 - Original hardware article: [Part 1](https://flaviof.com/blog/hacks/office-clock-part1.html)
 - Original software article: [Part 2](https://flaviof.com/blog/hacks/office-clock-part2.html)
@@ -627,3 +630,13 @@ backward compatibility.”
   device by Device Tree identity, validates both single-ended raw attributes,
   and rejects malformed or out-of-range values. Exact-board reads and light
   calibration remain separate pending gates.
+- **2026-08-02:** Accepted the MCP3002 native-IIO first read with 13 checks,
+  zero failures, and zero warnings. Channel 0 returned 1013, channel 1 returned
+  1016, and the pair took 6.656 ms. The ADC stayed on `mcp320x`, the strip
+  stayed unbound, and the service stayed inactive. These high ambient values
+  explain why the existing thresholds did not engage in that condition, but
+  they do not authorize recalibration without controlled covered samples.
+- **Build-note discipline:** Record `/usr/bin/time -p`, the exact make target,
+  and clean-versus-incremental status for subsequent native Pi builds. Prefer
+  focused helpers, overlap slow ARM compilation with local work, and do not
+  rerun a successful full build just to reconstruct a missing duration.

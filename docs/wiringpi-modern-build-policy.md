@@ -58,12 +58,13 @@ hardware or WiringPi.
 
 This build-policy decision is not deployment approval. The current whole
 application must not run yet. Its MCP3002 path now uses the overlay-owned
-native IIO device instead of requesting those GPIOs directly, but that path
-still needs an exact-board first-read gate. The standalone
+native IIO device instead of requesting those GPIOs directly, and its
+[exact-board first-read](wiringpi-phase5-mcp3002-iio-result.md) has passed. The
+standalone
 [guarded LPD8806 all-off transfer](wiringpi-phase5-lpd8806-first-transfer.md)
-has passed; the [MCP3002/IIO conversion](wiringpi-phase5-mcp3002-iio.md) passes
-hardware-free tests. Its first read, HT1632 work, and a dedicated strip cadence
-gate still precede a full application trial.
+has passed; the [MCP3002/IIO conversion](wiringpi-phase5-mcp3002-iio.md) now has
+hardware-free and live-read evidence. Controlled light calibration, HT1632
+work, and a dedicated strip cadence gate still precede a full application trial.
 
 No wiring change, threshold change, privilege change, or production service
 change is implied by this policy. The Zero W remains experimental and

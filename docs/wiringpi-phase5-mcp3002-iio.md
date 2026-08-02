@@ -2,9 +2,11 @@
 
 ## Status
 
-The application-side conversion is implemented and passes hardware-free tests
-and the complete Trixie Incus suite. No exact-board ADC value has yet been read
-by this implementation, and the whole application remains prohibited.
+The application-side conversion passes hardware-free tests, the complete
+Trixie Incus suite, and the exact-board first-read gate. Both single-ended
+channels returned valid 10-bit values and the hardware/service state remained
+unchanged. See the [accepted result](wiringpi-phase5-mcp3002-iio-result.md).
+The whole application remains prohibited.
 
 ## Design
 
@@ -48,7 +50,7 @@ Fixture tests cover:
 - wrong IIO identity and missing channel attributes;
 - missing and ambiguous Device Tree matches.
 
-## Next exact-board gate
+## First-read gate
 
 Before any whole-application run, build `phase5-mcp3002-read` from a pinned PR
 commit and use `misc/verifyPhase5Mcp3002FirstRead.sh` to read each raw channel
@@ -57,6 +59,7 @@ must require the exact Zero W/Trixie target, accepted overlay, native
 `mcp320x` binding, inactive `oclock.service`, and an unchanged strip binding.
 It must archive only sanitized hardware evidence.
 
-That first read establishes transport correctness, not calibration. A later
+The first read passed all 13 checks at commit `d47629b`. It establishes
+transport correctness, not calibration. A later
 operator-assisted capture must record controlled covered/uncovered values for
 both channels before deciding whether the existing thresholds are suitable.
