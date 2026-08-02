@@ -178,6 +178,21 @@ if grep -Eq '(^|[[:space:]])(gpioget|gpioset|gpiomon|gpionotify)[[:space:]]' \
     echo "MCP3002 verifier contains a GPIO line-access command" >&2
     exit 1
 fi
+bash -n misc/collectPhase5Mcp3002Calibration.sh
+misc/collectPhase5Mcp3002Calibration.sh --help \
+    >"${test_dir}/phase5-mcp3002-calibration-help.txt"
+grep -Fq 'samples_per_window=10' misc/collectPhase5Mcp3002Calibration.sh
+grep -Fq 'sample_interval=0.6' misc/collectPhase5Mcp3002Calibration.sh
+grep -Fq 'Type BASELINE' misc/collectPhase5Mcp3002Calibration.sh
+grep -Fq 'Type COVERED' misc/collectPhase5Mcp3002Calibration.sh
+grep -Fq 'Type RESTORED' misc/collectPhase5Mcp3002Calibration.sh
+grep -Fq 'It does not change or approve dimming thresholds.' \
+    misc/collectPhase5Mcp3002Calibration.sh
+if grep -Eq '(^|[[:space:]])(gpioget|gpioset|gpiomon|gpionotify)[[:space:]]' \
+        misc/collectPhase5Mcp3002Calibration.sh; then
+    echo "MCP3002 calibration collector contains a GPIO line-access command" >&2
+    exit 1
+fi
 if grep -Fq 'strip.begin();' misc/phase5Lpd8806AllOff.cpp; then
     echo "all-off tool contains an extra initial latch transfer" >&2
     exit 1

@@ -63,3 +63,6 @@ The first read passed all 13 checks at commit `d47629b`. It establishes
 transport correctness, not calibration. A later
 operator-assisted capture must record controlled covered/uncovered values for
 both channels before deciding whether the existing thresholds are suitable.
+`misc/collectPhase5Mcp3002Calibration.sh` implements three ten-sample windows
+at the application's 600 ms sampling interval: uncovered, covered, and
+uncovered again. It reports channels separately and does not change thresholds.
