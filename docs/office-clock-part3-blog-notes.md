@@ -29,6 +29,11 @@ Raspberry Pi OS Lite 32-bit Trixie and is the selected modernization target.
 It keeps the physical clock wiring while replacing the USB Wi-Fi dongle with
 the Zero W's onboard radio.
 
+The experimental Zero W also gains optional OpenSSH-over-Tailscale maintenance
+access so the remaining hardware gates can be driven and collected directly.
+This is development infrastructure, not an Office Clock dependency: normal
+Wi-Fi, HTTP, MQTT, and service behavior must continue without Tailscale.
+
 The application now has project-owned GPIO and SPI boundaries plus
 deterministic fake-hardware tests. Historical WiringPi, pure-libgpiod, and
 bit-banged implementations remain in the source for diagnosis, but the current
@@ -42,7 +47,7 @@ The selected next architecture is mixed:
 | Device | Selected modern transport | Existing BCM GPIOs | Status |
 | --- | --- | --- | --- |
 | Motion sensor | libgpiod v2 input | 10 | Implemented and functionally tested |
-| LPD8806 strip | kernel `spi-gpio` plus explicit `spidev` binding | clock 20, data 21 | Transport, exact fake frame, and native ARM build passed; guarded all-off verifier ready |
+| LPD8806 strip | kernel `spi-gpio` plus explicit `spidev` binding | clock 20, data 21 | First transfer stopped before payload on unsupported `SPI_NO_CS`; corrected mode-0 retry pending |
 | MCP3002 ADC | second `spi-gpio` plus native `mcp320x`/IIO | clock 17, MISO 27, MOSI 22, CS 4 | Live native binding and IIO attributes verified; value reads wait |
 | HT1632 matrix | narrow bulk mmap transport | CS 6, WR 13, data 19, select clock 26 | Selected direction; not implemented |
 
@@ -165,6 +170,7 @@ Update the final column only after Phase 6 acceptance.
 | Copy unit to `/lib/systemd/system` | Works historically, final path TBD | Prefer the packaged/reviewed unit and `systemctl`; record exact install path used on Trixie |
 | Root/setuid executable | No longer a compiler side effect | The Makefile does not chown or setuid; define and test final service identity/device permissions separately |
 | Software-bit-bang every peripheral | Too expensive through pure libgpiod | Use subsystem-specific transports: libgpiod, kernel SPI, and a narrow matrix bulk path |
+| Repeated manual command/result relay | Replaced for development | Optional OpenSSH over Tailscale with a dedicated source-restricted key; not required by the application |
 
 ## Installation details to preserve now
 
@@ -310,6 +316,9 @@ Once the modern deployment passes—and not before—the follow-up can state:
 - no assumption that the Broadcom GPIO controller is always
   `/dev/gpiochip0` or `/dev/gpiochip4`.
 
+Tailscale is not in this “no longer needed” list. It is an optional maintenance
+tool on the experimental unit, not part of the application dependency set.
+
 Do not say that every historical WiringPi source file disappeared from the
 repository. Those sources remain diagnostic references, while the original
 binary, Jessie SD card, and original Pi are the intentional recovery assets.
@@ -419,7 +428,10 @@ tested command or file before drafting the article:
 - A standalone first-transfer tool and guarded verifier are ready. They reuse
   the exact application frame assembly, send one all-off frame under an
   explicit prompt and timeout, and unbind before the operator answers. The
-  exact-board transfer itself remains pending.
+  first exact-board attempt safely stopped before payload because `spi-gpio`
+  rejected the optional `SPI_NO_CS` mode bit. The overlay already has zero
+  chip selects, so the corrected transport requests ordinary mode 0. Retry
+  evidence remains pending.
 
 ### Phase 6/7 — pending
 

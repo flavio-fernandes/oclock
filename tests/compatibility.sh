@@ -147,8 +147,32 @@ grep -Fq 'runtime strip binding was removed before the operator prompt' \
 grep -Fq 'const Int16U ledCount = 240;' \
     misc/phase5Lpd8806AllOff.cpp
 grep -Fq 'strip.show();' misc/phase5Lpd8806AllOff.cpp
+grep -Fq 'std::uint32_t mode = SPI_MODE_0;' \
+    src/spi/linuxSpidevOutput.cpp
+if grep -Fq 'SPI_MODE_0 | SPI_NO_CS' src/spi/linuxSpidevOutput.cpp; then
+    echo "spidev transport requests unsupported SPI_NO_CS mode" >&2
+    exit 1
+fi
 if grep -Fq 'strip.begin();' misc/phase5Lpd8806AllOff.cpp; then
     echo "all-off tool contains an extra initial latch transfer" >&2
+    exit 1
+fi
+
+# Remote maintenance uses existing OpenSSH over a non-routing Tailscale node.
+# Keep the dedicated key source-restricted and prevent this bootstrap from
+# quietly turning the clock into a Tailscale SSH server, router, or exit node.
+bash -n misc/bootstrapOclockTailscale.sh
+misc/bootstrapOclockTailscale.sh --help \
+    >"${test_dir}/tailscale-bootstrap-help.txt"
+grep -Fq 'from="100.108.157.127"' misc/bootstrapOclockTailscale.sh
+grep -Fq 'codex-office-clock-2026-08-02' misc/bootstrapOclockTailscale.sh
+grep -Fq 'tailscale up --hostname=oclock --accept-dns=false' \
+    misc/bootstrapOclockTailscale.sh
+grep -Fq 'systemctl is-active --quiet oclock' \
+    misc/bootstrapOclockTailscale.sh
+if grep -Eq -- '--ssh|--advertise-routes|--advertise-exit-node|--exit-node' \
+        misc/bootstrapOclockTailscale.sh; then
+    echo "remote bootstrap enables an unauthorized Tailscale role" >&2
     exit 1
 fi
 

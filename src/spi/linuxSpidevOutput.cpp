@@ -152,7 +152,11 @@ public:
 
 private:
   void configure() {
-    std::uint32_t mode = SPI_MODE_0 | SPI_NO_CS;
+    // The strip's dedicated spi-gpio controller has num-chipselects = <0>, so
+    // there is no chip-select signal for the kernel to drive. Do not also ask
+    // spidev for SPI_NO_CS: this exact controller does not advertise that mode
+    // bit and correctly rejects it before a transfer.
+    std::uint32_t mode = SPI_MODE_0;
     std::uint8_t bits = stripBitsPerWord;
     std::uint8_t lsbFirst = 0;
     std::uint32_t speed = stripSpeedHz;

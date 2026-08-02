@@ -39,8 +39,9 @@ operations. The Linux implementation:
 - requires the previously reviewed binding to have created a character
   device;
 - opens it with close-on-exec;
-- configures mode 0, no chip select, eight bits per word, MSB first, and
-  1 MHz;
+- configures mode 0, eight bits per word, MSB first, and 1 MHz; the dedicated
+  overlay controller has zero chip selects, so userspace does not request the
+  unsupported `SPI_NO_CS` mode bit;
 - verifies the effective settings;
 - submits each complete frame with one `SPI_IOC_MESSAGE(1)` call;
 - rejects missing initialization, missing data, oversized payloads, short

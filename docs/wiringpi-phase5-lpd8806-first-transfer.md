@@ -3,9 +3,12 @@
 ## Status
 
 The standalone all-off transfer tool and guarded verifier are implemented and
-pass hardware-free build/safety checks. The exact Zero W transfer has not run
-yet. Until its archive is accepted, the LPD8806 kernel-SPI timing question
-remains open.
+pass hardware-free build/safety checks. The first exact Zero W attempt stopped
+before transferring because `spi-gpio` rejected the unsupported userspace
+`SPI_NO_CS` mode bit. Cleanup passed. The transport now relies on the dedicated
+controller's `num-chipselects = <0>` configuration and requests ordinary mode
+0. See the [first-attempt result](wiringpi-phase5-lpd8806-first-transfer-result.md).
+The corrected exact-board retry remains pending.
 
 ## Scope
 
