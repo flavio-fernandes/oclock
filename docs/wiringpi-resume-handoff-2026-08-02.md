@@ -136,21 +136,27 @@ It reconfirmed all modules, compiled and merged the overlay against the active
 tree, and preserved every reviewed pin and child binding without changing the
 target.
 
-1. Run the guarded [live overlay boot](wiringpi-phase5-spi-live-boot.md):
-   checksum-pin and install the overlay, retain the timestamped boot-config
-   backup, enable one managed line, reboot manually, and collect read-only
-   kernel ownership/IIO metadata. Keep `oclock.service` stopped.
-2. After the live-boot archive passes, add the guarded LPD8806 spidev binding
-   without transferring a frame.
-3. Add a project-owned SPI transport boundary plus a deterministic fake. Keep
+The guarded [live overlay boot](wiringpi-phase5-spi-live-boot.md) subsequently
+passed with 10 checks, zero failures, and zero warnings. Archive
+`oclock-phase5-spi-boot-20260802T151201Z-YEXB983Q.tar.gz` has SHA-256
+`c6919e9f4f2b824ed5a066467582a6da9de1825c1258278943272601a247ad4c`.
+The accepted [result](wiringpi-phase5-spi-live-boot-result.md) records dynamic
+children `spi3.0`/`spi4.0`, native MCP3002/IIO binding, kernel GPIO ownership,
+onboard-Wi-Fi recovery, and the retained boot backup. The overlay is active;
+`oclock.service` remains stopped and no device transfer has occurred.
+
+1. Run the guarded, runtime-only
+   [LPD8806 spidev binding](wiringpi-phase5-lpd8806-binding.md), collect its
+   read-only evidence, and do not open or transfer through the device.
+2. Add a project-owned SPI transport boundary plus a deterministic fake. Keep
    the legacy WiringPi device implementations and build defaults intact.
-4. Convert the LPD8806 first. Preserve its 720-byte GRB frame and eight-byte
+3. Convert the LPD8806 first. Preserve its 720-byte GRB frame and eight-byte
    zero latch exactly, then run Incus tests, a native ARM build, and an
    exact-board timing trial before converting another device.
-5. Convert the MCP3002 only after the strip path is proven. Read both IIO raw
+4. Convert the MCP3002 only after the strip path is proven. Read both IIO raw
    channels and record them separately so light calibration can be separated
    from transport correctness.
-6. Revisit the HT1632 only after the two standard SPI devices are settled.
+5. Revisit the HT1632 only after the two standard SPI devices are settled.
 
 If the kernel `spi-gpio` strip still cannot meet the 12 ms animation cadence,
 record that result before considering rewiring to hardware SPI. Do not reduce

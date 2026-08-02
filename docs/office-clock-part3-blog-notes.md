@@ -41,8 +41,8 @@ The selected next architecture is mixed:
 | Device | Selected modern transport | Existing BCM GPIOs | Status |
 | --- | --- | --- | --- |
 | Motion sensor | libgpiod v2 input | 10 | Implemented and functionally tested |
-| LPD8806 strip | kernel `spi-gpio` plus explicit `spidev` binding | clock 20, data 21 | Offline overlay passed; live boot pending |
-| MCP3002 ADC | second `spi-gpio` plus native `mcp320x`/IIO | clock 17, MISO 27, MOSI 22, CS 4 | Exact driver verified; conversion waits for strip proof |
+| LPD8806 strip | kernel `spi-gpio` plus explicit `spidev` binding | clock 20, data 21 | Live overlay passed; binding-only gate is next |
+| MCP3002 ADC | second `spi-gpio` plus native `mcp320x`/IIO | clock 17, MISO 27, MOSI 22, CS 4 | Live native binding and IIO attributes verified; value reads wait |
 | HT1632 matrix | narrow bulk mmap transport | CS 6, WR 13, data 19, select clock 26 | Selected direction; not implemented |
 
 The 2026-08-02 read-only kernel-SPI run established that the exact Zero W
@@ -62,6 +62,14 @@ by an explicit, guarded `driver_override` binding.
 Phase 6 deployment remains blocked. The article must not yet say that the
 modern system is production-ready or that WiringPi has been completely
 removed.
+
+The checksum-pinned overlay has now also booted successfully on the exact
+Zero W. Its two controllers claimed only the six reviewed GPIOs; the MCP3002
+appeared through `mcp320x`/IIO and the strip child remained unbound. Runtime
+bus identifiers were `spi3.0` and `spi4.0` on that boot, but installation and
+application code must discover children by Device Tree path instead of
+assuming those numbers. Onboard Wi-Fi returned after reboot, although this
+single observation is not yet cold-boot or soak evidence.
 
 ## The story worth telling
 
@@ -186,8 +194,10 @@ The discovery image already has the required inspection/build tools:
 - device-node ownership/permissions appropriate for the unchanged service
   privilege model.
 
-Do not tell readers to run `modprobe`, edit `config.txt`, or bind `spidev`
-until the exact reversible procedure passes on the Zero W.
+The checksum-pinned overlay install and guarded `config.txt` edit have passed
+on the Zero W. The next helper may load and bind `spidev` only for a
+runtime-only, no-transfer gate; do not publish those commands as final install
+instructions until the transport and deployment procedure pass.
 
 ### Build commands and profiles
 
@@ -215,7 +225,7 @@ Add them here only when implemented and tested. Plain `make` must continue to
 mean WiringPi throughout PR 3 so a checkout cannot silently change the legacy
 deployment contract.
 
-### Boot overlay procedure — written, not yet exercised live
+### Boot overlay procedure — live enable and inspection passed
 
 The final procedure needs all of the following, in this order:
 
@@ -227,8 +237,8 @@ The final procedure needs all of the following, in this order:
    LPD8806 and native `microchip,mcp3002`/IIO binding for the ADC.
 5. Add one clearly marked boot configuration entry; retain a byte-for-byte
    backup of the original configuration.
-6. Reboot and verify controller, device-node, pin-consumer, and permission
-   state before starting the application.
+6. Reboot and verify controllers, native ADC/IIO binding, pin consumers, and
+   permission state before any application or userspace strip binding.
 7. Provide disable and uninstall commands, including how to recover by
    editing the SD card from another machine if boot or GPIO ownership fails.
 8. State that current libgpiod GPIO drivers must not request lines owned by the
@@ -238,6 +248,12 @@ The LPD8806 has no chip-select wire. The overlay and userspace transfer use the
 kernel's no-CS behavior without inventing a wiring change. The MCP3002 keeps
 CS on BCM 4, while its full-duplex protocol is performed by the native kernel
 driver and exposed as two IIO raw channels.
+
+The live gate installed `/boot/firmware/overlays/oclock-spi.dtbo`, added one
+managed `dtoverlay=oclock-spi` line, and retained a timestamped byte-identical
+boot-config backup. Normal disablement and eventual uninstall still need to be
+exercised. The LPD8806 `spidev` override is intentionally runtime-only; a
+reboot clears it without removing the boot overlay.
 
 ### Service procedure — mostly preserved, final ordering pending
 
@@ -302,7 +318,10 @@ tested command or file before drafting the article:
 - [x] Offline target merge of that overlay accepted on the exact Zero W.
 - [x] Checksum-pinned install, enable, inspect, disable, and SD-card rescue
   commands written.
-- [ ] Live overlay boot and normal-disable procedure exercised.
+- [x] Live overlay boot exercised; native ADC binding, GPIO ownership, and
+  onboard-Wi-Fi return verified.
+- [ ] Runtime-only LPD8806 `spidev` binding exercised without a transfer.
+- [ ] Normal-disable procedure exercised.
 - [ ] Final overlay uninstall procedure exercised after the live gates.
 - [ ] Project-owned SPI userspace transport plus deterministic fake.
 - [ ] LPD8806 conversion preserving 720 GRB bytes and eight latch bytes.
@@ -364,13 +383,15 @@ tested command or file before drafting the article:
 - Kernel-SPI discovery accepted: core, `spi-gpio`, `spidev`, GPIO metadata,
   overlay tools, and boot location passed. Exact source review found native
   MCP3002/IIO support and confirmed that LPD8806 requires an explicit spidev
-  override. The disabled project overlay then compiled and merged against the
-  exact active Zero W Device Tree with zero failures. Live boot is pending.
+  override. The project overlay compiled and merged against the exact active
+  Zero W Device Tree, then passed a live reboot with ten checks and no
+  failures or warnings. No device has been opened or transferred through.
 
 ### Phase 6/7 — pending
 
 - No modern candidate has deployment approval.
-- No overlay has been enabled.
+- The overlay is enabled only on the experimental Zero W; no modern
+  application has been run against it.
 - No soak or physical rollback exercise has passed.
 - The modern backend must not become the default until these gates complete.
 
@@ -500,6 +521,8 @@ backward compatibility.”
 - Disabled SPI overlay gate: [`wiringpi-phase5-spi-overlay.md`](wiringpi-phase5-spi-overlay.md)
 - Offline SPI overlay result: [`wiringpi-phase5-spi-overlay-result.md`](wiringpi-phase5-spi-overlay-result.md)
 - Guarded live SPI boot: [`wiringpi-phase5-spi-live-boot.md`](wiringpi-phase5-spi-live-boot.md)
+- Live SPI boot result: [`wiringpi-phase5-spi-live-boot-result.md`](wiringpi-phase5-spi-live-boot-result.md)
+- Guarded LPD8806 binding: [`wiringpi-phase5-lpd8806-binding.md`](wiringpi-phase5-lpd8806-binding.md)
 - Exact resume state: [`wiringpi-resume-handoff-2026-08-02.md`](wiringpi-resume-handoff-2026-08-02.md)
 - Original hardware article: [Part 1](https://flaviof.com/blog/hacks/office-clock-part1.html)
 - Original software article: [Part 2](https://flaviof.com/blog/hacks/office-clock-part2.html)
@@ -521,3 +544,10 @@ backward compatibility.”
   Added checksum-pinned live enablement, timestamped boot-config backup,
   read-only post-boot inspection, normal disablement, and offline SD-card
   rescue instructions. None has been exercised live yet.
+- **2026-08-02:** Accepted the checksum-pinned live overlay boot with ten
+  checks, zero failures, and zero warnings. Recorded the dynamic SPI child
+  identities, native MCP3002/IIO binding, exact GPIO consumers, Wi-Fi return,
+  active managed boot entry, and retained backup. Added a runtime-only,
+  Device-Tree-discovered LPD8806 `spidev` binding gate that performs no device
+  open or transfer. Normal disablement and all SPI data operations remain
+  pending.

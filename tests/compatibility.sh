@@ -181,4 +181,42 @@ if grep -Eq '^[[:space:]]*(modprobe|dtoverlay|reboot|shutdown|gpioset|gpioget|gp
     exit 1
 fi
 
+# The binding manager may change only the deliberately unbound strip child's
+# runtime driver. It must discover dynamic SPI names from Device Tree, retain
+# the native ADC binding, and offer explicit rollback. The paired collector is
+# metadata-only and must never perform the binding or open the device.
+bash -n misc/managePhase5Lpd8806Binding.sh
+misc/managePhase5Lpd8806Binding.sh --help \
+    >"${test_dir}/phase5-lpd-bind-manager-help.txt"
+grep -Fq 'runtime binding does not survive a' \
+    "${test_dir}/phase5-lpd-bind-manager-help.txt"
+grep -Fq '*/oclock-strip-spi/lpd8806@0' \
+    misc/managePhase5Lpd8806Binding.sh
+grep -Fq '*/oclock-adc-spi/mcp3002@0' \
+    misc/managePhase5Lpd8806Binding.sh
+grep -Fq 'MCP3002 SPI child is not bound to mcp320x' \
+    misc/managePhase5Lpd8806Binding.sh
+grep -Fq 'Incomplete strip binding was rolled back.' \
+    misc/managePhase5Lpd8806Binding.sh
+if grep -Fq 'spi4.0' misc/managePhase5Lpd8806Binding.sh; then
+    echo "LPD8806 binding manager hard-codes a dynamic SPI device" >&2
+    exit 1
+fi
+
+bash -n misc/collectPhase5Lpd8806Binding.sh
+misc/collectPhase5Lpd8806Binding.sh --help \
+    >"${test_dir}/phase5-lpd-bind-collector-help.txt"
+grep -Fq 'No device is opened' \
+    "${test_dir}/phase5-lpd-bind-collector-help.txt"
+if grep -Eq '^[[:space:]]*(modprobe|dtoverlay|reboot|shutdown|gpioset|gpioget|gpiomon)[[:space:]]' \
+        misc/collectPhase5Lpd8806Binding.sh; then
+    echo "LPD8806 binding collector contains a state-changing command" >&2
+    exit 1
+fi
+if grep -Eq '(^|[[:space:]])(driver_override|/sys/bus/spi/drivers/[^[:space:]]+/(bind|unbind))[[:space:]]*>' \
+        misc/collectPhase5Lpd8806Binding.sh; then
+    echo "LPD8806 binding collector writes a driver control" >&2
+    exit 1
+fi
+
 echo "legacy compatibility tests passed"

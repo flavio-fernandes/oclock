@@ -1,5 +1,14 @@
 # Phase 5 guarded live SPI-overlay boot
 
+## Result
+
+The exact-board boot completed with 10 checks passing, zero failures, and zero
+warnings. The evidence, runtime mappings, Wi-Fi observation, and retained
+backup are recorded in the
+[live-boot result](wiringpi-phase5-spi-live-boot-result.md). The next gate is
+the runtime-only [LPD8806 spidev binding](wiringpi-phase5-lpd8806-binding.md);
+no transfer is authorized yet.
+
 ## Purpose
 
 This gate tests only Linux discovery and ownership after a reboot with the

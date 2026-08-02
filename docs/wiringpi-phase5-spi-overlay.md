@@ -4,8 +4,9 @@
 
 The exact Zero W run passed with zero failures at commit `c79c53c`. The
 checksum-valid archive, accepted merged properties, and safety outcome are in
-the [offline result](wiringpi-phase5-spi-overlay-result.md). The next gate is
-the separately guarded [live overlay boot](wiringpi-phase5-spi-live-boot.md).
+the [offline result](wiringpi-phase5-spi-overlay-result.md). The separately
+guarded [live overlay boot](wiringpi-phase5-spi-live-boot.md) subsequently
+passed; no transfer has occurred.
 
 ## Scope
 

@@ -373,9 +373,13 @@ constraints; see its [accepted result](wiringpi-phase5-kernel-spi-result.md).
 The repository now contains a disabled-by-default project
 [overlay](wiringpi-phase5-spi-overlay.md). Its exact-board
 [offline merge](wiringpi-phase5-spi-overlay-result.md) passed with zero
-failures. The separately reversible
-[live boot](wiringpi-phase5-spi-live-boot.md) is the next gate; the overlay has
-not yet been installed or enabled.
+failures. The separately reversible [live boot](wiringpi-phase5-spi-live-boot.md)
+also passed with zero failures and warnings; see the accepted
+[live-boot result](wiringpi-phase5-spi-live-boot-result.md). The overlay is now
+active on the experimental Zero W, the MCP3002 is bound to `mcp320x`, the
+LPD8806 child is deliberately unbound, and `oclock.service` remains inactive.
+The next gate is a guarded, runtime-only
+[LPD8806 spidev binding](wiringpi-phase5-lpd8806-binding.md) with no transfer.
 
 Run every follow-up modern transport profile on the Zero W and compare it with
 Phase 0, Phase 1, and protocol-trace evidence from the preserved Zero/Jessie

@@ -57,4 +57,6 @@ The run did not:
 - request or drive GPIO;
 - start, stop, or restart the service.
 
-The next gate is the guarded [live overlay boot](wiringpi-phase5-spi-live-boot.md).
+The guarded [live overlay boot](wiringpi-phase5-spi-live-boot.md) subsequently
+passed. Its [accepted result](wiringpi-phase5-spi-live-boot-result.md) now
+authorizes the separate no-transfer LPD8806 binding gate.
