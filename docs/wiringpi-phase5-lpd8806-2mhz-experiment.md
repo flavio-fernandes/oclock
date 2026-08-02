@@ -35,7 +35,8 @@ experiment_dir=$(mktemp -d /tmp/oclock-lpd-2mhz-XXXXXXXX)
 git archive FETCH_HEAD | tar -x -C "${experiment_dir}"
 cd "${experiment_dir}"
 
-/usr/bin/time -p make phase5-lpd8806-all-off-2mhz
+start=$(date +%s); make phase5-lpd8806-all-off-2mhz; end=$(date +%s)
+echo "clean_build_seconds=$((end-start))"
 file build/phase5-lpd8806-all-off-2mhz
 ldd build/phase5-lpd8806-all-off-2mhz | \
   grep -E 'libwiringPi|libstdc|libc'
@@ -43,6 +44,34 @@ sha256sum build/phase5-lpd8806-all-off-2mhz
 ```
 
 Do not execute the helper directly.
+
+The Zero W does not have `/usr/bin/time` installed, and installing a package is
+not an authorized target change for this gate. Use the shell wall-clock form
+shown above and record that it is wall-clock rather than `time -p` output.
+This supersedes the `/usr/bin/time -p` instruction in the resume handoff for
+native Pi builds until the package question is separately reviewed.
+
+### Build gate result — 2026-08-02: accepted
+
+The clean helper build passed on the exact Zero W.
+
+| Item | Value |
+| --- | --- |
+| Experiment commit | `b639cc5430f0fe0469321cb81f99867449b9dea4` |
+| Build kind | Clean, in a fresh `git archive` extraction |
+| Wall-clock build time | 63 seconds |
+| Binary SHA-256 | `7abc8c06975d1c39bf5b0683426a65572756e5301739e30c00a709125e8536eb` |
+| Architecture | ELF 32-bit LSB, ARM EABI5, `/lib/ld-linux-armhf.so.3` |
+| WiringPi entries in `ldd` | 0 |
+
+The helper links only `libstdc++`, `libgcc_s`, `libc`, `libm`, and the
+platform `libarmmem` preload. It was built but deliberately not executed. The
+target state was unchanged: overlay active with `spi3.0` bound to `mcp320x`,
+`spi4.0` unbound, no `/dev/spidev*`, `oclock.service` inactive, and firmware
+reporting `throttled=0x0`.
+
+The remaining one-frame and cadence gates are blocked on an operator who can
+watch the physical strip; they must not be run unattended.
 
 ## One-frame safety gate
 
