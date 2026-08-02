@@ -41,7 +41,7 @@ The selected next architecture is mixed:
 | Device | Selected modern transport | Existing BCM GPIOs | Status |
 | --- | --- | --- | --- |
 | Motion sensor | libgpiod v2 input | 10 | Implemented and functionally tested |
-| LPD8806 strip | kernel `spi-gpio` plus explicit `spidev` binding | clock 20, data 21 | Disabled overlay written; offline target gate pending |
+| LPD8806 strip | kernel `spi-gpio` plus explicit `spidev` binding | clock 20, data 21 | Offline overlay passed; live boot pending |
 | MCP3002 ADC | second `spi-gpio` plus native `mcp320x`/IIO | clock 17, MISO 27, MOSI 22, CS 4 | Exact driver verified; conversion waits for strip proof |
 | HT1632 matrix | narrow bulk mmap transport | CS 6, WR 13, data 19, select clock 26 | Selected direction; not implemented |
 
@@ -215,7 +215,7 @@ Add them here only when implemented and tested. Plain `make` must continue to
 mean WiringPi throughout PR 3 so a checkout cannot silently change the legacy
 deployment contract.
 
-### Boot overlay procedure — selected, not yet written
+### Boot overlay procedure — written, not yet exercised live
 
 The final procedure needs all of the following, in this order:
 
@@ -299,9 +299,11 @@ tested command or file before drafting the article:
 - [x] Deterministic fake protocol tests and Incus validation.
 - [x] `raspi-utils-dt` identified as the installed provider of `dtoverlay`.
 - [x] Disabled-by-default Office Clock Device Tree overlay added to the repo.
-- [ ] Offline target merge of that overlay accepted.
-- [ ] Exact overlay install, enable, verify, disable, uninstall, and rescue
-  commands.
+- [x] Offline target merge of that overlay accepted on the exact Zero W.
+- [x] Checksum-pinned install, enable, inspect, disable, and SD-card rescue
+  commands written.
+- [ ] Live overlay boot and normal-disable procedure exercised.
+- [ ] Final overlay uninstall procedure exercised after the live gates.
 - [ ] Project-owned SPI userspace transport plus deterministic fake.
 - [ ] LPD8806 conversion preserving 720 GRB bytes and eight latch bytes.
 - [ ] LPD8806 Zero W timing acceptance at the existing 12 ms application tick.
@@ -362,8 +364,8 @@ tested command or file before drafting the article:
 - Kernel-SPI discovery accepted: core, `spi-gpio`, `spidev`, GPIO metadata,
   overlay tools, and boot location passed. Exact source review found native
   MCP3002/IIO support and confirmed that LPD8806 requires an explicit spidev
-  override. The disabled project overlay is written; offline target merge is
-  pending.
+  override. The disabled project overlay then compiled and merged against the
+  exact active Zero W Device Tree with zero failures. Live boot is pending.
 
 ### Phase 6/7 — pending
 
@@ -496,6 +498,8 @@ backward compatibility.”
 - Kernel-SPI discovery: [`wiringpi-phase5-kernel-spi-discovery.md`](wiringpi-phase5-kernel-spi-discovery.md)
 - Kernel-SPI result: [`wiringpi-phase5-kernel-spi-result.md`](wiringpi-phase5-kernel-spi-result.md)
 - Disabled SPI overlay gate: [`wiringpi-phase5-spi-overlay.md`](wiringpi-phase5-spi-overlay.md)
+- Offline SPI overlay result: [`wiringpi-phase5-spi-overlay-result.md`](wiringpi-phase5-spi-overlay-result.md)
+- Guarded live SPI boot: [`wiringpi-phase5-spi-live-boot.md`](wiringpi-phase5-spi-live-boot.md)
 - Exact resume state: [`wiringpi-resume-handoff-2026-08-02.md`](wiringpi-resume-handoff-2026-08-02.md)
 - Original hardware article: [Part 1](https://flaviof.com/blog/hacks/office-clock-part1.html)
 - Original software article: [Part 2](https://flaviof.com/blog/hacks/office-clock-part2.html)
@@ -512,3 +516,8 @@ backward compatibility.”
   source hashes, selected native MCP3002/IIO plus explicit LPD8806 spidev
   binding, and added the disabled overlay/offline verification gate. Live
   overlay installation and all transfers remain pending.
+- **2026-08-02:** Accepted the exact-board offline overlay merge with zero
+  failures. Recorded source/artifact/archive hashes and the unchanged pin map.
+  Added checksum-pinned live enablement, timestamped boot-config backup,
+  read-only post-boot inspection, normal disablement, and offline SD-card
+  rescue instructions. None has been exercised live yet.

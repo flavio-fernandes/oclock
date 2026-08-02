@@ -47,7 +47,8 @@ are requirements:
    the existing `root:root` and owner-setuid installation behavior.
 2. The Jessie systemd unit, executable path, command-line options, network
    defaults, HTTP behavior, MQTT behavior, and GPIO numbering do not change.
-3. No existing wire moves and no boot-overlay changes are required.
+3. No existing wire moves. The legacy unit requires no boot-overlay change;
+   the separate modern Zero W uses only an explicit, reversible overlay gate.
 4. The original Zero, Jessie card, and known-good binary remain together and
    available as the physical rollback unit.
 5. `make sandbox`, `make test`, and `make check-arm-warnings` continue to work
@@ -370,8 +371,11 @@ exact kernel support, binding behavior, pin consumers, boot paths, and rollback
 constraints; see its [accepted result](wiringpi-phase5-kernel-spi-result.md).
 
 The repository now contains a disabled-by-default project
-[overlay](wiringpi-phase5-spi-overlay.md). Its offline target merge is the next
-gate. It has not been installed or enabled.
+[overlay](wiringpi-phase5-spi-overlay.md). Its exact-board
+[offline merge](wiringpi-phase5-spi-overlay-result.md) passed with zero
+failures. The separately reversible
+[live boot](wiringpi-phase5-spi-live-boot.md) is the next gate; the overlay has
+not yet been installed or enabled.
 
 Run every follow-up modern transport profile on the Zero W and compare it with
 Phase 0, Phase 1, and protocol-trace evidence from the preserved Zero/Jessie

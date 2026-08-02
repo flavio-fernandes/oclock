@@ -162,4 +162,23 @@ grep -Fq 'compatible = "flaviof,oclock-lpd8806"' \
 grep -Fq 'compatible = "microchip,mcp3002"' \
     hardware/oclock-spi-overlay.dts
 
+bash -n misc/managePhase5SpiOverlay.sh
+misc/managePhase5SpiOverlay.sh --help \
+    >"${test_dir}/phase5-spi-manager-help.txt"
+grep -Fq '53b593f4c30a78c8beb446cf506816af29a817d0daf93bb899a9054c7aa61959' \
+    misc/managePhase5SpiOverlay.sh
+grep -Fq 'backup is not byte-identical' misc/managePhase5SpiOverlay.sh
+grep -Fq 'does not reboot' "${test_dir}/phase5-spi-manager-help.txt"
+
+bash -n misc/collectPhase5SpiOverlayBoot.sh
+misc/collectPhase5SpiOverlayBoot.sh --help \
+    >"${test_dir}/phase5-spi-boot-help.txt"
+grep -Fq 'No spidev binding or hardware' \
+    "${test_dir}/phase5-spi-boot-help.txt"
+if grep -Eq '^[[:space:]]*(modprobe|dtoverlay|reboot|shutdown|gpioset|gpioget|gpiomon)[[:space:]]' \
+        misc/collectPhase5SpiOverlayBoot.sh; then
+    echo "live SPI collector contains a state-changing or GPIO-access command" >&2
+    exit 1
+fi
+
 echo "legacy compatibility tests passed"

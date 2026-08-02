@@ -56,10 +56,10 @@ transport abstraction merely to make the design look uniform.
 - No modern candidate is deployment-approved; Phase 6 remains blocked.
 - Do not change the light thresholds until raw MCP3002 channels are compared
   under controlled covered/uncovered conditions.
-- Do not enable a Device Tree overlay until its GPIO claims, unload/disable
-  rollback, service permissions, and boot-failure behavior are documented and
-  reviewed. Once enabled, the SPI controller owns those lines and the current
-  GPIO drivers must not request them.
+- Enable the Device Tree overlay only through the documented guarded live-boot
+  gate. Its GPIO claims, normal disablement, SD-card rescue, service boundary,
+  and boot behavior are now documented. Once enabled, the SPI controller owns
+  those lines and the current GPIO drivers must not request them.
 - Keep the mmap backend experimental and narrowly limited to the HT1632
   follow-up. Do not turn it into a general replacement for kernel SPI.
 - At the end of the last captured trial, the candidate exited cleanly and the
@@ -128,13 +128,20 @@ both list operations passed. Exact source correlation selected native IIO for
 the MCP3002 and an explicit `spidev` override for the LPD8806. See the
 [accepted result](wiringpi-phase5-kernel-spi-result.md).
 
-1. Run the read-only offline
-   [`verifyPhase5SpiOverlayDryRun.sh`](../misc/verifyPhase5SpiOverlayDryRun.sh)
-   gate on the Zero W. It compiles the disabled project overlay and merges it
-   into a file copy of the live Device Tree without applying anything.
-2. After that archive passes, write and review the reversible install, boot,
-   inspect, disable, uninstall, and SD-card rescue procedure. Keep the service
-   stopped through the first live overlay boot.
+The exact-board [offline overlay result](wiringpi-phase5-spi-overlay-result.md)
+also passed with zero failures. Its archive is
+`oclock-phase5-spi-dry-run-20260802T143057Z-NbEl7pZe.tar.gz`, SHA-256
+`963c6d2cf03bfbad056736306a8561ec13be3756035f27ac775cb4c5408e50d1`.
+It reconfirmed all modules, compiled and merged the overlay against the active
+tree, and preserved every reviewed pin and child binding without changing the
+target.
+
+1. Run the guarded [live overlay boot](wiringpi-phase5-spi-live-boot.md):
+   checksum-pin and install the overlay, retain the timestamped boot-config
+   backup, enable one managed line, reboot manually, and collect read-only
+   kernel ownership/IIO metadata. Keep `oclock.service` stopped.
+2. After the live-boot archive passes, add the guarded LPD8806 spidev binding
+   without transferring a frame.
 3. Add a project-owned SPI transport boundary plus a deterministic fake. Keep
    the legacy WiringPi device implementations and build defaults intact.
 4. Convert the LPD8806 first. Preserve its 720-byte GRB frame and eight-byte

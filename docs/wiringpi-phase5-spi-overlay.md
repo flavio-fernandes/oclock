@@ -1,5 +1,12 @@
 # Phase 5 SPI overlay offline gate
 
+## Result
+
+The exact Zero W run passed with zero failures at commit `c79c53c`. The
+checksum-valid archive, accepted merged properties, and safety outcome are in
+the [offline result](wiringpi-phase5-spi-overlay-result.md). The next gate is
+the separately guarded [live overlay boot](wiringpi-phase5-spi-live-boot.md).
+
 ## Scope
 
 [`oclock-spi-overlay.dts`](../hardware/oclock-spi-overlay.dts) is the first
@@ -62,12 +69,11 @@ It does not load a module, apply an overlay, bind a driver, read a device,
 request a GPIO line, or modify `/boot`. All generated files remain under its
 new result directory in `/tmp`.
 
-## Deliberately deferred live procedure
+## Live procedure status
 
-Do not copy the overlay to `/boot/firmware/overlays` or edit
-`/boot/firmware/config.txt` during the offline gate. After its archive passes,
-the next repository checkpoint will provide one reversible live procedure
-with these safeguards:
+The offline gate itself did not copy the overlay or edit boot configuration.
+The subsequent repository checkpoint provides a separate reversible
+[live-boot procedure](wiringpi-phase5-spi-live-boot.md) with these safeguards:
 
 1. reconfirm that `oclock.service` is inactive;
 2. retain a byte-for-byte boot-configuration backup;
@@ -75,10 +81,10 @@ with these safeguards:
 4. add one project-owned `dtoverlay=` line and reboot;
 5. verify exact SPI child paths, IIO channels, and GPIO consumers before any
    userspace binding or transfer;
-6. bind only the LPD8806 child to `spidev` and preserve its resolved device
-   path;
-7. provide disable, uninstall, and offline SD-card rescue steps before the
-   application is allowed to drive either device.
+6. provide normal disablement and offline SD-card rescue before the application
+   is allowed to drive either device.
+
+The LPD8806 binding and all transfers remain a later gate.
 
 The legacy Zero/Jessie clock remains the production rollback throughout this
 work.

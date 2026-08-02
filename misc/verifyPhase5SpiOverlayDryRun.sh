@@ -86,7 +86,8 @@ finish()
         # Never package complete live-tree copies; they can contain unrelated
         # board identifiers. This also protects early-error paths.
         rm -f "${output_dir}/active-base.dtb" \
-            "${output_dir}/merged-offline.dtb"
+            "${output_dir}/merged-offline.dtb" \
+            "${output_dir}/active-tree-copy.raw.txt"
         if tar -czf "${archive_path}" -C "$(dirname "${output_dir}")" \
                 "$(basename "${output_dir}")" && (
             cd "$(dirname "${archive_path}")" || exit 1
@@ -191,12 +192,23 @@ else
     fail "overlay did not compile with target dtc"
 fi
 
+active_tree_log="${output_dir}/active-tree-copy.raw.txt"
 if dtc -I fs -O dtb -o "${base_tree}" /proc/device-tree \
-        >"${output_dir}/active-tree-copy.txt" 2>&1; then
+        >"${active_tree_log}" 2>&1; then
+    active_tree_status=0
     ok "active Device Tree was copied to an offline blob"
 else
+    active_tree_status=$?
     fail "active Device Tree could not be copied"
 fi
+{
+    echo "command: dtc -I fs -O dtb /proc/device-tree"
+    echo "exit_status: ${active_tree_status}"
+    echo "diagnostic_lines_suppressed: $(awk 'END { print NR + 0 }' \
+        "${active_tree_log}")"
+    echo "Full-tree diagnostics are omitted because they enumerate unrelated nodes."
+} >"${output_dir}/active-tree-copy.txt"
+rm -f "${active_tree_log}"
 
 if [[ -r ${overlay_binary} && -r ${base_tree} ]] &&
         fdtoverlay -i "${base_tree}" -o "${merged_tree}" "${overlay_binary}" \
