@@ -93,5 +93,13 @@ if grep -Eq '(^|[[:space:]])(gpioget|gpioset|gpiomon|gpionotify)([[:space:]]|$)'
     echo "Phase 3 collector contains a GPIO line-access command" >&2
     exit 1
 fi
+# Raspbian qualifies Multi-Arch package names even when armhf is the native
+# architecture. Accept both Debian's unqualified and Raspbian's qualified form.
+grep -Fq "libgpiod-dev(:armhf)?" misc/collectGpioTarget.sh
+printf 'libgpiod-dev:armhf\t2.2.1-2+rpi1+deb13u1\tarmhf\tinstall ok installed\n' \
+    >"${test_dir}/phase3-packages.txt"
+grep -Eq $'^libgpiod-dev(:armhf)?\t.*\tarmhf\tinstall ok installed$' \
+    "${test_dir}/phase3-packages.txt"
+grep -Fq "grep -q '^throttled=0x0$'" misc/collectGpioTarget.sh
 
 echo "legacy compatibility tests passed"

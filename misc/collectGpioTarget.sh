@@ -470,14 +470,14 @@ else
     result_fail "GPIO character-device ABI v2 line-info probe failed"
 fi
 
-if grep -q $'^libgpiod-dev\t.*\tarmhf\tinstall ok installed$' \
+if grep -Eq $'^libgpiod-dev(:armhf)?\t.*\tarmhf\tinstall ok installed$' \
         "${output_dir}/gpio-packages.txt"; then
     result_ok "armhf libgpiod development package is installed"
 else
     result_fail "armhf libgpiod development package is not installed"
 fi
 
-if grep -q '^get_throttled=0x0$' "${output_dir}/throttling.txt" 2>/dev/null; then
+if grep -q '^throttled=0x0$' "${output_dir}/throttling.txt" 2>/dev/null; then
     result_ok "firmware reports no current or historical throttling"
 elif [[ -f ${output_dir}/throttling.txt ]]; then
     result_warn "review the firmware throttling result"
