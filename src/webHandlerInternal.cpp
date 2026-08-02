@@ -5,6 +5,7 @@
 #include <cctype>
 #include <exception>
 #include <set>
+#include <stdexcept>
 #include <string.h>
 
 #include <event2/event.h>

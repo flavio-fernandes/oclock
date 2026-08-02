@@ -4,9 +4,10 @@ endif
 
 .DEFAULT_GOAL := all
 .SUFFIXES:
-.PHONY: all sudo_oclock hardware sandbox compatibility gpio-boundary test \
+.PHONY: all sudo_oclock hardware sandbox gpio-backend-preflight \
+	compatibility gpio-boundary test \
 	test-core test-gpio-protocols test-wiringpi-compile check-arm-warnings \
-	smoke test-shutdown valgrind clean
+	smoke test-shutdown valgrind clean FORCE
 
 # Keep the original CC override working even though every source is C++.
 CC = g++
@@ -15,6 +16,12 @@ CPPFLAGS = -I/usr/local/include -I./mcp300x -I./ht1632 -I./lpd8806 -I./src -I./p
 CXXFLAGS ?= -g -O0
 CXXFLAGS += -std=gnu++11 -Winline -pipe -Wall -Wextra
 LDFLAGS ?=
+
+GPIO_BACKEND ?= wiringpi
+VALID_GPIO_BACKENDS := wiringpi gpiod
+ifeq ($(filter $(GPIO_BACKEND),$(VALID_GPIO_BACKENDS)),)
+$(error unsupported GPIO_BACKEND '$(GPIO_BACKEND)'; expected one of: $(VALID_GPIO_BACKENDS))
+endif
 
 PULSAR_SRC = \
 	pulsar/logger.c \
@@ -43,13 +50,20 @@ CPP_SRC = \
 	src/main.cpp
 
 SRC = $(PULSAR_SRC) $(CPP_SRC)
-HARDWARE_SRC = $(SRC) src/gpio/wiringPiGpio.cpp
+ifeq ($(GPIO_BACKEND),gpiod)
+HARDWARE_GPIO_SRC = src/gpio/gpiodV2Gpio.cpp
+HARDWARE_GPIO_LIB = -lgpiod
+else
+HARDWARE_GPIO_SRC = src/gpio/wiringPiGpio.cpp
+HARDWARE_GPIO_LIB = -lwiringPi
+endif
+HARDWARE_SRC = $(SRC) $(HARDWARE_GPIO_SRC)
 SANDBOX_SRC = $(SRC) src/gpio/fakeGpio.cpp
 HARDWARE_OBJ = $(addprefix build/hardware/,$(addsuffix .o,$(HARDWARE_SRC)))
 SANDBOX_OBJ = $(addprefix build/sandbox/,$(addsuffix .o,$(SANDBOX_SRC)))
 ARM_WARNING_OBJ = $(addprefix build/arm-warnings/,$(addsuffix .o,$(SANDBOX_SRC)))
 
-HARDWARE_LIBS = -lwiringPi -lpthread -levent -lmosquitto
+HARDWARE_LIBS = $(HARDWARE_GPIO_LIB) -lpthread -levent -lmosquitto
 SANDBOX_LIBS = -lpthread -levent -lmosquitto
 
 all: sudo_oclock
@@ -62,11 +76,24 @@ sudo_oclock: oclock
 
 hardware: oclock
 
+gpio-backend-preflight:
+ifeq ($(GPIO_BACKEND),gpiod)
+	$Q version=$$(pkg-config --modversion libgpiod 2>/dev/null) || { \
+		echo "error: libgpiod v2 development files are required" >&2; exit 1; }; \
+	case "$${version}" in 2.*) ;; *) \
+		echo "error: libgpiod v2 is required (found $${version})" >&2; exit 1;; esac
+endif
+
 sandbox: oclock-sandbox
 
-oclock: $(HARDWARE_OBJ)
+oclock: $(HARDWARE_OBJ) FORCE
 	$Q echo "[Link] $@"
-	$Q $(CXX) -o $@ $^ $(LDFLAGS) $(HARDWARE_LIBS)
+	$Q $(CXX) -o $@ $(HARDWARE_OBJ) $(LDFLAGS) $(HARDWARE_LIBS)
+
+# Backend selection changes the object and library lists without changing the
+# output filename. Relink every requested hardware build so switching an
+# existing tree between WiringPi and libgpiod cannot leave a stale executable.
+FORCE:
 
 oclock-sandbox: $(SANDBOX_OBJ)
 	$Q echo "[Link] $@"
@@ -74,12 +101,12 @@ oclock-sandbox: $(SANDBOX_OBJ)
 
 # Pulsar's .c sources include the C++ request-handler boundary, so they are
 # intentionally compiled as C++ until that interface is split cleanly.
-build/hardware/%.cpp.o: %.cpp
+build/hardware/%.cpp.o: %.cpp | gpio-backend-preflight
 	$Q echo "[Compile] $<"
 	$Q mkdir -p $(@D)
 	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
 
-build/hardware/%.c.o: %.c
+build/hardware/%.c.o: %.c | gpio-backend-preflight
 	$Q echo "[Compile] $<"
 	$Q mkdir -p $(@D)
 	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@

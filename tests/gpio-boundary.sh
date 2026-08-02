@@ -38,14 +38,27 @@ grep -Fqx 'const int MotionSensor::sensorGpioPin = 10; // 18;' \
     src/motionSensor.cpp
 
 hardware_build=$(make -Bn hardware)
+gpiod_build=$(make -Bn GPIO_BACKEND=gpiod hardware)
 sandbox_build=$(make -Bn sandbox)
 
 grep -q 'src/gpio/wiringPiGpio.cpp' <<<"${hardware_build}"
 grep -q -- '-lwiringPi' <<<"${hardware_build}"
+grep -q 'src/gpio/gpiodV2Gpio.cpp' <<<"${gpiod_build}"
+grep -q -- '-lgpiod' <<<"${gpiod_build}"
+if grep -q 'src/gpio/wiringPiGpio.cpp' <<<"${gpiod_build}" ||
+        grep -q -- '-lwiringPi' <<<"${gpiod_build}"; then
+    echo "libgpiod build unexpectedly selects or links WiringPi" >&2
+    exit 1
+fi
 grep -q 'src/gpio/fakeGpio.cpp' <<<"${sandbox_build}"
 if grep -q 'src/gpio/wiringPiGpio.cpp' <<<"${sandbox_build}" ||
         grep -q -- '-lwiringPi' <<<"${sandbox_build}"; then
     echo "sandbox build unexpectedly selects or links WiringPi" >&2
+    exit 1
+fi
+
+if make -Bn GPIO_BACKEND=unknown hardware >/dev/null 2>&1; then
+    echo "unknown GPIO backend was accepted" >&2
     exit 1
 fi
 

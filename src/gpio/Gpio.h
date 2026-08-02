@@ -21,8 +21,8 @@ public:
 };
 
 // The build selects exactly one implementation of this factory. Plain
-// hardware builds provide the legacy WiringPi backend; sandbox and test builds
-// provide the fake backend.
+// hardware builds provide the selected WiringPi or libgpiod backend; sandbox
+// and test builds provide the fake backend.
 std::unique_ptr<Gpio> createGpio();
 
 #endif

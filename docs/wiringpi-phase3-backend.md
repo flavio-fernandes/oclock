@@ -1,0 +1,89 @@
+# WiringPi migration Phase 3 backend handoff
+
+## Status
+
+The libgpiod v2 backend is implemented as an explicit build option. It compiles
+and links against libgpiod 2.2.1 in an isolated Debian 13/Trixie Incus
+container, and the complete fake-GPIO and application test suite passes there.
+The next gate is an ARMv6 build on the captured Pi image. No libgpiod binary has
+yet driven production hardware.
+
+The existing Jessie deployment remains unchanged: plain `make` and
+`make hardware` select WiringPi, retain the `oclock` filename, and preserve the
+original `make` ownership and setuid behavior. The WiringPi source remains in
+the tree.
+
+## Building the modern backend
+
+Install the build dependencies on Raspberry Pi OS 32-bit Trixie:
+
+```sh
+sudo apt update
+sudo apt install -y build-essential pkg-config libevent-dev \
+    libmosquitto-dev libgpiod-dev
+```
+
+Then build without changing ownership, mode, or the running service:
+
+```sh
+make GPIO_BACKEND=gpiod hardware
+```
+
+The build rejects unknown backend names and rejects libgpiod versions other
+than major version 2. Because both backends produce `oclock`, every hardware
+build relinks the executable; switching a populated build tree cannot silently
+reuse the other backend's binary.
+
+## Backend behavior
+
+`src/gpio/gpiodV2Gpio.cpp` implements the existing project-owned `Gpio`
+interface using the libgpiod v2 C API:
+
+- it searches `/dev/gpiochip*` and selects the chip whose label is
+  `pinctrl-bcm2835`, rather than assuming `gpiochip0` or `gpiochip4`;
+- it validates the chip line count and the captured `GPIO<N>` names for every
+  office-clock BCM offset before any line is requested;
+- each configured pin has one line request, with output direction and initial
+  value applied in the initial request to avoid a direction/value gap;
+- BCM numbers remain direct offsets only after chip validation;
+- reads, writes, and reconfiguration are serialized because libgpiod does not
+  provide internal synchronization for a shared request object;
+- failures include the operation, selected chip path, BCM offset, and system
+  error where available;
+- project delay calls use `std::chrono` and retain millisecond semantics.
+
+The first backend intentionally preserves the existing polling and software
+bit-banging behavior. Edge events, `spidev`, batching, and timing changes are
+outside Phase 3.
+
+## Host validation
+
+The isolated validation environment was Debian 13/Trixie on x86_64 with GCC
+14.2.0 and libgpiod 2.2.1. It established:
+
+- a clean `make GPIO_BACKEND=gpiod hardware` compile and link;
+- a dynamic dependency on `libgpiod.so.3` and no WiringPi dependency;
+- a clear, nonzero initialization failure when the container exposed no
+  `/dev/gpiochip*` device;
+- passing compatibility, backend-boundary, fake protocol, sanitizer, ARM
+  unsigned-character warning, smoke, and shutdown tests.
+
+The selected compiler also exposed four source files that used
+`std::runtime_error` through transitive headers. They now include
+`<stdexcept>` directly; this does not change runtime behavior.
+
+Host validation cannot establish ARMv6 compatibility, electrical behavior, or
+software-bit-bang timing. Those remain Raspberry Pi gates.
+
+## Remaining gates
+
+1. Build the opt-in backend on the captured ARMv6/armhf Trixie image and verify
+   that it links libgpiod and not WiringPi.
+2. Preserve the resulting binary with its exact commit identifier.
+3. In Phase 5, run a guarded comparison on the production Raspberry Pi Zero
+   Rev 1.2, with the production service stopped and an automatic rollback.
+4. Validate display, LED strip, ADC/light, motion, MQTT, shutdown, timing, and
+   restoration of the WiringPi production service.
+
+The Zero W capture selects the software stack but is not a substitute for the
+exact production-board trial.

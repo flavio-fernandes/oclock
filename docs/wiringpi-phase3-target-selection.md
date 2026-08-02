@@ -62,7 +62,8 @@ On the candidate image:
 ```sh
 sudo apt update
 sudo apt full-upgrade -y
-sudo apt install -y git build-essential pkg-config gpiod libgpiod-dev
+sudo apt install -y git build-essential pkg-config gpiod libgpiod-dev \
+    libevent-dev libmosquitto-dev
 sudo reboot
 ```
 
@@ -102,11 +103,16 @@ Share the reported `.tar.gz` and `.sha256` files. A successful result must show:
 The archive intentionally omits hostname, IP configuration, network sockets,
 SSH configuration, and the device serial. Raw evidence remains outside Git.
 
+The accepted capture and the distinction between its Zero W host and the
+production non-W Zero are recorded in the
+[target baseline](wiringpi-phase3-target-baseline.md).
+
 ## Decision after capture
 
-If every required check passes, Phase 3 will implement a libgpiod v2 backend
-against the captured 2.2 API and the verified chip label/offset mapping. The
-backend will remain opt-in, and WiringPi will remain the default for Jessie.
+Every required check passed. Phase 3 therefore selected and implemented a
+libgpiod v2 backend against the captured 2.2 API and verified chip-label/offset
+mapping. The backend remains opt-in, and WiringPi remains the default for
+Jessie.
 
 If the standard Trixie image does not boot reliably or the collector fails, do
 not modify the Jessie card. Retain the archive, restore the old card, and

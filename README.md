@@ -29,6 +29,20 @@ The default target preserves the original deployment behavior: it builds
 `make hardware` when only a hardware binary is wanted without changing its
 owner or mode.
 
+On the Phase 3 Raspberry Pi OS 32-bit (Debian 13/Trixie) target, install the
+application and GPIO development packages and select the modern backend
+explicitly:
+
+```sh
+sudo apt install -y build-essential pkg-config libevent-dev \
+    libmosquitto-dev libgpiod-dev
+make GPIO_BACKEND=gpiod hardware
+```
+
+This produces the same `oclock` filename but links libgpiod v2 instead of
+WiringPi. Plain `make` and `make hardware` continue to select WiringPi for the
+existing Jessie deployment.
+
 On a development machine without GPIO hardware:
 
 ```sh
