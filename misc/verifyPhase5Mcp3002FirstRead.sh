@@ -121,7 +121,7 @@ file "${tool}" | grep -Fq 'ELF 32-bit LSB executable, ARM, EABI5' ||
 if ldd "${tool}" | grep -q libwiringPi; then
     die "reader unexpectedly resolves WiringPi"
 fi
-strings "${tool}" | grep -Fq "${adc_dt_suffix}" ||
+strings "${tool}" | grep -F "${adc_dt_suffix}" >/dev/null ||
     die "reader lacks Device Tree identity discovery"
 
 timestamp=$(date -u +%Y%m%dT%H%M%SZ)
