@@ -250,9 +250,10 @@ freeze incidental C++ call structure into the tests.
 
 ### Phase 3: select and add the modern backend
 
-**Status: backend implemented; target build and hardware gates pending.** The
-accepted capture selects Raspberry Pi OS 32-bit, Debian 13/Trixie, Linux GPIO
-ABI v2, and libgpiod 2.2 on ARMv6/armhf. See the sanitized
+**Status: complete.** The accepted capture selects Raspberry Pi OS 32-bit,
+Debian 13/Trixie, Linux GPIO ABI v2, and libgpiod 2.2 on ARMv6/armhf. Commit
+`91d0645` built successfully on that ARMv6/armhf target and linked libgpiod and
+libatomic without WiringPi. See the sanitized
 [target baseline](wiringpi-phase3-target-baseline.md) and the
 [target-selection handoff](wiringpi-phase3-target-selection.md). The opt-in
 backend and its host-side validation are described in the
@@ -292,6 +293,12 @@ first equivalence test.
 
 ### Phase 4: validate in Incus
 
+**Status: complete for host-side coverage.** A Debian 13/Trixie container with
+GCC 14.2.0 and libgpiod 2.2.1 compiled and linked the modern backend. The full
+fake-GPIO, protocol, compatibility, sanitizer, warning, smoke, and shutdown
+suite passed. The container's deliberate lack of `/dev/gpiochip*` also
+confirmed a safe, contextual initialization failure.
+
 Keep the `oclock-dev` VM for repeatable x86 testing. On 2026-07-30 it was
 Debian 12 with kernel 6.1; `libgpiod-dev` 1.6.3 was available but not installed.
 The VM exposed no `/dev/gpiochip*` and had neither `gpio-mockup` nor `gpio-sim`
@@ -317,6 +324,11 @@ operation history.
 An x86 VM result is never evidence that Pi Zero pulse timing is acceptable.
 
 ### Phase 5: run a side-by-side Pi hardware trial
+
+**Status: exact production-board trial pending.** The accepted software capture
+and build used a Zero W. The candidate Trixie card must now be booted on the
+production non-W Raspberry Pi Zero Rev 1.2. See the guarded
+[Phase 5 hardware-trial handoff](wiringpi-phase5-hardware-trial.md).
 
 Build both backends from the same commit:
 

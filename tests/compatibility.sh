@@ -102,4 +102,26 @@ grep -Eq $'^libgpiod-dev(:armhf)?\t.*\tarmhf\tinstall ok installed$' \
     "${test_dir}/phase3-packages.txt"
 grep -Fq "grep -q '^throttled=0x0$'" misc/collectGpioTarget.sh
 
+# Keep the Phase 5 verifier's safety boundary executable without entering its
+# hardware path during host tests.
+bash -n misc/verifyPhase5GpiodHardware.sh
+misc/verifyPhase5GpiodHardware.sh --help >"${test_dir}/phase5-help.txt"
+grep -q -- '--sha256 SHA256' "${test_dir}/phase5-help.txt"
+if misc/verifyPhase5GpiodHardware.sh --binary \
+        >"${test_dir}/phase5-invalid.txt" 2>&1; then
+    echo "Phase 5 verifier accepted a missing option value" >&2
+    exit 1
+fi
+grep -Fq 'Raspberry Pi Zero Rev 1.2' misc/verifyPhase5GpiodHardware.sh
+grep -Fq '[[ ${revision} == 900092 ]]' misc/verifyPhase5GpiodHardware.sh
+grep -Fq "grep -q 'libgpiod\\.so\\.3 =>'" \
+    misc/verifyPhase5GpiodHardware.sh
+grep -Fq "! grep -q 'libwiringPi'" misc/verifyPhase5GpiodHardware.sh
+grep -Fq 'trap cleanup EXIT' misc/verifyPhase5GpiodHardware.sh
+if grep -Eq '(^|[[:space:]])(gpioget|gpioset|gpiomon|gpionotify)([[:space:]]|$)' \
+        misc/verifyPhase5GpiodHardware.sh; then
+    echo "Phase 5 verifier invokes an unreviewed GPIO line command" >&2
+    exit 1
+fi
+
 echo "legacy compatibility tests passed"

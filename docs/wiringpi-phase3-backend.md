@@ -5,8 +5,8 @@
 The libgpiod v2 backend is implemented as an explicit build option. It compiles
 and links against libgpiod 2.2.1 in an isolated Debian 13/Trixie Incus
 container, and the complete fake-GPIO and application test suite passes there.
-The next gate is an ARMv6 build on the captured Pi image. No libgpiod binary has
-yet driven production hardware.
+Commit `91d0645` also builds on the ARMv6/armhf target image. No libgpiod binary
+has yet driven production hardware.
 
 The existing Jessie deployment remains unchanged: plain `make` and
 `make hardware` select WiringPi, retain the `oclock` filename, and preserve the
@@ -82,18 +82,26 @@ software-bit-bang timing. Those remain Raspberry Pi gates.
 
 The first ARMv6 build compiled every source file and then exposed the missing
 explicit `libatomic` link dependency. This was a target-linker finding rather
-than a GPIO failure; the scoped link fix must be confirmed by repeating the
-same build from its updated commit.
+than a GPIO failure. Repeating the build from commit `91d0645` passed in 4
+minutes 21 seconds and produced:
+
+```text
+ELF 32-bit LSB executable, ARM, EABI5, interpreter /lib/ld-linux-armhf.so.3
+libgpiod.so.3 => /lib/arm-linux-gnueabihf/libgpiod.so.3
+libatomic.so.1 => /lib/arm-linux-gnueabihf/libatomic.so.1
+```
+
+No WiringPi dependency was present. The binary SHA-256 was
+`a2bdd74e39b3f279a54c56d222ebe50135eeb6051e4f39f1cbe7b9a3332ef8f1`.
 
 ## Remaining gates
 
-1. Build the opt-in backend on the captured ARMv6/armhf Trixie image and verify
-   that it links libgpiod and not WiringPi.
-2. Preserve the resulting binary with its exact commit identifier.
-3. In Phase 5, run a guarded comparison on the production Raspberry Pi Zero
-   Rev 1.2, with the production service stopped and an automatic rollback.
-4. Validate display, LED strip, ADC/light, motion, MQTT, shutdown, timing, and
-   restoration of the WiringPi production service.
+1. Move the separately labelled Trixie card to the production Raspberry Pi
+   Zero Rev 1.2 while it is powered off; retain the Jessie card unchanged.
+2. In Phase 5, run the guarded modern candidate on that exact board.
+3. Validate display, LED strip, ADC/light, motion, MQTT, shutdown, and timing.
+4. Power off, reinstall the Jessie card, and confirm the WiringPi production
+   service and physical outputs are healthy.
 
 The Zero W capture selects the software stack but is not a substitute for the
 exact production-board trial.
