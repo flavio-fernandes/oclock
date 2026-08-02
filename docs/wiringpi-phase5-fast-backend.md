@@ -87,6 +87,14 @@ Incus can compile and test the code but cannot accept the mapped backend: its
 safe `/dev/gpiomem` initialization failure is expected. Native ARMv6 build and
 real timing remain exact-board gates.
 
+The unsigned-character warning build exposed a pre-existing startup race while
+this experiment was validated: an immediate server configuration failure could
+broadcast termination before every application thread created its inbox. The
+main thread now creates all inboxes before launching workers, and the smoke
+test places a ten-second ceiling on invalid-bind shutdown. This changes no GPIO
+or successful-runtime behavior, but makes the Phase 5 initialization-failure
+gate deterministic on ARM.
+
 ## Native build handoff
 
 Build from a fresh archive of the recorded PR commit on the Zero W:

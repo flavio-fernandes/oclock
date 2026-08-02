@@ -94,6 +94,14 @@ int main (int argc, char* argv[])
   // parse args in pulsar before unleashing the other threads, because
   // it uses a non-thread safe parser
   pulsar_parse_args(argc, argv);
+
+  // A startup failure (for example, an invalid bind address) can reach the
+  // termination broadcast immediately after the threads are launched. Create
+  // every inbox first so a thread that has not started running yet cannot miss
+  // that message and make shutdown hang on join.
+  for (int i=0; i < threadIdCount; ++i) {
+    inboxRegistry.getInbox(static_cast<ThreadId>(i));
+  }
   
   allocThreadInfoArray(threadInfo);
   for (int i=0; i < threadIdCount; ++i) {

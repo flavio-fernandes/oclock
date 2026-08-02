@@ -20,8 +20,17 @@ if "${binary}" -p 0 -l "${test_dir}/invalid-port.log" >/dev/null 2>&1; then
     echo "invalid port was accepted" >&2
     exit 1
 fi
-if "${binary}" -b not-an-ip -p "${port}" -l "${test_dir}/invalid-address.log" >/dev/null 2>&1; then
+set +e
+timeout 10 "${binary}" -b not-an-ip -p "${port}" \
+    -l "${test_dir}/invalid-address.log" >/dev/null 2>&1
+invalid_address_status=$?
+set -e
+if ((invalid_address_status == 0)); then
     echo "invalid bind address was accepted" >&2
+    exit 1
+fi
+if ((invalid_address_status == 124)); then
+    echo "invalid bind address made shutdown hang" >&2
     exit 1
 fi
 
