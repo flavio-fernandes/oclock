@@ -10,7 +10,7 @@ endif
 	test-spi-output test-iio-analog test-spi-overlay check-arm-warnings \
 	smoke test-shutdown valgrind spi-overlay \
 	phase5-lpd8806-all-off phase5-lpd8806-all-off-2mhz \
-	phase5-lpd8806-colors-2mhz \
+	phase5-lpd8806-colors-2mhz phase5-ht1632-render \
 	phase5-mcp3002-read clean
 
 # Keep the original CC override working even though every source is C++.
@@ -216,6 +216,17 @@ build/phase5-lpd8806-colors-2mhz: misc/phase5Lpd8806Colors.cpp \
 		-funsigned-char -Werror $^ -o $@ -lpthread
 
 phase5-lpd8806-colors-2mhz: build/phase5-lpd8806-colors-2mhz
+
+build/phase5-ht1632-render: misc/phase5Ht1632Render.cpp \
+		ht1632/HT1632.cpp src/gpio/gpiodV2Gpio.cpp \
+		src/gpio/gpiodMmapFactory.cpp src/gpio/bcm2835MmapValueIo.cpp \
+		src/gpio/bcm2835GpioRegisters.cpp
+	$Q echo "[Build Phase 5 HT1632 render benchmark] $@"
+	$Q mkdir -p $(@D)
+	$Q $(CXX) $(CPPFLAGS) $(CXXFLAGS) \
+		-funsigned-char -Werror $^ -o $@ -lgpiod -latomic -lpthread
+
+phase5-ht1632-render: build/phase5-ht1632-render
 
 build/phase5-mcp3002-read: misc/phase5Mcp3002Read.cpp \
 		src/adc/linuxIioAnalogInput.cpp

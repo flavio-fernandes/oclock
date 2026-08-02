@@ -226,6 +226,45 @@ grep -Fq 'Did the entire LED strip remain off and stable?' \
 grep -Fq 'The whole application and ADC were not run.' \
     misc/verifyPhase5Lpd8806Cadence.sh
 
+# The colored gate is the only strip gate that latches non-zero pixel data.
+# Its final all-off frame is a safety requirement, not a nicety: LPD8806
+# pixels retain their last value after the runtime binding is removed.
+bash -n misc/verifyPhase5Lpd8806Colors.sh
+misc/verifyPhase5Lpd8806Colors.sh --help \
+    >"${test_dir}/phase5-lpd-colors-help.txt"
+grep -Fq 'Type COLORS' misc/verifyPhase5Lpd8806Colors.sh
+grep -Fq 'tick_budget_microseconds=12000' misc/verifyPhase5Lpd8806Colors.sh
+grep -Fq 'expected_brightness=63' misc/verifyPhase5Lpd8806Colors.sh
+grep -Fq 'Emergency rollback: unbinding the strip' \
+    misc/verifyPhase5Lpd8806Colors.sh
+grep -Fq 'final_state=off' misc/verifyPhase5Lpd8806Colors.sh
+grep -Fq '{"off", 0, 0, 0, false},' misc/phase5Lpd8806Colors.cpp
+grep -Fq 'const Int8U halfBrightness = 0x3F;' misc/phase5Lpd8806Colors.cpp
+make -n phase5-lpd8806-colors-2mhz \
+    >"${test_dir}/phase5-lpd-colors-build.txt"
+grep -Fq -- '-DOCLOCK_STRIP_SPEED_HZ=2000000U' \
+    "${test_dir}/phase5-lpd-colors-build.txt"
+
+# The HT1632 matrix keeps its own narrow transport. Its GPIOs are outside the
+# SPI overlay, so its gate must not create a spidev binding or touch the ADC.
+bash -n misc/verifyPhase5Ht1632Render.sh
+misc/verifyPhase5Ht1632Render.sh --help \
+    >"${test_dir}/phase5-ht1632-help.txt"
+grep -Fq 'Type RENDER' misc/verifyPhase5Ht1632Render.sh
+grep -Fq 'tick_budget_microseconds=12000' misc/verifyPhase5Ht1632Render.sh
+grep -Fq 'matrix_gpios=(6 13 19 26)' misc/verifyPhase5Ht1632Render.sh
+grep -Fq 'no strip spidev binding was created' \
+    misc/verifyPhase5Ht1632Render.sh
+grep -Fq 'final_state=off' misc/phase5Ht1632Render.cpp
+grep -Fq 'const long long tickBudgetMicroseconds = 12000;' \
+    misc/phase5Ht1632Render.cpp
+# The benchmark must measure forced full rewrites, not dirty-chunk shortcuts.
+grep -Fq 'matrix.clear();' misc/phase5Ht1632Render.cpp
+if grep -Eq 'spidev|mcp320x|driver_override' misc/phase5Ht1632Render.cpp; then
+    echo "HT1632 benchmark unexpectedly references SPI or ADC state" >&2
+    exit 1
+fi
+
 # Remote maintenance uses existing OpenSSH over a non-routing Tailscale node.
 # Keep the dedicated key source-restricted and prevent this bootstrap from
 # quietly turning the clock into a Tailscale SSH server, router, or exit node.
