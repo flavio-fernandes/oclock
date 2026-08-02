@@ -7,9 +7,8 @@ migration work. This avoids repeated command/result copying while keeping SSH
 off the public internet. Tailscale is a maintenance transport, not an Office
 Clock application or runtime dependency.
 
-The Macmini is already enrolled in tailnet `meteor-copperhead.ts.net` as
-`flaviof-macmini`, with stable Tailscale IPv4 `100.108.157.127`. A dedicated
-Ed25519 key was created locally only for the clock:
+The Macmini is already enrolled in the user's tailnet. A dedicated Ed25519 key
+was created locally only for the clock:
 
 ```text
 SHA256:8sm7CaLjJIV+q7iuFr1XbKU4JGYbwJ3LxAdHL9H2ci8
@@ -39,7 +38,8 @@ test "$(git rev-parse FETCH_HEAD)" = "${expected_commit}" || exit 1
 bootstrap=/tmp/bootstrapOclockTailscale.sh
 git show FETCH_HEAD:misc/bootstrapOclockTailscale.sh >"${bootstrap}"
 chmod 0755 "${bootstrap}"
-"${bootstrap}"
+macmini_ts_ip=<Macmini address reported by tailscale ip -4>
+"${bootstrap}" --source-ip "${macmini_ts_ip}"
 ```
 
 Type `REMOTE`, then open the URL printed by `tailscale up` and approve the new
@@ -59,12 +59,13 @@ the connection model follows its
 
 ## Macmini connection
 
-After enrollment, verify from the Macmini:
+After enrollment, use `tailscale status` on the Macmini to obtain the new
+clock endpoint, then verify:
 
 ```sh
 tailscale ping oclock
 ssh -i /home/flaviof/.ssh/oclock_codex_ed25519 \
-  -o IdentitiesOnly=yes pi@oclock.meteor-copperhead.ts.net
+  -o IdentitiesOnly=yes pi@oclock
 ```
 
 Once verified, add a local SSH alias named `oclock-ts`; do not replace any

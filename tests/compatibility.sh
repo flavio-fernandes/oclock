@@ -164,7 +164,7 @@ fi
 bash -n misc/bootstrapOclockTailscale.sh
 misc/bootstrapOclockTailscale.sh --help \
     >"${test_dir}/tailscale-bootstrap-help.txt"
-grep -Fq 'from="100.108.157.127"' misc/bootstrapOclockTailscale.sh
+grep -Fq 'from=\"${source_ip}\"' misc/bootstrapOclockTailscale.sh
 grep -Fq 'codex-office-clock-2026-08-02' misc/bootstrapOclockTailscale.sh
 grep -Fq 'tailscale up --hostname=oclock --accept-dns=false' \
     misc/bootstrapOclockTailscale.sh
@@ -173,6 +173,11 @@ grep -Fq 'systemctl is-active --quiet oclock' \
 if grep -Eq -- '--ssh|--advertise-routes|--advertise-exit-node|--exit-node' \
         misc/bootstrapOclockTailscale.sh; then
     echo "remote bootstrap enables an unauthorized Tailscale role" >&2
+    exit 1
+fi
+if grep -Eq 'meteor-copperhead|100\.108\.157\.127' \
+        misc/bootstrapOclockTailscale.sh docs/oclock-remote-access.md; then
+    echo "remote-access files expose private tailnet topology" >&2
     exit 1
 fi
 

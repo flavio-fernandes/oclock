@@ -8,14 +8,13 @@ set -euo pipefail
 
 expected_model="Raspberry Pi Zero W Rev 1.1"
 expected_revision=9000c1
-expected_source_ip=100.108.157.127
-tailscale_dns_name=oclock.meteor-copperhead.ts.net
-authorized_key='from="100.108.157.127",no-agent-forwarding,no-port-forwarding,no-X11-forwarding,no-user-rc ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJjvwJZ6+BztayoOnGPuZPV2lgUBzwXzgZhzCWfxDrSv codex-office-clock-2026-08-02'
+source_ip=
+public_key='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJjvwJZ6+BztayoOnGPuZPV2lgUBzwXzgZhzCWfxDrSv codex-office-clock-2026-08-02'
 
 usage()
 {
     cat <<EOF
-Usage: $0
+Usage: $0 --source-ip MACMINI_TAILSCALE_IPV4
 
 Run interactively as pi on the selected Zero W/Trixie target. After a REMOTE
 confirmation, this script:
@@ -26,8 +25,7 @@ confirmation, this script:
 4. leaves normal Wi-Fi, default routes, DNS, sshd, boot files, GPIO, SPI, and
    oclock.service configuration unchanged.
 
-Expected endpoint after enrollment: pi@${tailscale_dns_name}
-Expected source tailnet IP: ${expected_source_ip}
+Find the Macmini address before running this script with: tailscale ip -4
 EOF
 }
 
@@ -37,8 +35,13 @@ die()
     exit 2
 }
 
-if (($# > 0)); then
+while (($# > 0)); do
     case "$1" in
+        --source-ip)
+            (($# >= 2)) || die "--source-ip requires a value"
+            source_ip=$2
+            shift 2
+            ;;
         -h|--help)
             usage
             exit 0
@@ -47,7 +50,17 @@ if (($# > 0)); then
             die "unknown option: $1"
             ;;
     esac
-fi
+done
+
+[[ -n ${source_ip} ]] || die "--source-ip is required"
+IFS=. read -r source_a source_b source_c source_d <<<"${source_ip}"
+[[ ${source_a} == 100 && ${source_b} =~ ^[0-9]+$ &&
+   ${source_c} =~ ^[0-9]+$ && ${source_d} =~ ^[0-9]+$ &&
+   ${source_b} -ge 64 && ${source_b} -le 127 &&
+   ${source_c} -le 255 && ${source_d} -le 255 ]] ||
+    die "--source-ip must be a Tailscale IPv4 address in 100.64.0.0/10"
+
+authorized_key="from=\"${source_ip}\",no-agent-forwarding,no-port-forwarding,no-X11-forwarding,no-user-rc ${public_key}"
 
 [[ $(id -un) == pi ]] || die "run this bootstrap as the pi user, not root"
 [[ ${HOME} == /home/pi ]] || die "expected pi home directory /home/pi"
@@ -86,8 +99,8 @@ if systemctl is-active --quiet oclock; then
 fi
 
 echo "Target:              ${model} (${machine}/${architecture} ${os_codename})"
-echo "Remote endpoint:     pi@${tailscale_dns_name}"
-echo "Allowed source:      ${expected_source_ip}"
+echo "Remote hostname:     oclock"
+echo "Allowed source:      ${source_ip}"
 echo "SSH key fingerprint: SHA256:8sm7CaLjJIV+q7iuFr1XbKU4JGYbwJ3LxAdHL9H2ci8"
 echo
 printf 'Type REMOTE to install and enroll remote access: ' >&2
@@ -138,7 +151,7 @@ sudo tailscale up --hostname=oclock --accept-dns=false
 echo
 echo "Remote-access bootstrap complete."
 echo "Tailscale IPv4: $(tailscale ip -4)"
-echo "MagicDNS name:   ${tailscale_dns_name}"
+echo "Use 'tailscale status' on the Macmini to discover the final endpoint."
 if sudo -n true 2>/dev/null; then
     echo "Noninteractive sudo: available"
 else
