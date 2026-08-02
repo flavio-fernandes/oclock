@@ -197,6 +197,19 @@ if grep -Fq 'strip.begin();' misc/phase5Lpd8806AllOff.cpp; then
     echo "all-off tool contains an extra initial latch transfer" >&2
     exit 1
 fi
+bash -n misc/verifyPhase5Lpd8806Cadence.sh
+misc/verifyPhase5Lpd8806Cadence.sh --help \
+    >"${test_dir}/phase5-lpd-cadence-help.txt"
+grep -Fq 'frame_count=25' misc/verifyPhase5Lpd8806Cadence.sh
+grep -Fq 'tick_budget_microseconds=12000' \
+    misc/verifyPhase5Lpd8806Cadence.sh
+grep -Fq 'Type BENCHMARK' misc/verifyPhase5Lpd8806Cadence.sh
+grep -Fq 'Emergency rollback: unbinding the strip' \
+    misc/verifyPhase5Lpd8806Cadence.sh
+grep -Fq 'Did the entire LED strip remain off and stable?' \
+    misc/verifyPhase5Lpd8806Cadence.sh
+grep -Fq 'The whole application and ADC were not run.' \
+    misc/verifyPhase5Lpd8806Cadence.sh
 
 # Remote maintenance uses existing OpenSSH over a non-routing Tailscale node.
 # Keep the dedicated key source-restricted and prevent this bootstrap from

@@ -12,6 +12,8 @@ passed all 17 checks, and restored the safe unbound state. See the
 The accepted 20,956-microsecond `show()` measurement proves a real transfer,
 but exceeds the existing 12 ms application tick. A repeatable strip cadence
 benchmark remains required before full Phase 5 performance acceptance.
+`misc/verifyPhase5Lpd8806Cadence.sh` reuses the accepted all-off helper for 25
+measured frames, binds only once, and unbinds before visual confirmation.
 
 ## Scope
 
