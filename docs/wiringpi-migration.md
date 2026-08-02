@@ -342,8 +342,10 @@ libgpiod line validation, configuration, ownership, and cleanup while moving
 only high-rate values to the BCM2835 mapping. See the
 [fast-value-path report](wiringpi-phase5-fast-backend.md). It must pass native
 build and the complete Phase 5 timing gate before it can affect this status.
+The native ARMv6 build has now passed at commit `1f5605d`; the guarded physical
+trial of that exact binary remains pending.
 
-Run the accepted libgpiod binary on the Zero W and compare it with Phase 0,
+Run the accepted `gpiod-mmap` candidate on the Zero W and compare it with Phase 0,
 Phase 1, and protocol-trace evidence from the preserved Zero/Jessie unit:
 
 - startup and shutdown pin levels, including visible glitches;

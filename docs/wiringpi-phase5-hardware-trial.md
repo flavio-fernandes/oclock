@@ -5,7 +5,7 @@
 Phase 3 selected and built the modern stack on a Raspberry Pi Zero W Rev 1.1,
 revision `9000c1`. That Zero W is now the intended modern deployment board.
 Phase 5 must connect it to the office-clock wiring unchanged and run the
-libgpiod candidate against the real electrical load.
+selected `gpiod-mmap` candidate against the real electrical load.
 
 The modern Zero W/Trixie and legacy Zero/Jessie environments are separate
 complete units. A same-boot WiringPi-versus-libgpiod comparison is neither
@@ -24,11 +24,12 @@ Preserve these identifiers from the accepted build:
 
 | Item | Value |
 | --- | --- |
-| Source commit | `91d0645ff851a2e4c9cc74930ee58b69c9afeeea` |
-| Binary SHA-256 | `a2bdd74e39b3f279a54c56d222ebe50135eeb6051e4f39f1cbe7b9a3332ef8f1` |
+| Source commit | `1f5605dbc6e8b43165190a150d47c9c1fee86a9d` |
+| Binary SHA-256 | `af7a168af98c7e4765a91d70fd2926281e47fe647e804ccc24d0db92e3c2338e` |
 | Binary | ARM EABI5, armhf interpreter |
 | GPIO dependency | `libgpiod.so.3` |
 | Atomic dependency | `libatomic.so.1` |
+| Fast-value path | `/dev/gpiomem` |
 | Forbidden dependency | WiringPi |
 
 Retain that exact binary persistently on the Zero W's Trixie card. Fetch the
@@ -67,6 +68,8 @@ preconditions hold:
 - a Wi-Fi device connected through NetworkManager, with no USB dongle attached;
 - no firmware throttling indication when `vcgencmd` is available;
 - the supplied binary is 32-bit ARM and matches the operator-supplied SHA-256;
+- `/dev/gpiomem` is a readable and writable character device, and its exact
+  path is embedded in the supplied binary;
 - libgpiod 3 ABI and libatomic resolve, WiringPi does not, and no dependency is
   missing.
 
@@ -85,10 +88,11 @@ blocked while the separately named
 [`gpiod-mmap` fast-value-path experiment](wiringpi-phase5-fast-backend.md) is
 evaluated; the pure `libgpiod` candidate is not a deployment candidate.
 
-The initial trial passes only if display and strip output are visually correct
-and responsive, light and motion transitions appear in status samples, MQTT
-connects, the external feed updates the display, onboard Wi-Fi remains stable,
-and HTTP shutdown is clean.
+The follow-up fast-path trial passes only if display and strip output are
+visually correct and responsive, light and motion transitions appear in status
+samples, MQTT connects, the external feed updates the display, onboard Wi-Fi
+remains stable, HTTP shutdown is clean, and sustained light samples cross both
+existing automatic-dimming thresholds.
 
 A short functional result is not soak or waveform evidence. After the guarded
 check passes, retain the complete Zero/Jessie rollback unit and run a

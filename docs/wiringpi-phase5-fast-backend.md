@@ -3,8 +3,8 @@
 ## Scope and status
 
 The initial pure-libgpiod Phase 5 candidate was functionally correct but failed
-the timing gate. This commit adds a second, explicitly selected experimental
-backend for the exact Raspberry Pi Zero W/Trixie target:
+the timing gate. The repository now provides a second, explicitly selected
+experimental backend for the exact Raspberry Pi Zero W/Trixie target:
 
 ```sh
 make GPIO_BACKEND=gpiod-mmap hardware
@@ -95,9 +95,27 @@ test places a ten-second ceiling on invalid-bind shutdown. This changes no GPIO
 or successful-runtime behavior, but makes the Phase 5 initialization-failure
 gate deterministic on ARM.
 
-## Native build handoff
+## Native build result and hardware handoff
 
-Build from a fresh archive of the recorded PR commit on the Zero W:
+The Zero W built a fresh archive of commit
+`1f5605dbc6e8b43165190a150d47c9c1fee86a9d` successfully on 2026-08-02:
+
+| Item | Result |
+| --- | --- |
+| Build command | `make GPIO_BACKEND=gpiod-mmap hardware` |
+| Build time | 5m14.350s elapsed |
+| Binary | 32-bit ARM EABI5, armhf interpreter |
+| Required dependencies | `libgpiod.so.3`, `libatomic.so.1` |
+| Forbidden dependency | no WiringPi dependency |
+| Fast-path marker | exact string `/dev/gpiomem` present |
+| Binary SHA-256 | `af7a168af98c7e4765a91d70fd2926281e47fe647e804ccc24d0db92e3c2338e` |
+
+The operator preserved that exact candidate as
+`/home/pi/oclock-phase5/oclock-gpiod-mmap-1f5605d`. This establishes compiler,
+linker, architecture, dependency, and backend-selection compatibility on the
+target. It does not establish electrical or timing acceptance.
+
+The reproducible native-build inspection was:
 
 ```sh
 make GPIO_BACKEND=gpiod-mmap hardware
@@ -110,7 +128,7 @@ sha256sum ./oclock
 The binary must be 32-bit ARM EABI5, resolve `libgpiod.so.3` and
 `libatomic.so.1`, contain `/dev/gpiomem`, and have no WiringPi dependency.
 Preserve the binary and checksum outside `/tmp` before transferring the
-harness.
+harness. The accepted candidate above has already satisfied this requirement.
 
 Run the updated `misc/verifyPhase5GpiodHardware.sh` with that exact binary,
 commit, and checksum. The verifier now requires `/dev/gpiomem`, rejects a pure
