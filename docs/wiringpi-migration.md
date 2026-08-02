@@ -444,10 +444,12 @@ If the modern profile or onboard Wi-Fi cannot meet the acceptance budget,
 reconnect the preserved Zero/Jessie unit. The selected follow-up moves the
 LPD8806 and MCP3002 to kernel `spi-gpio` controllers without rewiring. The
 strip uses an explicit `spidev` binding and the ADC uses the native IIO driver.
-The 1 MHz path has now missed that timing budget. Test the carefully isolated
-2 MHz `spi-gpio` path next; if it also lacks stable margin, record the result
-before considering a fixed hardware-SPI rewiring profile. Do not hide a timing
-failure by reducing refresh behavior.
+The 1 MHz path missed that timing budget, but the isolated 2 MHz `spi-gpio`
+path passed on 2026-08-02 with a 3,001-microsecond median and 25 of 25 frames
+inside the 12 ms tick. See the
+[2 MHz result](wiringpi-phase5-lpd8806-2mhz-result.md). A fixed hardware-SPI
+rewiring profile is therefore no longer the expected path for the strip. Do not
+hide a timing failure by reducing refresh behavior.
 
 ### Phase 6: opt-in deployment with rollback
 
@@ -504,7 +506,9 @@ Every migration PR should answer all of these:
 The following should remain open until measured:
 
 - whether the selected bulk HT1632 path meets its timing budget;
-- whether kernel `spi-gpio` meets the LPD8806 timing budget;
+- whether kernel `spi-gpio` at 2 MHz latches **colored** LPD8806 frames
+  correctly on the existing arbitrary-pin wiring, and holds its timing under
+  the real application tick (the all-off cadence budget is already met);
 - whether native MCP3002/IIO values preserve useful light-sensor behavior;
 - whether the LED strip and ADC should eventually be rewired for hardware SPI;
 - whether pin ownership can be split per device without changing scheduling.

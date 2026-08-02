@@ -1,5 +1,13 @@
 # Phase 5 guarded LPD8806 2 MHz experiment
 
+## Status
+
+Both gates passed on 2026-08-02 with zero failures and zero warnings. The
+median `show()` time fell from 20,473 to 3,001 microseconds and all 25 frames
+met the 12 ms budget. See the
+[2 MHz result](wiringpi-phase5-lpd8806-2mhz-result.md). The production speed is
+still 1 MHz; promoting it is a separate reviewed change.
+
 ## Purpose
 
 The accepted all-off transfer proved correct frames and rollback at 1 MHz, but

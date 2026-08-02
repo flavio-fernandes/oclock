@@ -74,3 +74,12 @@ SPI core limits only against a controller maximum when one exists.
 If 2 MHz does not provide adequate and stable margin, reject the arbitrary-pin
 `spi-gpio` strip path and evaluate the already-documented hardware-SPI rewiring
 option. Do not reduce application refresh behavior to conceal the miss.
+
+## Superseded by the 2 MHz result
+
+That experiment ran on 2026-08-02 and passed. The median fell to 3,001
+microseconds and 25 of 25 frames met the budget, so the arbitrary-pin
+`spi-gpio` strip path is **not** rejected and rewiring is not required on
+timing grounds. See the
+[2 MHz result](wiringpi-phase5-lpd8806-2mhz-result.md). This document is
+retained as the 1 MHz evidence record.

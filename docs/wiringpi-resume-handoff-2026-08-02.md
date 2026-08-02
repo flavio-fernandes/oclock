@@ -5,7 +5,8 @@
 - Draft PR: [#3 — migrate the Office Clock hardware stack to Zero W/Trixie](https://github.com/flavio-fernandes/oclock/pull/3)
 - Branch: `agent/plan-wiringpi-migration`
 - Last completed evidence commit before this handoff: `fa28cbd`
-  (`Record failed mapped GPIO trial`)
+  (`Record failed mapped GPIO trial`); the most recent accepted hardware
+  evidence is the [2 MHz strip result](wiringpi-phase5-lpd8806-2mhz-result.md)
 - PR base at the stopping point: `master` commit `2b696b7`
 - Repository worktree was clean before this documentation-only checkpoint.
 - Living public-write-up memory:
@@ -177,9 +178,20 @@ modern hardware build; historical sources remain only as diagnostic evidence.
    [25-frame cadence gate](wiringpi-phase5-lpd8806-cadence-result.md) returned
    valid, visually safe frames but rejected the 1 MHz profile: 0/25 met the
    budget, with a 20,473-microsecond median and 24,722-microsecond 95th
-   percentile. Do not run the full application yet. The next narrow gate is a
-   2 MHz all-off experiment against the kernel's undelayed `spi-gpio` path;
-   it requires neither rewiring nor a live-overlay change.
+   percentile.
+
+   The [2 MHz experiment](wiringpi-phase5-lpd8806-2mhz-result.md) then **passed
+   both gates on 2026-08-02** with zero failures: one frame at 3,193
+   microseconds, then 25/25 frames within budget at a 3,001-microsecond median
+   and 3,400-microsecond 95th percentile, strip visually dark throughout. The
+   arbitrary-pin `spi-gpio` strip path is accepted on timing and rewiring is
+   not required.
+
+   Still do not run the full application. The next narrow gates are, in order:
+   promote the production speed in `src/spi/StripSpeed.h` to 2 MHz as a
+   reviewed change, then a guarded **colored** frame gate, which is the first
+   test that can expose a signal-integrity problem at the higher clock rate.
+   All frames measured so far were all-off.
 2. The MCP3002 application path now uses native IIO and its guarded first read
    passed all 13 checks. The controlled ten-sample windows then averaged 997.3
    uncovered, 179.0 fully covered, and 995.0 restored. Preserve the 360/500
@@ -187,13 +199,14 @@ modern hardware build; historical sources remain only as diagnostic evidence.
    a later guarded application run.
 3. Revisit the HT1632 only after the two standard SPI devices are settled.
 
-The 1 MHz kernel `spi-gpio` strip cannot meet the 12 ms animation cadence. If
-the guarded 2 MHz undelayed-path experiment also lacks stable margin, record
-that result before considering rewiring to hardware SPI. Do not reduce the
-refresh rate to make a failing transport appear acceptable.
+The 1 MHz kernel `spi-gpio` strip cannot meet the 12 ms animation cadence, but
+the 2 MHz undelayed path meets it with better than 2x margin. Do not reduce the
+refresh rate to make a transport appear acceptable.
 
-For every subsequent native Pi build, wrap the exact target with
-`/usr/bin/time -p` and record whether it was clean or incremental. Prefer
+The Zero W has no `/usr/bin/time`, and installing a package is not an
+authorized target change for these gates. Time native Pi builds with a shell
+wall-clock measurement instead and record that it is wall clock, plus whether
+the build was clean or incremental. Prefer
 narrow helper targets and overlap unavoidable ARM compilation with local
 tests, documentation, or evidence review. Do not repeat a successful full
 build solely to recover a missing timing measurement.

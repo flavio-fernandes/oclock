@@ -47,7 +47,7 @@ The selected next architecture is mixed:
 | Device | Selected modern transport | Existing BCM GPIOs | Status |
 | --- | --- | --- | --- |
 | Motion sensor | libgpiod v2 input | 10 | Implemented and functionally tested |
-| LPD8806 strip | kernel `spi-gpio` plus explicit `spidev` binding | clock 20, data 21 | Functionally safe; 1 MHz rejected after 0/25 frames met the 12 ms cadence budget; guarded 2 MHz experiment next |
+| LPD8806 strip | kernel `spi-gpio` plus explicit `spidev` binding | clock 20, data 21 | Accepted on timing at 2 MHz: 25/25 all-off frames inside the 12 ms budget, 3.001 ms median, after 1 MHz was rejected at 0/25; colored-frame gate still pending |
 | MCP3002 ADC | second `spi-gpio` plus native `mcp320x`/IIO | clock 17, MISO 27, MOSI 22, CS 4 | Native reads and controlled covered response accepted; thresholds retained pending room trial |
 | HT1632 matrix | narrow bulk mmap transport | CS 6, WR 13, data 19, select clock 26 | Selected direction; not implemented |
 
@@ -441,6 +441,18 @@ tested command or file before drafting the article:
   checks, transferred 728 bytes at 1 MHz, stayed visually dark, and restored
   the unbound state. The measured `show()` call was 20.956 ms, so this is
   functional acceptance rather than final cadence acceptance.
+- The 1 MHz cadence run then failed outright: 0/25 frames met 12 ms. Raising
+  the request to 2 MHz fixed it completely. The same helper, the same wiring,
+  the same overlay, one constant changed: median `show()` fell from 20.473 ms
+  to 3.001 ms and 25/25 frames met the budget. This is the strongest single
+  narrative beat in the whole migration and it belongs in the article. The
+  cause is a hard threshold in the kernel driver rather than anything
+  electrical: `spi-gpio` inserts a rounded-up delay on both sides of every
+  clock edge when the requested half-cycle is 500 ns or longer, which is
+  exactly 1 MHz. Asking for *more* speed made the driver stop waiting.
+- Caveat to keep honest in the write-up: every frame measured so far was
+  all-off. The colored-frame gate, which is the first real test of signal
+  integrity at 2 MHz on arbitrary GPIO pins, has not run yet.
 
 ### Phase 6/7 — pending
 
@@ -648,8 +660,9 @@ backward compatibility.”
   stayed unbound, and the service stayed inactive. These high ambient values
   explain why the existing thresholds did not engage in that condition, but
   they do not authorize recalibration without controlled covered samples.
-- **Build-note discipline:** Record `/usr/bin/time -p`, the exact make target,
-  and clean-versus-incremental status for subsequent native Pi builds. Prefer
+- **Build-note discipline:** Record a shell wall-clock duration (the Zero W has
+  no `/usr/bin/time` and installing one is not authorized), the exact make
+  target, and clean-versus-incremental status for native Pi builds. Prefer
   focused helpers, overlap slow ARM compilation with local work, and do not
   rerun a successful full build just to reconstruct a missing duration.
 - **2026-08-02:** Accepted the three-window MCP3002 light capture with all 30
@@ -658,3 +671,12 @@ backward compatibility.”
   covering the sensor is not representative room illumination; retain the
   360/500 thresholds until the guarded application trial can observe a real
   bright-to-dark transition.
+- **2026-08-02:** Accepted the 2 MHz LPD8806 experiment on both gates with zero
+  failures. One frame took 3.193 ms; the 25-frame benchmark returned 25/25
+  valid frames all inside the 12 ms tick, with a 3.001 ms median, 3.400 ms
+  95th percentile, and 5.026 ms first-frame warm-up maximum. The strip stayed
+  visually dark, the binding was removed, the ADC stayed on `mcp320x`, and the
+  service stayed inactive. This accepts the arbitrary-pin `spi-gpio` strip path
+  on timing and removes hardware-SPI rewiring from the expected plan. It does
+  not authorize deployment: the production speed is still 1 MHz and no colored
+  frame has been latched at the higher rate.
