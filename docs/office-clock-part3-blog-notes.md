@@ -690,3 +690,20 @@ backward compatibility.”
   survived kernel `spidev`, and no stray, dead, or flickering pixel appeared.
   Firmware still reported `throttled=0x0`. Production strip speed was then
   promoted from 1 MHz to 2 MHz.
+- **2026-08-02:** Wrote and built, but did not yet run, the two remaining
+  Phase 5 gates. The [HT1632 render gate](wiringpi-phase5-ht1632-render.md)
+  deliberately measures the existing matrix path before any bulk transport is
+  written: the plan reserved one, but that decision was made while the strip
+  and matrix shared a per-edge GPIO path, and the strip has since moved to
+  kernel SPI. If the current renders already fit the 12 ms tick, the bulk
+  rewrite should be deleted from the plan rather than built. This is a good
+  article beat about not building the thing you assumed you would need.
+- **2026-08-02:** Preparing the
+  [whole-application trial](wiringpi-phase5-application-trial.md) surfaced a
+  Phase 6 blocker worth telling readers about. The application only *opens*
+  `/dev/spidev4.0`; it never binds it. That node exists only while the runtime
+  `driver_override` binding is present, and the binding does not survive a
+  reboot. A deployed clock cannot need a human to run a bind command after a
+  power cut, so a persistence mechanism (udev rule, ordered systemd unit, or a
+  Device Tree change) must be designed and reviewed before deployment. The fix
+  must not be to give the application privilege to bind its own device.

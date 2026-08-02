@@ -455,6 +455,14 @@ hide a timing failure by reducing refresh behavior.
 
 Only after Phase 5 passes:
 
+0. **Make the strip `spidev` binding survive a reboot.** The application only
+   opens `/dev/spidev4.0`; it never binds the device, and the reviewed
+   `driver_override` binding is runtime-only. A deployed clock cannot depend on
+   a human running a bind command after every power cut. Design and review this
+   separately as a `udev` rule, a systemd unit ordered before `oclock.service`,
+   or a Device Tree change, each with its own rollback. Do not solve it by
+   giving the application privilege to bind its own device. See the
+   [application trial gate](wiringpi-phase5-application-trial.md).
 1. Install the modern binary and service on the Zero W/Trixie unit; preserve
    application arguments, paths, and runtime defaults initially.
 2. Confirm NetworkManager reconnects onboard Wi-Fi after a cold boot and the

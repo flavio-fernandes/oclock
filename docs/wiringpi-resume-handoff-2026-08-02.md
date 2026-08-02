@@ -194,8 +194,17 @@ modern hardware build; historical sources remain only as diagnostic evidence.
    the existing arbitrary-pin wiring is no longer an open question, and the
    production speed has been promoted to 2 MHz.
 
-   Still do not run the full application. Remaining Phase 5 work is the narrow
-   HT1632 bulk transport, then a guarded whole-application run.
+   Still do not run the full application. Remaining Phase 5 work is the
+   [HT1632 render gate](wiringpi-phase5-ht1632-render.md), which measures the
+   existing matrix path before deciding whether a bulk transport is needed at
+   all, and then the
+   [whole-application trial](wiringpi-phase5-application-trial.md). Both are
+   written, built, and attended-ready; neither has been run.
+
+   Preparing the application trial surfaced a Phase 6 blocker: the application
+   only opens `/dev/spidev4.0` and never binds it, so the strip must be bound
+   externally before the app starts and the binding does not survive a reboot.
+   A persistence mechanism must be designed and reviewed before deployment.
 2. The MCP3002 application path now uses native IIO and its guarded first read
    passed all 13 checks. The controlled ten-sample windows then averaged 997.3
    uncovered, 179.0 fully covered, and 995.0 restored. Preserve the 360/500

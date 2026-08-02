@@ -70,6 +70,26 @@ sha256sum build/phase5-ht1632-render
 
 Do not execute the helper directly.
 
+GCC 14 on ARMv6 emits `parameter passing for argument of type
+'std::move_iterator<long long int*>' changed in GCC 7.1` notes while compiling
+the sample vector. These are informational psABI notes, not warnings; the build
+still succeeds under `-Werror`. Do not treat them as a failure.
+
+### Build gate result — 2026-08-02: accepted
+
+| Item | Value |
+| --- | --- |
+| Gate commit | `65ed79d0d1c1bcfa5e4b5e6cbb9e2ba1e3f30f1a` |
+| Build kind | Clean, in a fresh `git archive` extraction |
+| Wall-clock build time | 70 seconds |
+| Binary SHA-256 | `d18f81b73d80682baba36d06885d1803d4f597ccf35833401fb8db98039dde0a` |
+| Architecture | ELF 32-bit LSB, ARM EABI5 |
+| Links | `libgpiod.so.3`, `libstdc++.so.6` |
+| WiringPi entries in `ldd` | 0 |
+
+Built at `/tmp/oclock-ht1632-build` on the target and deliberately not
+executed. The visual and timing gate below has **not** been run.
+
 ## Visual and timing gate
 
 This is an attended gate. The whole sequence takes under 30 seconds.
