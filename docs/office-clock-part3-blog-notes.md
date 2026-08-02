@@ -47,7 +47,7 @@ The selected next architecture is mixed:
 | Device | Selected modern transport | Existing BCM GPIOs | Status |
 | --- | --- | --- | --- |
 | Motion sensor | libgpiod v2 input | 10 | Implemented and functionally tested |
-| LPD8806 strip | kernel `spi-gpio` plus explicit `spidev` binding | clock 20, data 21 | First transfer stopped before payload on unsupported `SPI_NO_CS`; corrected mode-0 retry pending |
+| LPD8806 strip | kernel `spi-gpio` plus explicit `spidev` binding | clock 20, data 21 | Corrected all-off transfer passed; 20.956 ms measured, so cadence acceptance remains open |
 | MCP3002 ADC | second `spi-gpio` plus native `mcp320x`/IIO | clock 17, MISO 27, MOSI 22, CS 4 | Live native binding and IIO attributes verified; value reads wait |
 | HT1632 matrix | narrow bulk mmap transport | CS 6, WR 13, data 19, select clock 26 | Selected direction; not implemented |
 
@@ -352,6 +352,8 @@ tested command or file before drafting the article:
   no WiringPi.
 - [x] Standalone 728-byte all-off tool and guarded bind/transfer/unbind
   verifier implemented.
+- [x] Corrected mode-0 all-off frame transferred on the Zero W with clean
+  rollback and no visible flash.
 - [ ] LPD8806 Zero W timing acceptance at the existing 12 ms application tick.
 - [ ] MCP3002 native-IIO conversion and raw channel verification.
 - [ ] Controlled dark/bright samples and a separate threshold decision.
@@ -419,19 +421,21 @@ tested command or file before drafting the article:
 - A project-owned SPI output, deterministic fake, dynamic Device Tree
   discovery, and LPD8806 path now preserve the exact 720 GRB plus eight latch
   bytes in one transfer. Incus tests and an x86 Trixie build pass. The native
-  ARMv6 build also passed at commit `37b6797`; all hardware transfers remain
-  pending.
+  ARMv6 build also passed at commit `37b6797`; the later guarded first-transfer
+  gate supplied the first live payload evidence.
 - Current-tree build policy now supports only the selected modern profile.
   The old selector knobs and WiringPi compile check are gone; historical
   implementations remain only for comparison, and physical rollback remains
   the complete original unit.
-- A standalone first-transfer tool and guarded verifier are ready. They reuse
-  the exact application frame assembly, send one all-off frame under an
-  explicit prompt and timeout, and unbind before the operator answers. The
-  first exact-board attempt safely stopped before payload because `spi-gpio`
-  rejected the optional `SPI_NO_CS` mode bit. The overlay already has zero
-  chip selects, so the corrected transport requests ordinary mode 0. Retry
-  evidence remains pending.
+- A standalone first-transfer tool and guarded verifier reuse the exact
+  application frame assembly, send one all-off frame under an explicit prompt
+  and timeout, and unbind before the operator answers. The first exact-board
+  attempt safely stopped before payload because `spi-gpio` rejected the
+  optional `SPI_NO_CS` mode bit. The overlay already has zero chip selects, so
+  the corrected transport requests ordinary mode 0. Its retry passed all 17
+  checks, transferred 728 bytes at 1 MHz, stayed visually dark, and restored
+  the unbound state. The measured `show()` call was 20.956 ms, so this is
+  functional acceptance rather than final cadence acceptance.
 
 ### Phase 6/7 — pending
 
@@ -604,9 +608,15 @@ backward compatibility.”
   checks and zero failures. Recorded the transient `root:spi` mode-`0660`
   device, unchanged MCP3002 binding, metadata-only safety boundary, and
   successful explicit unbind. Hardware-free transport/frame implementation
-  is next; no SPI byte has yet been transferred.
+  was the next gate; this binding-only result itself transferred no bytes.
 - **2026-08-02:** Added the project SPI output interface, deterministic fake,
   Device-Tree-discovered Linux spidev implementation, explicit build selector,
   and opt-in LPD8806 integration. Tests prove one exact 728-byte frame and no
   strip GPIO operations while retaining the legacy constructor and default.
-  Native ARM build and every real device transfer remain pending.
+  This checkpoint preceded the native ARM build and live transfer gates.
+- **2026-08-02:** Accepted the corrected mode-0 first transfer with 17 checks,
+  zero failures, and zero warnings. The exact 728-byte all-off frame completed
+  at 1 MHz in 20.956 ms, the strip did not flash, the transient binding was
+  removed, the ADC stayed on `mcp320x`, and the service stayed inactive. This
+  proves the live payload and rollback paths while leaving the 12 ms cadence
+  target open.

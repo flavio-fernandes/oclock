@@ -397,13 +397,14 @@ eight checks and explicit rollback; see its accepted
 output boundary and deterministic frame tests are implemented, and the exact
 Zero W [native build](wiringpi-phase5-lpd8806-build-result.md) passed seven
 checks at commit `37b6797`; see the
-[transport checkpoint](wiringpi-phase5-lpd8806-transport.md). No device has
-yet been opened or transferred through. The standalone
+[transport checkpoint](wiringpi-phase5-lpd8806-transport.md). The standalone
 [guarded all-off transfer](wiringpi-phase5-lpd8806-first-transfer.md) is now
-implemented. Its [first attempt](wiringpi-phase5-lpd8806-first-transfer-result.md)
-stopped before payload because the controller rejected `SPI_NO_CS`; rollback
-passed and the corrected mode-0 retry is the next exact-board gate. The
-resulting full application must not run yet because its
+implemented. Its [first-transfer result](wiringpi-phase5-lpd8806-first-transfer-result.md)
+records both the safe pre-payload `SPI_NO_CS` failure and the corrected mode-0
+retry. The retry sent one 728-byte all-off frame, passed all 17 checks, and
+restored the unbound state. Its 20,956-microsecond `show()` time exceeds the
+12 ms application tick, so final strip cadence acceptance remains open. The
+full application must not run yet because its
 MCP3002 path still conflicts with the overlay-owned ADC GPIOs.
 
 Run every follow-up modern transport profile on the Zero W and compare it with

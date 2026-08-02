@@ -169,13 +169,15 @@ It links libgpiod and libatomic without WiringPi and discovers the strip by
 Device Tree suffix. The old build selectors were then retired in favor of one
 modern hardware build; historical sources remain only as diagnostic evidence.
 
-1. Build and retry the implemented
-   [all-off first-transfer timing gate](wiringpi-phase5-lpd8806-first-transfer.md).
-   The first attempt safely rejected an unsupported `SPI_NO_CS` flag before
-   payload; the corrected retry must always close and unbind before exit.
-2. Convert the MCP3002 only after the strip path is proven. Read both IIO raw
-   channels and record them separately so light calibration can be separated
-   from transport correctness.
+1. The corrected
+   [all-off first-transfer gate](wiringpi-phase5-lpd8806-first-transfer.md)
+   passed all 17 checks. One 728-byte mode-0 frame completed, the strip stayed
+   dark, and rollback succeeded. Its 20,956-microsecond `show()` time is above
+   the 12 ms tick, so retain a separate strip cadence benchmark before running
+   the full application.
+2. Convert the MCP3002 now that the strip's live payload path is proven. Read
+   both IIO raw channels and record them separately so light calibration can
+   be separated from transport correctness.
 3. Revisit the HT1632 only after the two standard SPI devices are settled.
 
 If the kernel `spi-gpio` strip still cannot meet the 12 ms animation cadence,

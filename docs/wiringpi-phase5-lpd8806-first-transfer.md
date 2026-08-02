@@ -3,12 +3,15 @@
 ## Status
 
 The standalone all-off transfer tool and guarded verifier are implemented and
-pass hardware-free build/safety checks. The first exact Zero W attempt stopped
-before transferring because `spi-gpio` rejected the unsupported userspace
-`SPI_NO_CS` mode bit. Cleanup passed. The transport now relies on the dedicated
-controller's `num-chipselects = <0>` configuration and requests ordinary mode
-0. See the [first-attempt result](wiringpi-phase5-lpd8806-first-transfer-result.md).
-The corrected exact-board retry remains pending.
+have passed on the exact Zero W. The first attempt stopped before transferring
+because `spi-gpio` rejected the unsupported userspace `SPI_NO_CS` mode bit;
+cleanup passed. The corrected mode-0 retry sent the expected 728-byte frame,
+passed all 17 checks, and restored the safe unbound state. See the
+[first-transfer results](wiringpi-phase5-lpd8806-first-transfer-result.md).
+
+The accepted 20,956-microsecond `show()` measurement proves a real transfer,
+but exceeds the existing 12 ms application tick. A repeatable strip cadence
+benchmark remains required before full Phase 5 performance acceptance.
 
 ## Scope
 
@@ -89,4 +92,5 @@ After the verifier returns, its result must show:
 - firmware throttling evidence was recorded.
 
 Do not run the full application after this gate. MCP3002/IIO conversion is the
-next application change if the transfer and timing evidence pass.
+next application change. Keep final strip cadence acceptance separate from
+this one-frame functional and rollback gate.

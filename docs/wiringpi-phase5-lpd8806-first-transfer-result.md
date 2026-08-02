@@ -1,6 +1,35 @@
-# Phase 5 LPD8806 first-transfer attempt result
+# Phase 5 LPD8806 first-transfer results
 
-## Decision
+## Accepted retry
+
+The corrected 2026-08-02 retry passed all 17 verifier checks with zero
+failures and zero warnings. It sent exactly one 728-byte all-off frame at
+1 MHz, the operator observed no flash or instability, and the verifier
+returned the strip to its unbound state before asking for that observation.
+The MCP3002 remained bound to `mcp320x`, `oclock.service` remained inactive,
+and firmware reported no throttling.
+
+This accepts the Linux SPI transport's first live payload and authorizes the
+separate MCP3002/IIO application conversion. It is not final strip performance
+acceptance: the measured `LPD8806::show()` call took 20,956 microseconds,
+which is longer than the application's existing 12 ms tick.
+
+| Item | Value |
+| --- | --- |
+| Source commit | `be9513b7269b9c63ebb119c78ffd188a7d6cfbb8` |
+| Capture | `oclock-phase5-lpd-transfer-20260802T165727Z-8OeB0Ln6.tar.gz` |
+| Capture SHA-256 | `519419fdbca05da5a5e9135babc635b188ba5d70c5f439878333dc8cd35d0e2d` |
+| Transfer-tool SHA-256 | `47997ffd306956098a3a23be6a240e7f78373fe57054c9d7ff0c180fbe14c06f` |
+| Frame | 720 data bytes plus 8 latch bytes |
+| SPI configuration | mode 0, MSB first, 8 bits, 1 MHz |
+| Measured `show()` time | 20,956 microseconds |
+| Verifier result | 17 checks passed; 0 failures; 0 warnings |
+
+The adjacent archive checksum matched before extraction, every archive member
+used a relative non-traversing path, and a scan found no SSH or private-tailnet
+topology markers. Raw evidence remains outside Git.
+
+## First attempt
 
 The 2026-08-02 first-transfer attempt stopped safely before sending a payload.
 Linux `spi-gpio` rejected the userspace `SPI_NO_CS` mode flag during spidev
@@ -11,7 +40,7 @@ reported no throttling.
 This is a configuration failure, not an LPD8806 timing result. It authorizes a
 retry after removing `SPI_NO_CS`; it does not count as a successful transfer.
 
-## Evidence
+### Evidence
 
 | Item | Value |
 | --- | --- |
@@ -25,7 +54,7 @@ retry after removing `SPI_NO_CS`; it does not count as a successful transfer.
 The adjacent archive checksum matched before extraction and every member used
 a relative, non-traversing path. Raw evidence remains outside Git.
 
-## Root cause
+### Root cause
 
 The tool opened the dynamically discovered `/dev/spidev4.0`, then attempted
 to configure mode `SPI_MODE_0 | SPI_NO_CS`. The kernel recorded:
@@ -43,7 +72,7 @@ this controller does not advertise the optional `SPI_NO_CS` userspace mode
 bit. The correction is to request plain SPI mode 0 and retain the overlay's
 zero-chip-select topology.
 
-## Safety and rollback observations
+### Safety and rollback observations
 
 - The target, overlay, ARM binary, and dynamic discovery checks passed.
 - The operator observed no flash or instability.
@@ -52,5 +81,5 @@ zero-chip-select topology.
 - `oclock.service` remained inactive.
 - `throttled=0x0` was captured before and after.
 
-The corrected retry must use the same one-frame, timeout, immediate-unbind,
-and visual-observation gate.
+The accepted retry used the same one-frame, timeout, immediate-unbind, and
+visual-observation gate.

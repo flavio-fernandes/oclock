@@ -57,10 +57,10 @@ hardware or WiringPi.
 
 This build-policy decision is not deployment approval. The current whole
 application must not run while the live Office Clock overlay owns the MCP3002
-GPIOs: its ADC code still tries to request those lines directly. The next
-hardware gate is the standalone,
-[guarded LPD8806 all-off transfer](wiringpi-phase5-lpd8806-first-transfer.md).
-MCP3002/IIO and HT1632 work follow before a full application trial.
+GPIOs: its ADC code still tries to request those lines directly. The standalone
+[guarded LPD8806 all-off transfer](wiringpi-phase5-lpd8806-first-transfer.md)
+has passed; MCP3002/IIO conversion is now the next application change. HT1632
+work and a dedicated strip cadence gate still precede a full application trial.
 
 No wiring change, threshold change, privilege change, or production service
 change is implied by this policy. The Zero W remains experimental and
