@@ -1,8 +1,9 @@
 #!/bin/bash
 
 # Collect read-only evidence needed to design the Office Clock's two spi-gpio
-# controllers. This script never loads a module, applies an overlay, opens a
-# spidev node, requests a GPIO line, stops a service, or changes boot files.
+# controllers and the native MCP3002 IIO binding. This script never loads a
+# module, applies an overlay, opens a device node, requests a GPIO line, stops
+# a service, or changes boot files.
 
 set -u
 set -o pipefail
@@ -10,6 +11,8 @@ set -o pipefail
 output_dir=
 expected_model="Raspberry Pi Zero W Rev 1.1"
 expected_revision=9000c1
+reviewed_kernel="6.18.39+rpt-rpi-v6"
+reviewed_spidev_sha256="635863f9af5f50d6412791c3bb5195c9dab465bcf821e2d51252aee74f4c927e"
 
 usage()
 {
@@ -21,10 +24,11 @@ Options:
   -h, --help          Show this help
 
 Run this on the selected Zero W/Trixie SD card. The collector inspects kernel
-SPI support, available modules, existing SPI devices, GPIO consumers, boot
-configuration locations, Device Tree overlay tools, and spidev binding
-evidence. It does not load or bind a driver, apply an overlay, open a spidev
-node, request or drive GPIO, stop the clock, or modify the system.
+SPI and MCP3002 IIO support, available modules, existing SPI/IIO devices, GPIO
+consumers, boot configuration locations, Device Tree overlay tools, and
+spidev binding evidence. It does not load or bind a driver, apply an overlay,
+open a device node, request or drive GPIO, stop the clock, or modify the
+system.
 EOF
 }
 
@@ -223,6 +227,8 @@ fi
 
 capture kernel uname -a
 capture architecture dpkg --print-architecture
+# The dpkg-query format placeholders must remain literal for dpkg to expand.
+# shellcheck disable=SC2016
 capture installed-kernel-packages dpkg-query -W \
     '-f=${binary:Package}\t${Version}\t${Architecture}\t${Status}\n' \
     'linux-image*' 'linux-headers*' 'raspberrypi-kernel*' 'raspi-utils*' \
@@ -240,12 +246,12 @@ capture installed-kernel-packages dpkg-query -W \
         if [[ ${config_path} == /proc/config.gz ]]; then
             if command -v zcat >/dev/null 2>&1; then
                 zcat "${config_path}" |
-                    grep -E '^(CONFIG_(SPI|SPI_MASTER|SPI_GPIO|SPI_SPIDEV)=|# CONFIG_(SPI|SPI_MASTER|SPI_GPIO|SPI_SPIDEV) is not set)' || true
+                    grep -E '^(CONFIG_(SPI|SPI_MASTER|SPI_GPIO|SPI_SPIDEV|IIO|MCP320X)=|# CONFIG_(SPI|SPI_MASTER|SPI_GPIO|SPI_SPIDEV|IIO|MCP320X) is not set)' || true
             else
                 echo "zcat is unavailable"
             fi
         else
-            grep -E '^(CONFIG_(SPI|SPI_MASTER|SPI_GPIO|SPI_SPIDEV)=|# CONFIG_(SPI|SPI_MASTER|SPI_GPIO|SPI_SPIDEV) is not set)' \
+            grep -E '^(CONFIG_(SPI|SPI_MASTER|SPI_GPIO|SPI_SPIDEV|IIO|MCP320X)=|# CONFIG_(SPI|SPI_MASTER|SPI_GPIO|SPI_SPIDEV|IIO|MCP320X) is not set)' \
                 "${config_path}" || true
         fi
         echo
@@ -256,9 +262,11 @@ capture installed-kernel-packages dpkg-query -W \
 capture loaded-modules lsmod
 capture spi-gpio-modinfo modinfo spi-gpio
 capture spidev-modinfo modinfo spidev
+capture mcp320x-modinfo modinfo mcp320x
 if command -v modprobe >/dev/null 2>&1; then
     capture spi-gpio-module-dependencies modprobe --show-depends spi-gpio
     capture spidev-module-dependencies modprobe --show-depends spidev
+    capture mcp320x-module-dependencies modprobe --show-depends mcp320x
 fi
 
 {
@@ -269,13 +277,14 @@ fi
         [[ -r ${module_metadata} ]] || continue
         echo
         echo "===== ${module_metadata} ====="
-        grep -Ei '(^|[/ :_-])(spi[-_]gpio|spidev)([ .:_-]|$)' \
+        grep -Ei '(^|[/ :_-])(spi[-_]gpio|spidev|mcp320x)([ .:_-]|$)' \
             "${module_metadata}" || true
     done
     echo
     echo "module_files:"
     find "${module_root}" -type f \
-        \( -name 'spi-gpio.ko*' -o -name 'spidev.ko*' \) \
+        \( -name 'spi-gpio.ko*' -o -name 'spidev.ko*' -o \
+            -name 'mcp320x.ko*' \) \
         -print 2>/dev/null | sort
 } >"${output_dir}/spi-module-availability.txt" 2>&1
 
@@ -322,6 +331,20 @@ fi
         echo
     done
 } >"${output_dir}/spi-sysfs.txt" 2>&1
+
+{
+    for iio_path in /sys/bus/iio/devices /sys/bus/spi/drivers/mcp320x; do
+        echo "===== ${iio_path} ====="
+        if [[ -d ${iio_path} ]]; then
+            find "${iio_path}" -maxdepth 2 -mindepth 1 \
+                -printf '%y %p -> %l\n' 2>/dev/null | sort
+        else
+            echo "not present"
+        fi
+        echo
+    done
+    echo "No IIO value was opened or read by this collector."
+} >"${output_dir}/iio-sysfs.txt" 2>&1
 
 {
     echo "spidev module aliases:"
@@ -513,6 +536,12 @@ else
     result_fail "spidev is unavailable for the running kernel"
 fi
 
+if module_is_available CONFIG_MCP320X mcp320x; then
+    result_ok "native MCP3002 IIO driver is built in or available"
+else
+    result_fail "native MCP3002 IIO driver is unavailable for the running kernel"
+fi
+
 if grep -q '^alias:.*spi:spidev' "${output_dir}/spidev-modinfo.txt" ||
         grep -q '^spi:spidev$' "${output_dir}/spidev-binding-evidence.txt"; then
     result_ok "spidev module alias evidence was captured"
@@ -535,7 +564,9 @@ else
     result_fail "GPIO metadata is missing ${missing_offsets} office-clock offset(s)"
 fi
 
-if grep -q '^exit_status: 0$' "${output_dir}/dtoverlay-help.txt"; then
+if grep -q '^exit_status: 0$' "${output_dir}/dtoverlay-list-active.txt" &&
+        grep -q '^exit_status: 0$' \
+            "${output_dir}/dtoverlay-list-available.txt"; then
     result_ok "Raspberry Pi Device Tree overlay tooling is available"
 else
     result_fail "dtoverlay tooling is unavailable"
@@ -559,7 +590,12 @@ else
     result_fail "no readable Raspberry Pi boot configuration was found"
 fi
 
-if grep -q '/drivers/spi/spidev.c$' \
+spidev_module=$(modinfo -n spidev 2>/dev/null || true)
+if [[ $(uname -r) == "${reviewed_kernel}" && -f ${spidev_module} ]] &&
+        printf '%s  %s\n' "${reviewed_spidev_sha256}" \
+            "${spidev_module}" | sha256sum --check --status; then
+    result_ok "spidev module matches the exact downstream source review"
+elif grep -q '/drivers/spi/spidev.c$' \
         "${output_dir}/spidev-binding-evidence.txt"; then
     result_ok "installed spidev source is available for exact binding review"
 else

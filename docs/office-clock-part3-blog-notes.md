@@ -41,16 +41,23 @@ The selected next architecture is mixed:
 | Device | Selected modern transport | Existing BCM GPIOs | Status |
 | --- | --- | --- | --- |
 | Motion sensor | libgpiod v2 input | 10 | Implemented and functionally tested |
-| LPD8806 strip | kernel `spi-gpio` plus `spidev` | clock 20, data 21 | Selected; discovery underway |
-| MCP3002 ADC | second `spi-gpio`/`spidev` bus | clock 17, MISO 27, MOSI 22, CS 4 | Selected; conversion waits for strip proof |
+| LPD8806 strip | kernel `spi-gpio` plus explicit `spidev` binding | clock 20, data 21 | Disabled overlay written; offline target gate pending |
+| MCP3002 ADC | second `spi-gpio` plus native `mcp320x`/IIO | clock 17, MISO 27, MOSI 22, CS 4 | Exact driver verified; conversion waits for strip proof |
 | HT1632 matrix | narrow bulk mmap transport | CS 6, WR 13, data 19, select clock 26 | Selected direction; not implemented |
 
-The 2026-08-02 read-only kernel-SPI run reported that the Zero W kernel has the
-SPI core, `spi-gpio`, and `spidev`, and that all office-clock GPIO offsets are
-visible. `dtoverlay` was not installed, although the overlay README, `dtc`, and
-boot configuration were available. The archive still needs to be reviewed
-before deciding whether the missing command is merely a package/tooling
-warning or part of the installation procedure.
+The 2026-08-02 read-only kernel-SPI run established that the exact Zero W
+kernel has the SPI core, `spi-gpio`, and `spidev`, and that all office-clock
+GPIO offsets are visible without consumers. `dtoverlay`, its overlay catalog,
+`dtc`, and `fdtoverlay` are already installed by `raspi-utils-dt` and
+`device-tree-compiler`. The collector's reported tooling failure was a false
+negative: bare help returns status 1, while both list commands succeeded.
+
+Exact package source also revealed a better ADC path. Kernel 6.18.39's
+`mcp320x` driver supports `microchip,mcp3002` and the target armhf
+configuration builds it as a module. The modern ADC can therefore use native
+IIO raw channels. The exact `spidev` source rejects a generic Device Tree
+`spidev` compatible, so the LPD8806 uses an honest project identifier followed
+by an explicit, guarded `driver_override` binding.
 
 Phase 6 deployment remains blocked. The article must not yet say that the
 modern system is production-ready or that WiringPi has been completely
@@ -164,16 +171,13 @@ library and the Makefile links explicitly. `gpiod` command-line tools are
 useful for read-only diagnosis. Do not add packages to the published command
 merely because a development VM happened to contain them.
 
-### Additional final SPI/overlay dependencies — pending
+### Additional final SPI/overlay dependencies — partly verified
 
-The exact package list must be filled in after the kernel-SPI archive and
-overlay deployment are accepted. Expected categories are:
+The discovery image already has the required inspection/build tools:
 
-- Device Tree compiler (`dtc`), already available on the captured target;
-- Raspberry Pi overlay inspection/tooling (`dtoverlay` is currently absent;
-  identify its Trixie package before publishing an install command);
-- kernel modules or built-ins providing `spi-gpio` and `spidev`, already
-  reported available by the read-only collector;
+- `device-tree-compiler` provides `dtc` and `fdtoverlay`;
+- `raspi-utils-dt` provides the working `dtoverlay` tool;
+- the selected kernel packages provide `spi-gpio`, `spidev`, and `mcp320x`;
 - Linux SPI userspace headers for `SPI_IOC_MESSAGE`; determine which existing
   development package owns the header on the accepted image;
 - a project-owned overlay file installed under the authoritative Trixie boot
@@ -217,10 +221,10 @@ The final procedure needs all of the following, in this order:
 
 1. Show how to inspect current GPIO consumers and SPI devices.
 2. Stop the application before any overlay claims its existing GPIOs.
-3. Install one project-owned overlay defining two independent `spi-gpio`
+3. Install the reviewed project overlay defining two independent `spi-gpio`
    controllers on the unchanged strip and ADC pins.
-4. Explain the `spidev` compatible/binding choice for the exact Raspberry Pi
-   downstream kernel.
+4. Explain the project-compatible plus explicit `spidev` override for the
+   LPD8806 and native `microchip,mcp3002`/IIO binding for the ADC.
 5. Add one clearly marked boot configuration entry; retain a byte-for-byte
    backup of the original configuration.
 6. Reboot and verify controller, device-node, pin-consumer, and permission
@@ -230,9 +234,10 @@ The final procedure needs all of the following, in this order:
 8. State that current libgpiod GPIO drivers must not request lines owned by the
    new SPI controllers.
 
-The LPD8806 has no chip-select wire. The overlay and userspace transfer must
-use the kernel's no-CS behavior without inventing a wiring change. The MCP3002
-requires full-duplex transfer with CS on BCM 4.
+The LPD8806 has no chip-select wire. The overlay and userspace transfer use the
+kernel's no-CS behavior without inventing a wiring change. The MCP3002 keeps
+CS on BCM 4, while its full-duplex protocol is performed by the native kernel
+driver and exposed as two IIO raw channels.
 
 ### Service procedure — mostly preserved, final ordering pending
 
@@ -271,7 +276,8 @@ Once the modern deployment passes—and not before—the follow-up can state:
 - no clone/build/install of WiringPi under `/usr/local`;
 - no `gpio readall` dependency for normal operation;
 - no direct WiringPi calls outside the retained legacy backend;
-- no per-edge libgpiod operations for the full LPD8806 and MCP3002 transfers;
+- no per-edge userspace GPIO operations for full LPD8806 frames or MCP3002
+  samples;
 - no hardware-SPI pin rewiring for the selected `spi-gpio` design;
 - no assumption that the Broadcom GPIO controller is always
   `/dev/gpiochip0` or `/dev/gpiochip4`.
@@ -291,15 +297,15 @@ tested command or file before drafting the article:
 - [x] GCC 14, libevent, libmosquitto, libgpiod v2, and libatomic-capable build.
 - [x] Project-owned GPIO API and explicit modern build selection.
 - [x] Deterministic fake protocol tests and Incus validation.
-- [ ] Exact Trixie package that provides `dtoverlay`, or documented decision
-  not to require that command.
-- [ ] Reviewed, disabled-by-default Office Clock Device Tree overlay.
+- [x] `raspi-utils-dt` identified as the installed provider of `dtoverlay`.
+- [x] Disabled-by-default Office Clock Device Tree overlay added to the repo.
+- [ ] Offline target merge of that overlay accepted.
 - [ ] Exact overlay install, enable, verify, disable, uninstall, and rescue
   commands.
 - [ ] Project-owned SPI userspace transport plus deterministic fake.
 - [ ] LPD8806 conversion preserving 720 GRB bytes and eight latch bytes.
 - [ ] LPD8806 Zero W timing acceptance at the existing 12 ms application tick.
-- [ ] MCP3002 full-duplex conversion and raw channel verification.
+- [ ] MCP3002 native-IIO conversion and raw channel verification.
 - [ ] Controlled dark/bright samples and a separate threshold decision.
 - [ ] HT1632 bulk transport and timing acceptance.
 - [ ] Final modern build profile name and binary dependency evidence showing
@@ -353,9 +359,11 @@ tested command or file before drafting the article:
 - Light samples ranged 478–1023 and never crossed the current low threshold
   of 360. Do not call that a proven ADC bug or change calibration from this
   run alone.
-- Current kernel-SPI discovery: core, `spi-gpio`, `spidev`, GPIO metadata,
-  `dtc`, overlay docs, and boot location passed; `dtoverlay` command absent;
-  archive review pending.
+- Kernel-SPI discovery accepted: core, `spi-gpio`, `spidev`, GPIO metadata,
+  overlay tools, and boot location passed. Exact source review found native
+  MCP3002/IIO support and confirmed that LPD8806 requires an explicit spidev
+  override. The disabled project overlay is written; offline target merge is
+  pending.
 
 ### Phase 6/7 — pending
 
@@ -379,9 +387,11 @@ barrier.
 ### Why kernel `spi-gpio` is different from hardware SPI
 
 `spi-gpio` is a kernel software SPI controller that can use arbitrary GPIOs,
-so it preserves the existing wires. `spidev` gives the application buffered
-SPI transactions. One userspace operation can submit a complete frame instead
-of making thousands of GPIO calls.
+so it preserves the existing wires. `spidev` gives the strip application a
+buffered SPI transaction; one userspace operation can submit a complete frame
+instead of making thousands of GPIO calls. The ADC goes one step further: its
+native kernel driver performs the SPI transaction and presents IIO channel
+files.
 
 A fixed hardware SPI controller would be faster but uses designated alternate
 function pins. The strip's current clock/data order and the ADC's arbitrary
@@ -398,10 +408,9 @@ than forcing unlike protocols through an artificial common abstraction.
 ### Why the ADC threshold is a separate question
 
 The ADC can return changing values while the display still never dims. First
-prove the MCP3002 full-duplex transaction and record raw covered/uncovered
-channels. Only then decide whether Trixie/transport behavior changed the
-signal or whether the old threshold simply does not fit the new physical
-setup.
+prove both MCP3002 IIO raw channels and record controlled covered/uncovered
+values. Only then decide whether Trixie/transport behavior changed the signal
+or whether the old threshold simply does not fit the new physical setup.
 
 ## Proposed article outline
 
@@ -442,8 +451,8 @@ setup.
 - Small architecture diagram: application devices to WiringPi on legacy and
   to libgpiod/SPI/bulk transports on modern.
 - `file` and `ldd` output for final ARM binary, showing no WiringPi.
-- `gpiodetect`, final `/dev/spidev*`, and GPIO consumer excerpts with local
-  identifiers removed.
+- `gpiodetect`, the final strip `/dev/spidev*`, MCP3002 IIO channels, and GPIO
+  consumer excerpts with local identifiers removed.
 - A logic-analyzer view or measured frame-time table comparing legacy,
   libgpiod, mapped, and final SPI paths.
 - CPU/HTTP latency comparison under the same animation workload.
@@ -485,6 +494,8 @@ backward compatibility.”
 - First hardware result: [`wiringpi-phase5-initial-result.md`](wiringpi-phase5-initial-result.md)
 - Mapped result: [`wiringpi-phase5-fast-result.md`](wiringpi-phase5-fast-result.md)
 - Kernel-SPI discovery: [`wiringpi-phase5-kernel-spi-discovery.md`](wiringpi-phase5-kernel-spi-discovery.md)
+- Kernel-SPI result: [`wiringpi-phase5-kernel-spi-result.md`](wiringpi-phase5-kernel-spi-result.md)
+- Disabled SPI overlay gate: [`wiringpi-phase5-spi-overlay.md`](wiringpi-phase5-spi-overlay.md)
 - Exact resume state: [`wiringpi-resume-handoff-2026-08-02.md`](wiringpi-resume-handoff-2026-08-02.md)
 - Original hardware article: [Part 1](https://flaviof.com/blog/hacks/office-clock-part1.html)
 - Original software article: [Part 2](https://flaviof.com/blog/hacks/office-clock-part2.html)
@@ -496,3 +507,8 @@ backward compatibility.”
   selected mixed SPI architecture, and initial kernel-SPI collector summary.
   The raw SPI archive, overlay design, final dependencies, final install
   procedure, hardware timing, soak, and deployment remain pending.
+- **2026-08-02:** Processed the exact kernel-SPI archive. Corrected the false
+  `dtoverlay` failure, recorded installed overlay packages and exact downstream
+  source hashes, selected native MCP3002/IIO plus explicit LPD8806 spidev
+  binding, and added the disabled overlay/offline verification gate. Live
+  overlay installation and all transfers remain pending.

@@ -7,8 +7,8 @@ endif
 .PHONY: all sudo_oclock hardware sandbox gpio-backend-preflight \
 	compatibility gpio-boundary test \
 	test-core test-gpio-protocols test-gpio-registers test-wiringpi-compile \
-	check-arm-warnings \
-	smoke test-shutdown valgrind clean FORCE
+	test-spi-overlay check-arm-warnings \
+	smoke test-shutdown valgrind spi-overlay clean FORCE
 
 # Keep the original CC override working even though every source is C++.
 CC = g++
@@ -17,6 +17,7 @@ CPPFLAGS = -I/usr/local/include -I./mcp300x -I./ht1632 -I./lpd8806 -I./src -I./p
 CXXFLAGS ?= -g -O0
 CXXFLAGS += -std=gnu++11 -Winline -pipe -Wall -Wextra
 LDFLAGS ?=
+DTC ?= dtc
 
 GPIO_BACKEND ?= wiringpi
 VALID_GPIO_BACKENDS := wiringpi gpiod gpiod-mmap
@@ -213,6 +214,16 @@ test: compatibility gpio-boundary test-core test-gpio-protocols \
 
 valgrind: oclock-sandbox
 	$Q ./tests/valgrind-smoke.sh ./oclock-sandbox
+
+spi-overlay: build/oclock-spi-overlay.dtbo
+
+build/oclock-spi-overlay.dtbo: hardware/oclock-spi-overlay.dts
+	$Q echo "[Compile Device Tree overlay] $<"
+	$Q mkdir -p $(@D)
+	$Q $(DTC) -@ -I dts -O dtb -o $@ $<
+
+test-spi-overlay: build/oclock-spi-overlay.dtbo
+	$Q ./tests/spi-overlay.sh $<
 
 clean:
 	$Q echo "[Clean]"

@@ -34,8 +34,8 @@ mixed modern transport on the Raspberry Pi Zero W/Trixie unit:
 | Device | Selected modern transport | Existing BCM GPIOs |
 | --- | --- | --- |
 | Motion sensor | libgpiod v2 input | 10 |
-| LPD8806 strip | `spi-gpio` controller exposed through `spidev` | clock 20, data 21 |
-| MCP3002 light ADC | second `spi-gpio`/`spidev` bus | clock 17, MISO 27, MOSI 22, CS 4 |
+| LPD8806 strip | `spi-gpio` controller with explicit `spidev` binding | clock 20, data 21 |
+| MCP3002 light ADC | second `spi-gpio` bus with native `mcp320x`/IIO | clock 17, MISO 27, MOSI 22, CS 4 |
 | HT1632 matrix | retain a narrow bulk mmap transport initially | CS 6, WR 13, data 19, select clock 26 |
 
 This plan preserves the physical wiring. `spi-gpio` is selected specifically
@@ -114,37 +114,36 @@ strip timing.
 
 The approved plan sends complete strip and ADC transfers into the kernel SPI
 subsystem instead. The application will make one buffered `spidev` operation
-per logical transaction while `spi-gpio` drives the existing pins. The matrix
-keeps a narrow custom path only because its select topology is not ordinary
-SPI.
+per strip frame, while the kernel's native `mcp320x` driver exposes the ADC
+through IIO. `spi-gpio` drives the existing pins for both. The matrix keeps a
+narrow custom path only because its select topology is not ordinary SPI.
 
-## Tomorrow's first work
+## Current next work
 
-Start with read-only target discovery; do not ask the operator to enable an
-overlay yet.
+The read-only target discovery completed on 2026-08-02. Archive
+`oclock-phase5-spi-20260802T135213Z-RCuWzN1Y.tar.gz` has SHA-256
+`a650a19ba134e59d81ac78b56263f07c60c08641df71c6cb4e887c0d4e420eb0`.
+Its `dtoverlay` failure was a false negative caused by bare-help exit status;
+both list operations passed. Exact source correlation selected native IIO for
+the MCP3002 and an explicit `spidev` override for the LPD8806. See the
+[accepted result](wiringpi-phase5-kernel-spi-result.md).
 
-1. Reconfirm the PR branch against the latest `master` and rebase only if
-   necessary, preserving the existing PR 3 history.
-2. Run the read-only
-   [`collectPhase5SpiTarget.sh`](../misc/collectPhase5SpiTarget.sh) collector on
-   the Zero W/Trixie image. It records:
-   `CONFIG_SPI`, `CONFIG_SPI_GPIO`, `CONFIG_SPI_SPIDEV`, loaded/available
-   modules, current SPI controllers and `/dev/spidev*`, GPIO consumers, boot
-   configuration locations, overlay tooling, and the downstream kernel's
-   spidev binding evidence. See the
-   [kernel-SPI discovery handoff](wiringpi-phase5-kernel-spi-discovery.md).
-3. Design a reversible Device Tree overlay containing two independent
-   `spi-gpio` controllers on the exact LPD8806 and MCP3002 pins. Keep it
-   disabled by default and include explicit uninstall/disable instructions.
-4. Add a project-owned SPI transport boundary plus a deterministic fake. Keep
+1. Run the read-only offline
+   [`verifyPhase5SpiOverlayDryRun.sh`](../misc/verifyPhase5SpiOverlayDryRun.sh)
+   gate on the Zero W. It compiles the disabled project overlay and merges it
+   into a file copy of the live Device Tree without applying anything.
+2. After that archive passes, write and review the reversible install, boot,
+   inspect, disable, uninstall, and SD-card rescue procedure. Keep the service
+   stopped through the first live overlay boot.
+3. Add a project-owned SPI transport boundary plus a deterministic fake. Keep
    the legacy WiringPi device implementations and build defaults intact.
-5. Convert the LPD8806 first. Preserve its 720-byte GRB frame and eight-byte
+4. Convert the LPD8806 first. Preserve its 720-byte GRB frame and eight-byte
    zero latch exactly, then run Incus tests, a native ARM build, and an
    exact-board timing trial before converting another device.
-6. Convert the MCP3002 only after the strip path is proven. Use a full-duplex
-   transaction and add raw per-channel evidence so light calibration can be
-   separated from protocol correctness.
-7. Revisit the HT1632 only after the two standard SPI devices are settled.
+5. Convert the MCP3002 only after the strip path is proven. Read both IIO raw
+   channels and record them separately so light calibration can be separated
+   from transport correctness.
+6. Revisit the HT1632 only after the two standard SPI devices are settled.
 
 If the kernel `spi-gpio` strip still cannot meet the 12 ms animation cadence,
 record that result before considering rewiring to hardware SPI. Do not reduce

@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: MIT
+
+/dts-v1/;
+
+/ {
+	compatible = "brcm,bcm2835";
+
+	gpio: gpio {
+		compatible = "brcm,bcm2835-gpio";
+		gpio-controller;
+		#gpio-cells = <2>;
+	};
+};

@@ -1,0 +1,66 @@
+// SPDX-License-Identifier: MIT
+
+/*
+ * Disabled-by-default Phase 5 overlay for the unchanged Office Clock wiring.
+ *
+ * GPIO 20/21 become a transmit-only spi-gpio controller for the LPD8806.
+ * GPIO 17/27/22/4 become a full-duplex spi-gpio controller for the MCP3002.
+ *
+ * The LPD8806 compatible is intentionally project-owned. Modern spidev
+ * rejects compatible = "spidev", and borrowing another product's identifier
+ * would misdescribe the hardware. A guarded trial must explicitly bind this
+ * node to spidev with driver_override after boot.
+ */
+
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "brcm,bcm2835";
+
+	fragment@0 {
+		target-path = "/";
+
+		__overlay__ {
+			oclock_strip_spi: oclock-strip-spi {
+				compatible = "spi-gpio";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				num-chipselects = <0>;
+				sck-gpios = <&gpio 20 0>;
+				mosi-gpios = <&gpio 21 0>;
+				status = "okay";
+
+				oclock_strip: lpd8806@0 {
+					compatible = "flaviof,oclock-lpd8806";
+					reg = <0>;
+					spi-max-frequency = <1000000>;
+				};
+			};
+		};
+	};
+
+	fragment@1 {
+		target-path = "/";
+
+		__overlay__ {
+			oclock_adc_spi: oclock-adc-spi {
+				compatible = "spi-gpio";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				num-chipselects = <1>;
+				sck-gpios = <&gpio 17 0>;
+				miso-gpios = <&gpio 27 0>;
+				mosi-gpios = <&gpio 22 0>;
+				cs-gpios = <&gpio 4 1>;
+				status = "okay";
+
+				oclock_adc: mcp3002@0 {
+					compatible = "microchip,mcp3002";
+					reg = <0>;
+					spi-max-frequency = <1000000>;
+				};
+			};
+		};
+	};
+};

@@ -137,4 +137,29 @@ if grep -Eq '(^|[[:space:]])(gpioget|gpioset|gpiomon|gpionotify)([[:space:]]|$)'
     exit 1
 fi
 
+# The SPI collector is also metadata-only. Its tool check must use commands
+# whose successful exit status is stable on the selected raspi-utils release;
+# bare `dtoverlay -h` prints help but deliberately returns 1 there.
+bash -n misc/collectPhase5SpiTarget.sh
+misc/collectPhase5SpiTarget.sh --help >"${test_dir}/phase5-spi-help.txt"
+grep -Fq 'dtoverlay-list-active.txt' misc/collectPhase5SpiTarget.sh
+grep -Fq 'dtoverlay-list-available.txt' misc/collectPhase5SpiTarget.sh
+grep -Fq 'CONFIG_MCP320X' misc/collectPhase5SpiTarget.sh
+grep -Fq 'mcp320x-modinfo' misc/collectPhase5SpiTarget.sh
+if grep -Eq '(^|[[:space:]])(gpioget|gpioset|gpiomon|gpionotify)([[:space:]]|$)' \
+        misc/collectPhase5SpiTarget.sh; then
+    echo "SPI collector contains a GPIO line-access command" >&2
+    exit 1
+fi
+
+bash -n misc/verifyPhase5SpiOverlayDryRun.sh
+misc/verifyPhase5SpiOverlayDryRun.sh --help \
+    >"${test_dir}/phase5-spi-dry-run-help.txt"
+grep -Fq 'Nothing is applied to the live tree' \
+    misc/verifyPhase5SpiOverlayDryRun.sh
+grep -Fq 'compatible = "flaviof,oclock-lpd8806"' \
+    hardware/oclock-spi-overlay.dts
+grep -Fq 'compatible = "microchip,mcp3002"' \
+    hardware/oclock-spi-overlay.dts
+
 echo "legacy compatibility tests passed"

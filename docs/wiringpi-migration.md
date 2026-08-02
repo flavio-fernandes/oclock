@@ -29,8 +29,9 @@ The recommended design is:
 - add a `libgpiod` backend as an explicit opt-in for a supported modern
   Raspberry Pi OS;
 - migrate the two standard clocked devices through separate kernel `spi-gpio`
-  controllers and `spidev` as an explicit modern profile, preserving their
-  current arbitrary GPIO wiring; keep the nonstandard HT1632 transport
+  controllers as an explicit modern profile, preserving their current
+  arbitrary GPIO wiring; use explicit `spidev` binding for the LPD8806 and the
+  native IIO driver for the MCP3002; keep the nonstandard HT1632 transport
   separate.
 
 Do not replace WiringPi calls with `libgpiod` calls throughout the existing
@@ -353,19 +354,24 @@ libgpiod line validation, configuration, ownership, and cleanup while moving
 only high-rate values to the BCM2835 mapping. See the
 [fast-value-path report](wiringpi-phase5-fast-backend.md). Its native ARMv6
 build passed at commit `1f5605d`, but its first guarded physical trial failed
-the dimming and timing gates. The user selected kernel `spi-gpio`/`spidev` for
-the LPD8806 and MCP3002 on their existing pins, while retaining a narrow mmap
-option only for the nonstandard HT1632 protocol. The exact stopping state and
-next steps are preserved in the
+the dimming and timing gates. The user selected kernel `spi-gpio` for the
+LPD8806 and MCP3002 on their existing pins, while retaining a narrow mmap
+option only for the nonstandard HT1632 protocol. Exact kernel review then
+selected `spidev` for the strip and the native MCP3002 IIO driver for the ADC.
+The exact stopping state and next steps are preserved in the
 [2026-08-02 resume handoff](wiringpi-resume-handoff-2026-08-02.md).
 
 The selected follow-up is a mixed transport that preserves every existing
-wire: libgpiod for motion, two independent kernel `spi-gpio`/`spidev` buses
-for the LPD8806 and MCP3002, and a narrowly scoped bulk mmap path for the
-nonstandard HT1632 select protocol. Before adding or enabling an overlay, run
-the read-only [kernel-SPI discovery](wiringpi-phase5-kernel-spi-discovery.md)
-collector to establish exact kernel support, binding behavior, pin consumers,
-boot paths, and rollback constraints.
+wire: libgpiod for motion, a kernel `spi-gpio`/`spidev` strip bus, a second
+`spi-gpio` bus using the native MCP3002 IIO driver, and a narrowly scoped bulk
+mmap path for the nonstandard HT1632 select protocol. The read-only
+[kernel-SPI discovery](wiringpi-phase5-kernel-spi-discovery.md) established
+exact kernel support, binding behavior, pin consumers, boot paths, and rollback
+constraints; see its [accepted result](wiringpi-phase5-kernel-spi-result.md).
+
+The repository now contains a disabled-by-default project
+[overlay](wiringpi-phase5-spi-overlay.md). Its offline target merge is the next
+gate. It has not been installed or enabled.
 
 Run every follow-up modern transport profile on the Zero W and compare it with
 Phase 0, Phase 1, and protocol-trace evidence from the preserved Zero/Jessie
@@ -375,7 +381,7 @@ unit:
 - HT1632 bit order, clock idle state, pulse widths, and full render time;
 - LPD8806 bit order, latch sequence, full-strip frame time, and animation
   smoothness;
-- MCP3002 clocking and light values across dark and bright conditions;
+- MCP3002 IIO raw values on both channels across dark and bright conditions;
 - motion transitions;
 - CPU and memory use;
 - HTTP response latency while display and strip updates are busy;
@@ -390,8 +396,9 @@ deadlines, not identical nanosecond timing.
 
 If the modern profile or onboard Wi-Fi cannot meet the acceptance budget,
 reconnect the preserved Zero/Jessie unit. The selected follow-up moves the
-LPD8806 and MCP3002 to kernel `spi-gpio` controllers and `spidev` without
-rewiring. If that path also misses the timing budget, record the result before
+LPD8806 and MCP3002 to kernel `spi-gpio` controllers without rewiring. The
+strip uses an explicit `spidev` binding and the ADC uses the native IIO driver.
+If that path also misses the timing budget, record the result before
 considering a fixed hardware-SPI rewiring profile. Do not hide a timing failure
 by reducing refresh behavior.
 

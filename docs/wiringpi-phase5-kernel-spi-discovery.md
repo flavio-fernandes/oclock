@@ -1,12 +1,25 @@
 # Phase 5 kernel-SPI discovery handoff
 
+## Result
+
+The 2026-08-02 capture passed the actual discovery gate. Its one reported
+failure was a collector error: the installed `dtoverlay` returns status 1 after
+printing bare help, but its list-active and list-available operations both
+returned success. Exact downstream source correlation also established that
+the MCP3002 has a native `mcp320x`/IIO driver, while the LPD8806 must use an
+explicit `spidev` driver override. See the
+[accepted result](wiringpi-phase5-kernel-spi-result.md).
+
+The corrected collector captures the native ADC driver and uses successful
+`dtoverlay` list operations for its tooling check.
+
 ## Purpose
 
 The first step after the failed per-edge GPIO trials is a read-only inspection
 of the selected Raspberry Pi Zero W/Trixie system. The result will establish
 whether its exact downstream kernel and boot environment can support two
-independent `spi-gpio` controllers exposed to the application through
-`spidev`.
+independent `spi-gpio` controllers. The strip is exposed to the application
+through `spidev`; the ADC uses the kernel's native IIO driver.
 
 This is discovery, not installation. No Device Tree overlay is included or
 enabled yet. The current GPIO drivers and a future SPI controller cannot own
@@ -20,7 +33,7 @@ The proposed kernel-SPI profile preserves the existing wires:
 | Device | Transport | BCM GPIOs |
 | --- | --- | --- |
 | LPD8806 | independent `spi-gpio`/`spidev` bus | clock 20, data 21, no CS |
-| MCP3002 | independent `spi-gpio`/`spidev` bus | clock 17, MISO 27, MOSI 22, CS 4 |
+| MCP3002 | independent `spi-gpio` plus native IIO driver | clock 17, MISO 27, MOSI 22, CS 4 |
 | HT1632 | later narrow bulk mmap transport | CS 6, WR 13, data 19, select clock 26 |
 | Motion | libgpiod v2 input | 10 |
 
@@ -33,10 +46,10 @@ clock/data wiring pair, and forcing them onto one bus would require rewiring.
 
 - the exact Zero W model, revision, Trixie release, ARMv6 runtime, armhf
   package architecture, running kernel, and installed kernel packages;
-- `CONFIG_SPI`, `CONFIG_SPI_GPIO`, and `CONFIG_SPI_SPIDEV` from the running
-  kernel configuration;
-- loaded modules, module availability/dependencies, and `spi-gpio`/`spidev`
-  module metadata;
+- `CONFIG_SPI`, `CONFIG_SPI_GPIO`, `CONFIG_SPI_SPIDEV`, `CONFIG_IIO`, and
+  `CONFIG_MCP320X` from the running kernel configuration;
+- loaded modules, module availability/dependencies, and
+  `spi-gpio`/`spidev`/`mcp320x` module metadata;
 - existing SPI controllers, SPI devices, registered drivers, and
   `/dev/spidev*` nodes without opening any node;
 - `spidev` aliases, module checksum, sysfs binding controls, and any installed
@@ -84,7 +97,8 @@ left exactly as found.
 The archive is a gate for the next commit, not proof that the transport meets
 timing requirements. Review it to decide:
 
-1. whether both `spi-gpio` and `spidev` are present for the running kernel;
+1. whether `spi-gpio`, `spidev`, and the native MCP3002 driver are present for
+   the running kernel;
 2. whether the downstream kernel accepts a direct Device Tree `spidev`
    compatible or requires a real device identifier or explicit
    `driver_override` binding;
@@ -94,20 +108,20 @@ timing requirements. Review it to decide:
 5. how `/dev/spidev*` permissions should be granted without broadening the
    migration into a service-user or privilege redesign.
 
-Only after those answers are documented should the repository add a disabled
-by-default overlay with exact install, enable, disable, and uninstall steps.
-The first application conversion will be the LPD8806 only. The MCP3002 and its
-light-threshold calibration remain unchanged until strip timing passes.
+Those answers are now documented and the repository contains a
+disabled-by-default overlay. It has not been installed or enabled. The first
+application conversion remains the LPD8806. The MCP3002 application path and
+its light-threshold calibration remain unchanged until strip timing passes.
 
 ## Binding caution
 
 Upstream Linux no longer supports describing a Device Tree peripheral with a
 generic `compatible = "spidev"`; it expects a supported real device identifier
-or a deliberate sysfs `driver_override`/bind operation. Raspberry Pi kernels
-have carried downstream behavior in this area, so the exact installed kernel
-must be correlated with its source rather than assuming upstream or historical
-Pi behavior. The collector gathers that correlation evidence without testing a
-binding or changing live kernel state.
+or a deliberate sysfs `driver_override`/bind operation. Exact source for this
+target has the same rejection. The project overlay therefore uses an honest
+project identifier for the LPD8806, to be paired with an explicit guarded
+override/bind. The MCP3002 uses its real `microchip,mcp3002` identifier and the
+native driver.
 
 ## References
 
