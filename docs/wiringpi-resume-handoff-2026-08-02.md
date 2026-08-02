@@ -9,6 +9,11 @@
   (`Record failed mapped GPIO trial`)
 - PR base at the stopping point: `master` commit `2b696b7`
 - Repository worktree was clean before this documentation-only checkpoint.
+- Living public-write-up memory:
+  [`office-clock-part3-blog-notes.md`](office-clock-part3-blog-notes.md). Keep
+  it current whenever the migration changes installation requirements,
+  obsolete steps, selected architecture, hardware evidence, or deployment
+  status.
 
 Fetch the named branch explicitly when resuming. Continue to push with an
 explicit refspec, because this repository previously exposed a dangerous

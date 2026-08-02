@@ -15,6 +15,11 @@ drivers without making a new GPIO stack a prerequisite for the existing
 Raspberry Pi Zero. The legacy build must keep working while the modern Zero W
 replacement is proven on the same wiring and electrical load.
 
+Keep the future public narrative synchronized with the living
+[Office Clock follow-up blog notes](office-clock-part3-blog-notes.md). Update
+that notebook whenever a phase changes the installation, dependency,
+architecture, hardware result, deployment state, or rollback instructions.
+
 The recommended design is:
 
 - put a small, project-owned GPIO interface between the application and all
