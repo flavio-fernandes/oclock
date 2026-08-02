@@ -187,9 +187,10 @@ build/tests/linuxSpidevOutput.cpp.o: src/spi/linuxSpidevOutput.cpp
 build/phase5-lpd8806-all-off: misc/phase5Lpd8806AllOff.cpp \
 		lpd8806/LPD8806.cpp src/gpio/fakeGpio.cpp \
 		src/spi/linuxSpidevOutput.cpp
-	$Q echo "[Build Phase 5 all-off transfer tool] $@"
+	$Q echo "[Build Phase 5 1 MHz all-off transfer tool] $@"
 	$Q mkdir -p $(@D)
 	$Q $(CXX) $(CPPFLAGS) $(CXXFLAGS) \
+		-DOCLOCK_STRIP_SPEED_HZ=1000000U \
 		-funsigned-char -Werror $^ -o $@ -lpthread
 
 phase5-lpd8806-all-off: build/phase5-lpd8806-all-off

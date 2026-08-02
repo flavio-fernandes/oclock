@@ -14,7 +14,7 @@ manager=
 result_file=
 failures=0
 warnings=0
-expected_speed_hz=1000000
+expected_speed_hz=2000000
 
 expected_model="Raspberry Pi Zero W Rev 1.1"
 expected_revision=9000c1

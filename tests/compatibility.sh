@@ -147,11 +147,17 @@ grep -Fq 'runtime strip binding was removed before the operator prompt' \
 grep -Fq 'const Int16U ledCount = 240;' \
     misc/phase5Lpd8806AllOff.cpp
 grep -Fq 'strip.show();' misc/phase5Lpd8806AllOff.cpp
-grep -Fq 'OCLOCK_STRIP_SPEED_HZ 1000000U' src/spi/StripSpeed.h
+grep -Fq 'OCLOCK_STRIP_SPEED_HZ 2000000U' src/spi/StripSpeed.h
 make -n phase5-lpd8806-all-off-2mhz \
     >"${test_dir}/phase5-lpd-2mhz-build.txt"
 grep -Fq -- '-DOCLOCK_STRIP_SPEED_HZ=2000000U' \
     "${test_dir}/phase5-lpd-2mhz-build.txt"
+# The historical 1 MHz helper must stay pinned so the rejected profile remains
+# reproducible now that production no longer defaults to it.
+make -n phase5-lpd8806-all-off \
+    >"${test_dir}/phase5-lpd-1mhz-build.txt"
+grep -Fq -- '-DOCLOCK_STRIP_SPEED_HZ=1000000U' \
+    "${test_dir}/phase5-lpd-1mhz-build.txt"
 grep -Fq -- '--speed-hz must be 1000000 or the reviewed 2000000 experiment' \
     misc/verifyPhase5Lpd8806FirstTransfer.sh
 grep -Fq 'std::uint32_t mode = SPI_MODE_0;' \
