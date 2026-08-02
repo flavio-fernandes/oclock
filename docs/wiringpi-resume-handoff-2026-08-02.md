@@ -120,11 +120,14 @@ overlay yet.
 
 1. Reconfirm the PR branch against the latest `master` and rebase only if
    necessary, preserving the existing PR 3 history.
-2. Add a collector for the Zero W/Trixie image that records:
+2. Run the read-only
+   [`collectPhase5SpiTarget.sh`](../misc/collectPhase5SpiTarget.sh) collector on
+   the Zero W/Trixie image. It records:
    `CONFIG_SPI`, `CONFIG_SPI_GPIO`, `CONFIG_SPI_SPIDEV`, loaded/available
    modules, current SPI controllers and `/dev/spidev*`, GPIO consumers, boot
    configuration locations, overlay tooling, and the downstream kernel's
-   accepted spidev binding mechanism.
+   spidev binding evidence. See the
+   [kernel-SPI discovery handoff](wiringpi-phase5-kernel-spi-discovery.md).
 3. Design a reversible Device Tree overlay containing two independent
    `spi-gpio` controllers on the exact LPD8806 and MCP3002 pins. Keep it
    disabled by default and include explicit uninstall/disable instructions.

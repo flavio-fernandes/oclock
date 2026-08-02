@@ -23,9 +23,10 @@ The recommended design is:
 - retain and improve the fake backend for development and protocol tests;
 - add a `libgpiod` backend as an explicit opt-in for a supported modern
   Raspberry Pi OS;
-- migrate software-clocked devices to kernel SPI only as a separate, optional
-  hardware profile, because the current wiring does not match the relevant SPI
-  pin assignments.
+- migrate the two standard clocked devices through separate kernel `spi-gpio`
+  controllers and `spidev` as an explicit modern profile, preserving their
+  current arbitrary GPIO wiring; keep the nonstandard HT1632 transport
+  separate.
 
 Do not replace WiringPi calls with `libgpiod` calls throughout the existing
 drivers. That would couple device protocols to another platform API and make
@@ -74,10 +75,12 @@ must become an executable pin-map test before backend work begins.
 
 The Raspberry Pi SPI1 functions use GPIO20 for MOSI and GPIO21 for SCLK. The
 deployed LPD8806 wiring uses those two GPIOs in the opposite roles. The MCP3002
-also uses arbitrary GPIOs instead of the normal SPI0 pins. Enabling a SPI
-overlay or replacing either driver with `spidev` would therefore break the
-current wiring. Hardware SPI remains worth considering, but only in a named
-rewired hardware profile after the GPIO migration is complete.
+also uses arbitrary GPIOs instead of the normal SPI0 pins. The fixed hardware
+SPI controllers therefore require rewiring and are not selected. Kernel
+`spi-gpio` controllers can use the existing arbitrary pins and expose their
+transactions through `spidev`; this is the selected modern follow-up. Fixed
+hardware SPI remains a fallback only if measured `spi-gpio` timing is still
+insufficient.
 
 The current code serializes GPIO access with one `std::recursive_mutex`. Preserve
 that ordering initially. Per-device locks or concurrent transfers would be a
@@ -351,6 +354,14 @@ option only for the nonstandard HT1632 protocol. The exact stopping state and
 next steps are preserved in the
 [2026-08-02 resume handoff](wiringpi-resume-handoff-2026-08-02.md).
 
+The selected follow-up is a mixed transport that preserves every existing
+wire: libgpiod for motion, two independent kernel `spi-gpio`/`spidev` buses
+for the LPD8806 and MCP3002, and a narrowly scoped bulk mmap path for the
+nonstandard HT1632 select protocol. Before adding or enabling an overlay, run
+the read-only [kernel-SPI discovery](wiringpi-phase5-kernel-spi-discovery.md)
+collector to establish exact kernel support, binding behavior, pin consumers,
+boot paths, and rollback constraints.
+
 Run every follow-up modern transport profile on the Zero W and compare it with
 Phase 0, Phase 1, and protocol-trace evidence from the preserved Zero/Jessie
 unit:
@@ -372,9 +383,11 @@ Use a logic analyzer for waveform comparison where possible. The acceptance
 criterion is correct device behavior with margin and no missed application
 deadlines, not identical nanosecond timing.
 
-If the GPIO backend or onboard Wi-Fi cannot meet the acceptance budget,
-reconnect the preserved Zero/Jessie unit. Move affected devices to a kernel
-driver or `spidev` only in a later rewired profile. Do not hide a timing failure
+If the modern profile or onboard Wi-Fi cannot meet the acceptance budget,
+reconnect the preserved Zero/Jessie unit. The selected follow-up moves the
+LPD8806 and MCP3002 to kernel `spi-gpio` controllers and `spidev` without
+rewiring. If that path also misses the timing budget, record the result before
+considering a fixed hardware-SPI rewiring profile. Do not hide a timing failure
 by reducing refresh behavior.
 
 ### Phase 6: opt-in deployment with rollback
