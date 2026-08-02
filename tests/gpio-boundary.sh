@@ -45,9 +45,14 @@ grep -q 'src/gpio/wiringPiGpio.cpp' <<<"${hardware_build}"
 grep -q -- '-lwiringPi' <<<"${hardware_build}"
 grep -q 'src/gpio/gpiodV2Gpio.cpp' <<<"${gpiod_build}"
 grep -q -- '-lgpiod' <<<"${gpiod_build}"
+grep -q -- '-latomic' <<<"${gpiod_build}"
 if grep -q 'src/gpio/wiringPiGpio.cpp' <<<"${gpiod_build}" ||
         grep -q -- '-lwiringPi' <<<"${gpiod_build}"; then
     echo "libgpiod build unexpectedly selects or links WiringPi" >&2
+    exit 1
+fi
+if grep -q -- '-latomic' <<<"${hardware_build}"; then
+    echo "legacy WiringPi build unexpectedly links the modern ARM dependency" >&2
     exit 1
 fi
 grep -q 'src/gpio/fakeGpio.cpp' <<<"${sandbox_build}"

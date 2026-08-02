@@ -34,6 +34,11 @@ than major version 2. Because both backends produce `oclock`, every hardware
 build relinks the executable; switching a populated build tree cannot silently
 reuse the other backend's binary.
 
+The ARMv6/GCC 14 target emits an out-of-line operation for the application's
+existing 64-bit `std::atomic` counter. The modern build therefore links
+`libatomic` explicitly. This dependency is scoped to `GPIO_BACKEND=gpiod`, so
+the legacy Jessie/WiringPi link command remains unchanged.
+
 ## Backend behavior
 
 `src/gpio/gpiodV2Gpio.cpp` implements the existing project-owned `Gpio`
@@ -74,6 +79,11 @@ The selected compiler also exposed four source files that used
 
 Host validation cannot establish ARMv6 compatibility, electrical behavior, or
 software-bit-bang timing. Those remain Raspberry Pi gates.
+
+The first ARMv6 build compiled every source file and then exposed the missing
+explicit `libatomic` link dependency. This was a target-linker finding rather
+than a GPIO failure; the scoped link fix must be confirmed by repeating the
+same build from its updated commit.
 
 ## Remaining gates
 

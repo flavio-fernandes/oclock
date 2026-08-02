@@ -52,7 +52,10 @@ CPP_SRC = \
 SRC = $(PULSAR_SRC) $(CPP_SRC)
 ifeq ($(GPIO_BACKEND),gpiod)
 HARDWARE_GPIO_SRC = src/gpio/gpiodV2Gpio.cpp
-HARDWARE_GPIO_LIB = -lgpiod
+# ARMv6 cannot implement every 64-bit std::atomic operation inline. GCC emits
+# calls into libatomic for the modern target toolchain, so keep that dependency
+# scoped to the opt-in Trixie build and leave the Jessie/WiringPi link intact.
+HARDWARE_GPIO_LIB = -lgpiod -latomic
 else
 HARDWARE_GPIO_SRC = src/gpio/wiringPiGpio.cpp
 HARDWARE_GPIO_LIB = -lwiringPi
