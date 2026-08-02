@@ -345,10 +345,13 @@ libgpiod line validation, configuration, ownership, and cleanup while moving
 only high-rate values to the BCM2835 mapping. See the
 [fast-value-path report](wiringpi-phase5-fast-backend.md). Its native ARMv6
 build passed at commit `1f5605d`, but its first guarded physical trial failed
-the dimming and timing gates. A bounded bulk clocked-output optimization may be
-tested before abandoning mmap for kernel `spi-gpio`.
+the dimming and timing gates. The user selected kernel `spi-gpio`/`spidev` for
+the LPD8806 and MCP3002 on their existing pins, while retaining a narrow mmap
+option only for the nonstandard HT1632 protocol. The exact stopping state and
+next steps are preserved in the
+[2026-08-02 resume handoff](wiringpi-resume-handoff-2026-08-02.md).
 
-Run any follow-up `gpiod-mmap` candidate on the Zero W and compare it with
+Run every follow-up modern transport profile on the Zero W and compare it with
 Phase 0, Phase 1, and protocol-trace evidence from the preserved Zero/Jessie
 unit:
 

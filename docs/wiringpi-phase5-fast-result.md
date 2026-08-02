@@ -74,20 +74,18 @@ of `3.55%`. Status requests averaged about `8.1` ms and peaked at `68.2` ms.
 Those measurements support the operator's timing rejection; visual rejection
 alone is sufficient to fail the gate.
 
-## Bounded follow-up
+## Selected follow-up
 
-One more mmap experiment is reasonable before moving to kernel `spi-gpio`:
+The user selected a mixed modern transport instead of another general mmap
+optimization:
 
-- add a project-owned bulk clocked-output operation with a compatibility
-  fallback expressed in ordinary `Gpio::write()` calls;
-- let the mmap backend validate and lock the data/clock lines once per
-  transaction, then emit the complete bit sequence without per-edge map lookup,
-  mutex acquisition, or virtual dispatch;
-- keep the WiringPi backend and default build behavior unchanged;
-- add deterministic byte, latch, and transaction-serialization tests;
-- measure complete HT1632 and LPD8806 transfer duration on the Zero W, and use
-  logic-analyzer evidence before weakening memory ordering.
+- move the LPD8806 and MCP3002 to independent kernel `spi-gpio` controllers
+  exposed to the application through `spidev`, retaining their exact pins;
+- retain libgpiod for the motion input;
+- limit any bulk mmap follow-up to the nonstandard HT1632 matrix protocol;
+- keep the WiringPi backend and default build unchanged.
 
-If that bounded bulk-transfer implementation still misses the preserved
-timing, stop extending the mmap backend and move the unchanged pins to a
-reversible kernel `spi-gpio`/`spidev` design.
+This targets the strip's buffered transfer directly and puts the true SPI ADC
+on the standard Linux subsystem. See the
+[resume handoff](wiringpi-resume-handoff-2026-08-02.md) for the exact stopping
+state, safety boundaries, and ordered next steps.
