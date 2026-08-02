@@ -1,5 +1,13 @@
 # Phase 5 guarded LPD8806 spidev binding
 
+## Result
+
+The exact-board gate passed all eight checks and explicit rollback restored
+the original unbound state. See the accepted
+[binding result](wiringpi-phase5-lpd8806-binding-result.md). Implementation of
+the hardware-free SPI transport and frame tests is now authorized; the first
+hardware transfer remains a separate gate.
+
 ## Purpose
 
 This gate proves that only the live LPD8806 SPI child can be explicitly bound
@@ -80,7 +88,8 @@ in [`wiringpi-phase5-spi-live-boot.md`](wiringpi-phase5-spi-live-boot.md).
 
 ## Next gate
 
-Only after the binding archive passes should the repository add a
-project-owned SPI transport, deterministic fake, and LPD8806 frame tests. The
-first hardware transfer must then be a separate guarded trial that preserves
-the 720 GRB data bytes and eight zero latch bytes and measures full-frame time.
+The repository now contains the hardware-free
+[SPI transport and frame tests](wiringpi-phase5-lpd8806-transport.md). Its
+native ARM build must pass next. The first hardware transfer remains a
+separate guarded trial that preserves the 720 GRB data bytes and eight zero
+latch bytes and measures full-frame time.

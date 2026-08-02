@@ -219,4 +219,17 @@ if grep -Eq '(^|[[:space:]])(driver_override|/sys/bus/spi/drivers/[^[:space:]]+/
     exit 1
 fi
 
+bash -n misc/collectPhase5Lpd8806Build.sh
+misc/collectPhase5Lpd8806Build.sh --help \
+    >"${test_dir}/phase5-lpd-build-help.txt"
+grep -Fq 'binary is never executed' \
+    "${test_dir}/phase5-lpd-build-help.txt"
+grep -Fq '/oclock-strip-spi/lpd8806@0' \
+    misc/collectPhase5Lpd8806Build.sh
+if grep -Eq '^[[:space:]]*(modprobe|dtoverlay|reboot|shutdown|gpioset|gpioget|gpiomon)[[:space:]]' \
+        misc/collectPhase5Lpd8806Build.sh; then
+    echo "native LPD8806 build collector contains a state-changing command" >&2
+    exit 1
+fi
+
 echo "legacy compatibility tests passed"

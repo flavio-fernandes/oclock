@@ -145,18 +145,29 @@ children `spi3.0`/`spi4.0`, native MCP3002/IIO binding, kernel GPIO ownership,
 onboard-Wi-Fi recovery, and the retained boot backup. The overlay is active;
 `oclock.service` remains stopped and no device transfer has occurred.
 
-1. Run the guarded, runtime-only
-   [LPD8806 spidev binding](wiringpi-phase5-lpd8806-binding.md), collect its
-   read-only evidence, and do not open or transfer through the device.
-2. Add a project-owned SPI transport boundary plus a deterministic fake. Keep
-   the legacy WiringPi device implementations and build defaults intact.
-3. Convert the LPD8806 first. Preserve its 720-byte GRB frame and eight-byte
-   zero latch exactly, then run Incus tests, a native ARM build, and an
-   exact-board timing trial before converting another device.
-4. Convert the MCP3002 only after the strip path is proven. Read both IIO raw
+The runtime-only [LPD8806 binding](wiringpi-phase5-lpd8806-binding.md) also
+passed all eight checks. Archive
+`oclock-phase5-lpd-bind-20260802T152824Z-7zjktxAZ.tar.gz` has SHA-256
+`2bfdaeb9f0e0ae6a119e12925671b57da296f084e7d67c2eb3e95e5fbfef0f5a`.
+The accepted [result](wiringpi-phase5-lpd8806-binding-result.md) records the
+transient `root:spi` device, preserved ADC binding, no-transfer boundary, and
+successful explicit unbind. The strip is again unbound and the service is
+inactive.
+
+The hardware-free [LPD8806 transport](wiringpi-phase5-lpd8806-transport.md)
+now provides dynamic Device Tree discovery, verified spidev configuration, a
+deterministic fake, and a single 720-byte GRB plus eight-byte latch transfer.
+The legacy GPIO constructor and default WiringPi build remain unchanged.
+Incus tests and an x86 Trixie opt-in build pass.
+
+1. Build the exact opt-in profile natively on the Zero W, preserve the binary,
+   and do not run it.
+2. Add and run the separate all-off first-transfer timing gate. It must always
+   close and unbind before exit.
+3. Convert the MCP3002 only after the strip path is proven. Read both IIO raw
    channels and record them separately so light calibration can be separated
    from transport correctness.
-5. Revisit the HT1632 only after the two standard SPI devices are settled.
+4. Revisit the HT1632 only after the two standard SPI devices are settled.
 
 If the kernel `spi-gpio` strip still cannot meet the 12 ms animation cadence,
 record that result before considering rewiring to hardware SPI. Do not reduce

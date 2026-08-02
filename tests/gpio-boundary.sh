@@ -40,10 +40,17 @@ grep -Fqx 'const int MotionSensor::sensorGpioPin = 10; // 18;' \
 hardware_build=$(make -Bn hardware)
 gpiod_build=$(make -Bn GPIO_BACKEND=gpiod hardware)
 gpiod_mmap_build=$(make -Bn GPIO_BACKEND=gpiod-mmap hardware)
+spidev_strip_build=$(make -Bn GPIO_BACKEND=gpiod-mmap \
+    STRIP_TRANSPORT=spidev hardware)
 sandbox_build=$(make -Bn sandbox)
 
 grep -q 'src/gpio/wiringPiGpio.cpp' <<<"${hardware_build}"
 grep -q -- '-lwiringPi' <<<"${hardware_build}"
+grep -q 'src/spi/noSpiOutput.cpp' <<<"${hardware_build}"
+if grep -q 'src/spi/linuxSpidevOutput.cpp' <<<"${hardware_build}"; then
+    echo "legacy build unexpectedly selects the spidev strip transport" >&2
+    exit 1
+fi
 grep -q 'src/gpio/gpiodV2Gpio.cpp' <<<"${gpiod_build}"
 grep -q 'src/gpio/gpiodV2Factory.cpp' <<<"${gpiod_build}"
 grep -q -- '-lgpiod' <<<"${gpiod_build}"
@@ -73,7 +80,15 @@ if grep -q -- '-latomic' <<<"${hardware_build}"; then
     echo "legacy WiringPi build unexpectedly links the modern ARM dependency" >&2
     exit 1
 fi
+grep -q 'src/spi/linuxSpidevOutput.cpp' <<<"${spidev_strip_build}"
+if grep -q 'src/spi/noSpiOutput.cpp' <<<"${spidev_strip_build}" ||
+        grep -q 'src/gpio/wiringPiGpio.cpp' <<<"${spidev_strip_build}" ||
+        grep -q -- '-lwiringPi' <<<"${spidev_strip_build}"; then
+    echo "spidev strip build contains a legacy transport" >&2
+    exit 1
+fi
 grep -q 'src/gpio/fakeGpio.cpp' <<<"${sandbox_build}"
+grep -q 'src/spi/noSpiOutput.cpp' <<<"${sandbox_build}"
 if grep -q 'src/gpio/wiringPiGpio.cpp' <<<"${sandbox_build}" ||
         grep -q -- '-lwiringPi' <<<"${sandbox_build}"; then
     echo "sandbox build unexpectedly selects or links WiringPi" >&2
@@ -82,6 +97,21 @@ fi
 
 if make -Bn GPIO_BACKEND=unknown hardware >/dev/null 2>&1; then
     echo "unknown GPIO backend was accepted" >&2
+    exit 1
+fi
+if make -Bn STRIP_TRANSPORT=unknown hardware >/dev/null 2>&1; then
+    echo "unknown strip transport was accepted" >&2
+    exit 1
+fi
+if make -Bn STRIP_TRANSPORT=spidev hardware >/dev/null 2>&1; then
+    echo "spidev strip transport was accepted with the legacy GPIO backend" >&2
+    exit 1
+fi
+
+grep -Fq '"/oclock-strip-spi/lpd8806@0"' \
+    src/spi/linuxSpidevOutput.cpp
+if grep -Eq '/dev/spidev[0-9]+\.[0-9]+' src/spi/linuxSpidevOutput.cpp; then
+    echo "spidev transport hard-codes a dynamic device number" >&2
     exit 1
 fi
 

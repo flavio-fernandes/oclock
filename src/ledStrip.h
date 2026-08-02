@@ -13,6 +13,7 @@
 class LedStripTodo;  // FWD
 class LedStripInternal;  // FWD
 class Gpio;  // FWD
+class SpiOutput;  // FWD
 
 class LedStrip {
 public:
@@ -23,7 +24,7 @@ public:
 
   static void registerMainThread();  // only needed by one thread
   void runThreadLoop(std::recursive_mutex* gpioLockMutexP,
-                     Gpio& gpio);  // to be ran by main thread only
+                     Gpio& gpio, SpiOutput* spiOutput); // main thread only
 
   // call-ins from other threads that add async requests to the ledStrip thread
   void enqueueMsgModePost(StringMap& postValues);

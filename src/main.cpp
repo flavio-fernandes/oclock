@@ -6,6 +6,7 @@
 #include <thread>         // std::thread
 
 #include "gpio/Gpio.h"
+#include "spi/SpiOutput.h"
 #include "threadsMain.h"
 #include "timerTick.h"
 #include "lightSensor.h"
@@ -82,11 +83,17 @@ int main (int argc, char* argv[])
   InboxRegistry& inboxRegistry = InboxRegistry::bind();
   std::recursive_mutex gpioLockMutex;
   std::unique_ptr<Gpio> gpio = createGpio();
+  std::unique_ptr<SpiOutput> stripSpiOutput = createStripSpiOutput();
   ThreadInfo* threadInfo = 0;
-  ThreadParam threadParam = {argc, argv, &gpioLockMutex, gpio.get()};
+  ThreadParam threadParam = {argc, argv, &gpioLockMutex, gpio.get(),
+                             stripSpiOutput.get()};
 
   if (!gpio->initialize()) {
     fprintf(stderr, "Unable to initialize GPIO access\n");
+    return EXIT_FAILURE;
+  }
+  if (stripSpiOutput && !stripSpiOutput->initialize()) {
+    fprintf(stderr, "Unable to initialize strip SPI output\n");
     return EXIT_FAILURE;
   }
   WebHandlerInternal::bind().start();

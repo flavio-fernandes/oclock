@@ -41,7 +41,7 @@ The selected next architecture is mixed:
 | Device | Selected modern transport | Existing BCM GPIOs | Status |
 | --- | --- | --- | --- |
 | Motion sensor | libgpiod v2 input | 10 | Implemented and functionally tested |
-| LPD8806 strip | kernel `spi-gpio` plus explicit `spidev` binding | clock 20, data 21 | Live overlay passed; binding-only gate is next |
+| LPD8806 strip | kernel `spi-gpio` plus explicit `spidev` binding | clock 20, data 21 | Transport and exact fake frame implemented; native build pending |
 | MCP3002 ADC | second `spi-gpio` plus native `mcp320x`/IIO | clock 17, MISO 27, MOSI 22, CS 4 | Live native binding and IIO attributes verified; value reads wait |
 | HT1632 matrix | narrow bulk mmap transport | CS 6, WR 13, data 19, select clock 26 | Selected direction; not implemented |
 
@@ -70,6 +70,12 @@ bus identifiers were `spi3.0` and `spi4.0` on that boot, but installation and
 application code must discover children by Device Tree path instead of
 assuming those numbers. Onboard Wi-Fi returned after reboot, although this
 single observation is not yet cold-boot or soak evidence.
+
+The following binding-only trial discovered the strip by that Device Tree
+path, created `/dev/spidev4.0` as a `root:spi` mode-`0660` character device,
+and preserved the native ADC binding. The collector performed no device open
+or transfer. Explicit unbind then removed the node and cleared the override,
+returning the strip to its original unbound state.
 
 ## The story worth telling
 
@@ -214,16 +220,19 @@ make GPIO_BACKEND=gpiod hardware
 # Explicit libgpiod plus BCM2835 mmap-value experiment.
 make GPIO_BACKEND=gpiod-mmap hardware
 
+# Partial modern profile: new strip transport; build/test only until ADC/IIO.
+make GPIO_BACKEND=gpiod-mmap STRIP_TRANSPORT=spidev hardware
+
 # Hardware-free development and tests.
 make sandbox
 make test
 make check-arm-warnings
 ```
 
-The future kernel-SPI profile name and final install command do not exist yet.
-Add them here only when implemented and tested. Plain `make` must continue to
-mean WiringPi throughout PR 3 so a checkout cannot silently change the legacy
-deployment contract.
+The strip selector now exists, but this is not the final modern profile or
+install command because the ADC and matrix conversions remain pending. Plain
+`make` must continue to mean WiringPi throughout PR 3 so a checkout cannot
+silently change the legacy deployment contract.
 
 ### Boot overlay procedure — live enable and inspection passed
 
@@ -320,11 +329,14 @@ tested command or file before drafting the article:
   commands written.
 - [x] Live overlay boot exercised; native ADC binding, GPIO ownership, and
   onboard-Wi-Fi return verified.
-- [ ] Runtime-only LPD8806 `spidev` binding exercised without a transfer.
+- [x] Runtime-only LPD8806 `spidev` binding and explicit unbind exercised
+  without a transfer.
 - [ ] Normal-disable procedure exercised.
 - [ ] Final overlay uninstall procedure exercised after the live gates.
-- [ ] Project-owned SPI userspace transport plus deterministic fake.
-- [ ] LPD8806 conversion preserving 720 GRB bytes and eight latch bytes.
+- [x] Project-owned SPI userspace transport plus deterministic fake.
+- [x] Opt-in LPD8806 conversion preserving 720 GRB bytes and eight latch bytes
+  in one hardware-free verified transfer.
+- [ ] Native Zero W build of the opt-in strip profile.
 - [ ] LPD8806 Zero W timing acceptance at the existing 12 ms application tick.
 - [ ] MCP3002 native-IIO conversion and raw channel verification.
 - [ ] Controlled dark/bright samples and a separate threshold decision.
@@ -386,6 +398,13 @@ tested command or file before drafting the article:
   override. The project overlay compiled and merged against the exact active
   Zero W Device Tree, then passed a live reboot with ten checks and no
   failures or warnings. No device has been opened or transferred through.
+- Runtime-only LPD8806 binding passed eight checks. The expected `root:spi`
+  node appeared, the ADC binding was unchanged, no transfer occurred, and
+  explicit rollback restored the unbound state.
+- A project-owned SPI output, deterministic fake, dynamic Device Tree
+  discovery, and opt-in LPD8806 path now preserve the exact 720 GRB plus eight
+  latch bytes in one transfer. Incus tests and an x86 Trixie build pass; native
+  ARM build and all hardware transfers remain pending.
 
 ### Phase 6/7 — pending
 
@@ -523,6 +542,8 @@ backward compatibility.”
 - Guarded live SPI boot: [`wiringpi-phase5-spi-live-boot.md`](wiringpi-phase5-spi-live-boot.md)
 - Live SPI boot result: [`wiringpi-phase5-spi-live-boot-result.md`](wiringpi-phase5-spi-live-boot-result.md)
 - Guarded LPD8806 binding: [`wiringpi-phase5-lpd8806-binding.md`](wiringpi-phase5-lpd8806-binding.md)
+- LPD8806 binding result: [`wiringpi-phase5-lpd8806-binding-result.md`](wiringpi-phase5-lpd8806-binding-result.md)
+- LPD8806 SPI transport: [`wiringpi-phase5-lpd8806-transport.md`](wiringpi-phase5-lpd8806-transport.md)
 - Exact resume state: [`wiringpi-resume-handoff-2026-08-02.md`](wiringpi-resume-handoff-2026-08-02.md)
 - Original hardware article: [Part 1](https://flaviof.com/blog/hacks/office-clock-part1.html)
 - Original software article: [Part 2](https://flaviof.com/blog/hacks/office-clock-part2.html)
@@ -551,3 +572,13 @@ backward compatibility.”
   Device-Tree-discovered LPD8806 `spidev` binding gate that performs no device
   open or transfer. Normal disablement and all SPI data operations remain
   pending.
+- **2026-08-02:** Accepted the runtime-only LPD8806 binding gate with eight
+  checks and zero failures. Recorded the transient `root:spi` mode-`0660`
+  device, unchanged MCP3002 binding, metadata-only safety boundary, and
+  successful explicit unbind. Hardware-free transport/frame implementation
+  is next; no SPI byte has yet been transferred.
+- **2026-08-02:** Added the project SPI output interface, deterministic fake,
+  Device-Tree-discovered Linux spidev implementation, explicit build selector,
+  and opt-in LPD8806 integration. Tests prove one exact 728-byte frame and no
+  strip GPIO operations while retaining the legacy constructor and default.
+  Native ARM build and every real device transfer remain pending.

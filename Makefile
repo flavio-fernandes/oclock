@@ -7,7 +7,7 @@ endif
 .PHONY: all sudo_oclock hardware sandbox gpio-backend-preflight \
 	compatibility gpio-boundary test \
 	test-core test-gpio-protocols test-gpio-registers test-wiringpi-compile \
-	test-spi-overlay check-arm-warnings \
+	test-spi-output test-spi-overlay check-arm-warnings \
 	smoke test-shutdown valgrind spi-overlay clean FORCE
 
 # Keep the original CC override working even though every source is C++.
@@ -23,6 +23,20 @@ GPIO_BACKEND ?= wiringpi
 VALID_GPIO_BACKENDS := wiringpi gpiod gpiod-mmap
 ifeq ($(filter $(GPIO_BACKEND),$(VALID_GPIO_BACKENDS)),)
 $(error unsupported GPIO_BACKEND '$(GPIO_BACKEND)'; expected one of: $(VALID_GPIO_BACKENDS))
+endif
+
+STRIP_TRANSPORT ?= gpio
+VALID_STRIP_TRANSPORTS := gpio spidev
+ifeq ($(filter $(STRIP_TRANSPORT),$(VALID_STRIP_TRANSPORTS)),)
+$(error unsupported STRIP_TRANSPORT '$(STRIP_TRANSPORT)'; expected one of: $(VALID_STRIP_TRANSPORTS))
+endif
+ifeq ($(STRIP_TRANSPORT),spidev)
+ifneq ($(GPIO_BACKEND),gpiod-mmap)
+$(error STRIP_TRANSPORT=spidev is an experimental modern profile and requires GPIO_BACKEND=gpiod-mmap)
+endif
+HARDWARE_SPI_SRC = src/spi/linuxSpidevOutput.cpp
+else
+HARDWARE_SPI_SRC = src/spi/noSpiOutput.cpp
 endif
 
 PULSAR_SRC = \
@@ -68,8 +82,8 @@ else
 HARDWARE_GPIO_SRC = src/gpio/wiringPiGpio.cpp
 HARDWARE_GPIO_LIB = -lwiringPi
 endif
-HARDWARE_SRC = $(SRC) $(HARDWARE_GPIO_SRC)
-SANDBOX_SRC = $(SRC) src/gpio/fakeGpio.cpp
+HARDWARE_SRC = $(SRC) $(HARDWARE_GPIO_SRC) $(HARDWARE_SPI_SRC)
+SANDBOX_SRC = $(SRC) src/gpio/fakeGpio.cpp src/spi/noSpiOutput.cpp
 HARDWARE_OBJ = $(addprefix build/hardware/,$(addsuffix .o,$(HARDWARE_SRC)))
 SANDBOX_OBJ = $(addprefix build/sandbox/,$(addsuffix .o,$(SANDBOX_SRC)))
 ARM_WARNING_OBJ = $(addprefix build/arm-warnings/,$(addsuffix .o,$(SANDBOX_SRC)))
@@ -184,6 +198,19 @@ build/tests/gpio_register_tests: tests/gpio_register_tests.cpp \
 test-gpio-registers: build/tests/gpio_register_tests
 	$Q ASAN_OPTIONS=detect_leaks=1 ./build/tests/gpio_register_tests
 
+build/tests/spi_output_tests: tests/spi_output_tests.cpp \
+		lpd8806/LPD8806.cpp src/gpio/fakeGpio.cpp \
+		src/spi/fakeSpiOutput.cpp
+	$Q echo "[Build test] $@"
+	$Q mkdir -p $(@D)
+	$Q $(CXX) $(CPPFLAGS) $(CXXFLAGS) \
+		-funsigned-char -Werror \
+		-fsanitize=address,undefined -fno-omit-frame-pointer \
+		$^ -o $@ -lpthread
+
+test-spi-output: build/tests/spi_output_tests
+	$Q ASAN_OPTIONS=detect_leaks=1 ./build/tests/spi_output_tests
+
 build/tests/wiringPiGpio.cpp.o: src/gpio/wiringPiGpio.cpp \
 		tests/support/wiringPi.h
 	$Q echo "[Compile legacy backend] $<"
@@ -209,7 +236,7 @@ check-arm-warnings: build/tests/oclock-arm-warnings
 	$Q ./tests/smoke.sh ./build/tests/oclock-arm-warnings
 
 test: compatibility gpio-boundary test-core test-gpio-protocols \
-	test-gpio-registers \
+	test-gpio-registers test-spi-output \
 	test-wiringpi-compile check-arm-warnings smoke test-shutdown
 
 valgrind: oclock-sandbox

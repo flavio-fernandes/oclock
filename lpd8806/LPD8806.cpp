@@ -1,6 +1,10 @@
 #include "LPD8806.h"
 
 #include "gpio/Gpio.h"
+#include "spi/SpiOutput.h"
+
+#include <stdexcept>
+#include <vector>
 
 #define BYTES_PER_LED 3
 
@@ -11,10 +15,18 @@ const Int32U LPD8806::nullColor = LPD8806::Color(0,0,0);
 // Constructor for use with arbitrary clock/data pins:
 LPD8806::LPD8806(std::recursive_mutex* gpioLockMutexP, Gpio& gpio,
                  Int16U n, Int8U dpin, Int8U cpin) :
-  gpioLockMutex(*gpioLockMutexP), gpio(gpio), numLEDs(0), largestChangedLed(0),
-  pixels(0), clkpin(0), datapin(0), begun(false) {
+  gpioLockMutex(*gpioLockMutexP), gpio(gpio), spiOutput(NULL), numLEDs(0),
+  largestChangedLed(0), pixels(0), clkpin(0), datapin(0), begun(false) {
   updateLength(n);
   updatePins(dpin, cpin);
+}
+
+LPD8806::LPD8806(std::recursive_mutex* gpioLockMutexP, Gpio& gpio,
+                 SpiOutput& spiOutputParam, Int16U n) :
+  gpioLockMutex(*gpioLockMutexP), gpio(gpio), spiOutput(&spiOutputParam),
+  numLEDs(0), largestChangedLed(0), pixels(0), clkpin(0), datapin(0),
+  begun(false) {
+  updateLength(n);
 }
 
 LPD8806::~LPD8806() {
@@ -22,13 +34,21 @@ LPD8806::~LPD8806() {
 }
 
 void LPD8806::begin() {
-  startBitbang();
+  if (spiOutput != NULL) {
+    std::lock_guard<std::recursive_mutex> guard(gpioLockMutex);
+    transferSpiLatch();
+  } else {
+    startBitbang();
+  }
   begun = true;
 }
 
 // Change pin assignments post-constructor, using arbitrary pins:
 void LPD8806::updatePins(Int8U dpin, Int8U cpin) {
   std::lock_guard<std::recursive_mutex> guard(gpioLockMutex);
+
+  if (spiOutput != NULL)
+    throw std::logic_error("LPD8806 SPI output has no configurable GPIO pins");
 
   if (begun) { // If begin() was previously invoked...
     gpio.configureInput(datapin); // Restore prior data and clock pins to inputs
@@ -61,6 +81,15 @@ void LPD8806::_bitBangLatchSignal() const {
   }
 }
 
+std::size_t LPD8806::latchByteCount() const {
+  return (static_cast<std::size_t>(numLEDs) + 31) / 32;
+}
+
+void LPD8806::transferSpiLatch() const {
+  const std::vector<Int8U> latch(latchByteCount(), 0);
+  if (!latch.empty()) spiOutput->transfer(&latch[0], latch.size());
+}
+
 // Change strip length (see notes with empty constructor, above):
 void LPD8806::updateLength(Int16U n) {
   numLEDs = 0; largestChangedLed = 0;
@@ -82,6 +111,18 @@ Int16U LPD8806::numPixels() const {
 void LPD8806::show() {
   std::lock_guard<std::recursive_mutex> guard(gpioLockMutex);
 
+  if (numLEDs == 0) return;
+
+  if (spiOutput != NULL) {
+    const std::size_t dataBytes =
+        static_cast<std::size_t>(numPixels()) * BYTES_PER_LED;
+    std::vector<Int8U> frame(pixels, pixels + dataBytes);
+    frame.resize(dataBytes + latchByteCount(), 0);
+    spiOutput->transfer(&frame[0], frame.size());
+    largestChangedLed = 0;
+    return;
+  }
+
   Int8U  *ptr = pixels;
 #if 0
   Int16U i    = (largestChangedLed + 1) * BYTES_PER_LED;
@@ -91,8 +132,6 @@ void LPD8806::show() {
   Int8U p, bit;
   int currDatapinValue = ~0;
 
-  if (numLEDs == 0) return;
-  
   while (i--) {
     p = *ptr++;
 
