@@ -119,7 +119,7 @@ fi
 ((EUID == 0)) || die "run this script with sudo"
 
 for command_name in awk curl date dpkg file gpiodetect grep ldd nmcli ps \
-        readlink sha256sum sort systemctl tail tar tr uname wc; do
+        readlink sha256sum sort strings systemctl tail tar tr uname wc; do
     command -v "${command_name}" >/dev/null 2>&1 ||
         die "required command is missing: ${command_name}"
 done
@@ -144,6 +144,8 @@ source /etc/os-release
 gpio_chips=$(gpiodetect 2>&1) || die "gpiodetect failed"
 grep -q '\[pinctrl-bcm2835\]' <<<"${gpio_chips}" ||
     die "pinctrl-bcm2835 GPIO chip was not found"
+[[ -c /dev/gpiomem && -r /dev/gpiomem && -w /dev/gpiomem ]] ||
+    die "the restricted /dev/gpiomem value path is unavailable"
 
 network_devices=$(nmcli -t -f DEVICE,TYPE,STATE device status 2>&1) ||
     die "NetworkManager device inspection failed"
@@ -183,6 +185,10 @@ grep -q 'libatomic\.so\.1 =>' <<<"${candidate_dependencies}" ||
     die "candidate unexpectedly links WiringPi"
 ! grep -q 'not found' <<<"${candidate_dependencies}" ||
     die "candidate has an unresolved dynamic dependency"
+candidate_strings=$(strings "${binary_path}") ||
+    die "candidate string inspection failed"
+grep -q '^/dev/gpiomem$' <<<"${candidate_strings}" ||
+    die "candidate does not contain the reviewed /dev/gpiomem value path"
 
 status_url="http://127.0.0.1:${port}/status"
 stop_url="http://127.0.0.1:${port}/stop"
@@ -312,6 +318,7 @@ trap 'exit 143' TERM
     echo "machine: $(uname -m)"
     echo "architecture: $(dpkg --print-architecture)"
     echo "throttling: ${throttling}"
+    echo "gpiomem: available"
     echo "duration_seconds: ${duration}"
     echo "dark_threshold: ${dark_threshold}"
     echo "bright_threshold: ${bright_threshold}"

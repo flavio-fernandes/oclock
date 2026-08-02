@@ -1,4 +1,5 @@
 #include "Gpio.h"
+#include "gpiodValueIo.h"
 
 #include <gpiod.h>
 
@@ -13,6 +14,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <utility>
 
 namespace {
 
@@ -38,7 +40,11 @@ std::runtime_error gpioError(const std::string &operation,
 
 class GpiodV2Gpio : public Gpio {
 public:
-  GpiodV2Gpio() : chip_(NULL), lineCount_(0) {}
+  explicit GpiodV2Gpio(std::unique_ptr<GpiodValueIo> valueIo)
+      : chip_(NULL), lineCount_(0), valueIo_(std::move(valueIo)) {
+    if (!valueIo_)
+      throw std::invalid_argument("GPIO value path is missing");
+  }
 
   ~GpiodV2Gpio() {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -55,6 +61,10 @@ public:
     try {
       discoverChip();
       validateRequiredOffsets();
+      std::string valueIoError;
+      if (!valueIo_->initialize(valueIoError))
+        throw std::runtime_error(std::string(valueIo_->description()) +
+                                 " initialization failed: " + valueIoError);
       return true;
     } catch (const std::exception &error) {
       std::fprintf(stderr, "GPIO initialization failed: %s\n", error.what());
@@ -85,23 +95,22 @@ public:
     std::lock_guard<std::mutex> lock(mutex_);
     Line &line = getConfiguredLine(bcmGpio, GPIOD_LINE_DIRECTION_INPUT,
                                    "read");
-    errno = 0;
-    const gpiod_line_value value =
-        gpiod_line_request_get_value(line.request, bcmGpio);
-    if (value == GPIOD_LINE_VALUE_ERROR)
-      throw gpioError("read", chipPath_, bcmGpio, errno);
-    return value == GPIOD_LINE_VALUE_ACTIVE ? GpioValue::high
-                                             : GpioValue::low;
+    GpioValue value = GpioValue::low;
+    const int errorNumber = valueIo_->read(line.request, bcmGpio, value);
+    if (errorNumber != 0)
+      throw gpioError(std::string(valueIo_->description()) + " read",
+                      chipPath_, bcmGpio, errorNumber);
+    return value;
   }
 
   void write(int bcmGpio, GpioValue value) {
     std::lock_guard<std::mutex> lock(mutex_);
     Line &line = getConfiguredLine(bcmGpio, GPIOD_LINE_DIRECTION_OUTPUT,
                                    "write");
-    errno = 0;
-    if (gpiod_line_request_set_value(line.request, bcmGpio,
-                                     toGpiodValue(value)) < 0)
-      throw gpioError("write", chipPath_, bcmGpio, errno);
+    const int errorNumber = valueIo_->write(line.request, bcmGpio, value);
+    if (errorNumber != 0)
+      throw gpioError(std::string(valueIo_->description()) + " write",
+                      chipPath_, bcmGpio, errorNumber);
   }
 
   void delayMilliseconds(unsigned int duration) {
@@ -259,10 +268,47 @@ private:
   size_t lineCount_;
   std::map<int, Line> lines_;
   std::mutex mutex_;
+  std::unique_ptr<GpiodValueIo> valueIo_;
+};
+
+class LibgpiodValueIo : public GpiodValueIo {
+public:
+  bool initialize(std::string &error) {
+    error.clear();
+    return true;
+  }
+
+  int read(gpiod_line_request *request, int bcmGpio, GpioValue &value) {
+    errno = 0;
+    const gpiod_line_value lineValue =
+        gpiod_line_request_get_value(request, bcmGpio);
+    if (lineValue == GPIOD_LINE_VALUE_ERROR)
+      return errno != 0 ? errno : EIO;
+    value = lineValue == GPIOD_LINE_VALUE_ACTIVE ? GpioValue::high
+                                                  : GpioValue::low;
+    return 0;
+  }
+
+  int write(gpiod_line_request *request, int bcmGpio, GpioValue value) {
+    errno = 0;
+    if (gpiod_line_request_set_value(request, bcmGpio,
+                                     value == GpioValue::high
+                                         ? GPIOD_LINE_VALUE_ACTIVE
+                                         : GPIOD_LINE_VALUE_INACTIVE) < 0)
+      return errno != 0 ? errno : EIO;
+    return 0;
+  }
+
+  const char *description() const { return "libgpiod value ioctl"; }
 };
 
 } // namespace
 
-std::unique_ptr<Gpio> createGpio() {
-  return std::unique_ptr<Gpio>(new GpiodV2Gpio());
+std::unique_ptr<Gpio>
+createGpiodV2Gpio(std::unique_ptr<GpiodValueIo> valueIo) {
+  return std::unique_ptr<Gpio>(new GpiodV2Gpio(std::move(valueIo)));
+}
+
+std::unique_ptr<GpiodValueIo> createLibgpiodValueIo() {
+  return std::unique_ptr<GpiodValueIo>(new LibgpiodValueIo());
 }

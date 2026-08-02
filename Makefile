@@ -6,7 +6,8 @@ endif
 .SUFFIXES:
 .PHONY: all sudo_oclock hardware sandbox gpio-backend-preflight \
 	compatibility gpio-boundary test \
-	test-core test-gpio-protocols test-wiringpi-compile check-arm-warnings \
+	test-core test-gpio-protocols test-gpio-registers test-wiringpi-compile \
+	check-arm-warnings \
 	smoke test-shutdown valgrind clean FORCE
 
 # Keep the original CC override working even though every source is C++.
@@ -18,7 +19,7 @@ CXXFLAGS += -std=gnu++11 -Winline -pipe -Wall -Wextra
 LDFLAGS ?=
 
 GPIO_BACKEND ?= wiringpi
-VALID_GPIO_BACKENDS := wiringpi gpiod
+VALID_GPIO_BACKENDS := wiringpi gpiod gpiod-mmap
 ifeq ($(filter $(GPIO_BACKEND),$(VALID_GPIO_BACKENDS)),)
 $(error unsupported GPIO_BACKEND '$(GPIO_BACKEND)'; expected one of: $(VALID_GPIO_BACKENDS))
 endif
@@ -51,10 +52,16 @@ CPP_SRC = \
 
 SRC = $(PULSAR_SRC) $(CPP_SRC)
 ifeq ($(GPIO_BACKEND),gpiod)
-HARDWARE_GPIO_SRC = src/gpio/gpiodV2Gpio.cpp
+HARDWARE_GPIO_SRC = src/gpio/gpiodV2Gpio.cpp src/gpio/gpiodV2Factory.cpp
 # ARMv6 cannot implement every 64-bit std::atomic operation inline. GCC emits
 # calls into libatomic for the modern target toolchain, so keep that dependency
 # scoped to the opt-in Trixie build and leave the Jessie/WiringPi link intact.
+HARDWARE_GPIO_LIB = -lgpiod -latomic
+else ifeq ($(GPIO_BACKEND),gpiod-mmap)
+HARDWARE_GPIO_SRC = src/gpio/gpiodV2Gpio.cpp \
+	src/gpio/bcm2835GpioRegisters.cpp \
+	src/gpio/bcm2835MmapValueIo.cpp \
+	src/gpio/gpiodMmapFactory.cpp
 HARDWARE_GPIO_LIB = -lgpiod -latomic
 else
 HARDWARE_GPIO_SRC = src/gpio/wiringPiGpio.cpp
@@ -80,7 +87,7 @@ sudo_oclock: oclock
 hardware: oclock
 
 gpio-backend-preflight:
-ifeq ($(GPIO_BACKEND),gpiod)
+ifneq ($(filter $(GPIO_BACKEND),gpiod gpiod-mmap),)
 	$Q version=$$(pkg-config --modversion libgpiod 2>/dev/null) || { \
 		echo "error: libgpiod v2 development files are required" >&2; exit 1; }; \
 	case "$${version}" in 2.*) ;; *) \
@@ -164,6 +171,18 @@ build/tests/gpio_protocol_tests: tests/gpio_protocol_tests.cpp \
 test-gpio-protocols: build/tests/gpio_protocol_tests
 	$Q ASAN_OPTIONS=detect_leaks=1 ./build/tests/gpio_protocol_tests
 
+build/tests/gpio_register_tests: tests/gpio_register_tests.cpp \
+		src/gpio/bcm2835GpioRegisters.cpp
+	$Q echo "[Build test] $@"
+	$Q mkdir -p $(@D)
+	$Q $(CXX) $(CPPFLAGS) $(CXXFLAGS) \
+		-funsigned-char -Werror \
+		-fsanitize=address,undefined -fno-omit-frame-pointer \
+		$^ -o $@
+
+test-gpio-registers: build/tests/gpio_register_tests
+	$Q ASAN_OPTIONS=detect_leaks=1 ./build/tests/gpio_register_tests
+
 build/tests/wiringPiGpio.cpp.o: src/gpio/wiringPiGpio.cpp \
 		tests/support/wiringPi.h
 	$Q echo "[Compile legacy backend] $<"
@@ -189,6 +208,7 @@ check-arm-warnings: build/tests/oclock-arm-warnings
 	$Q ./tests/smoke.sh ./build/tests/oclock-arm-warnings
 
 test: compatibility gpio-boundary test-core test-gpio-protocols \
+	test-gpio-registers \
 	test-wiringpi-compile check-arm-warnings smoke test-shutdown
 
 valgrind: oclock-sandbox

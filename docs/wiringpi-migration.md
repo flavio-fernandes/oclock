@@ -336,6 +336,13 @@ and guarded [hardware-trial handoff](wiringpi-phase5-hardware-trial.md).
 Phase 6 remains blocked, the pure `libgpiod` candidate must not be deployed,
 and the preserved Zero/Jessie unit remains the production baseline.
 
+The exact Zero W subsequently passed the restricted `/dev/gpiomem` target
+probe. A separately named `GPIO_BACKEND=gpiod-mmap` experiment now retains
+libgpiod line validation, configuration, ownership, and cleanup while moving
+only high-rate values to the BCM2835 mapping. See the
+[fast-value-path report](wiringpi-phase5-fast-backend.md). It must pass native
+build and the complete Phase 5 timing gate before it can affect this status.
+
 Run the accepted libgpiod binary on the Zero W and compare it with Phase 0,
 Phase 1, and protocol-trace evidence from the preserved Zero/Jessie unit:
 

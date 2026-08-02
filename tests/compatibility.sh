@@ -125,4 +125,16 @@ if grep -Eq '(^|[[:space:]])(gpioget|gpioset|gpiomon|gpionotify)([[:space:]]|$)'
     exit 1
 fi
 
+# The fast-GPIO target collector is metadata-only and must remain safe to
+# extract and run before any experimental backend drives the harness.
+bash -n misc/collectPhase5FastGpioTarget.sh
+misc/collectPhase5FastGpioTarget.sh --help >"${test_dir}/fastgpio-help.txt"
+grep -q 'collector is read-only' "${test_dir}/fastgpio-help.txt"
+grep -q 'PROT_READ, MAP_SHARED' misc/collectPhase5FastGpioTarget.sh
+if grep -Eq '(^|[[:space:]])(gpioget|gpioset|gpiomon|gpionotify)([[:space:]]|$)' \
+        misc/collectPhase5FastGpioTarget.sh; then
+    echo "fast-GPIO collector contains a GPIO line-access command" >&2
+    exit 1
+fi
+
 echo "legacy compatibility tests passed"

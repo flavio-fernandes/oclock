@@ -98,16 +98,14 @@ SPI pinout. Two approaches can preserve the physical wiring:
    deliberately bypasses the GPIO character-device value ioctls and is not a
    portable Linux backend.
 
-Use the second approach only if the selected Zero W/Trixie image exposes the
-restricted mapping and a read-only probe succeeds. It is the next bounded
-experiment, not an accepted production design. The backend must have a new
-explicit build name; `GPIO_BACKEND=gpiod` must continue to mean the tested
-pure character-device implementation, and `GPIO_BACKEND=wiringpi` must remain
-unchanged.
+The selected Zero W/Trixie image exposed the restricted mapping and passed the
+read-only probe on 2026-08-02. The experiment is implemented under the new
+explicit name `GPIO_BACKEND=gpiod-mmap`; see the
+[fast-value-path report](wiringpi-phase5-fast-backend.md). The pure
+`GPIO_BACKEND=gpiod` implementation and default `GPIO_BACKEND=wiringpi` build
+remain unchanged.
 
-Run `misc/collectPhase5FastGpioTarget.sh` on the disconnected-from-production
-Zero W/Trixie unit. It does not drive lines or stop services. If that capture
-passes, implement the experimental backend with fake-register unit tests,
-Incus compile/warning coverage, an ARMv6 build, and the same guarded hardware
-acceptance gate. If it fails, skip the direct-mapping experiment and plan the
-kernel `spi-gpio` transport.
+The next gates are an Incus compile/test result, a native ARMv6 build with
+recorded dependencies and checksum, and the same guarded hardware acceptance.
+If the experimental candidate cannot meet the timing budget, discard it and
+plan the kernel `spi-gpio` transport rather than reducing refresh behavior.

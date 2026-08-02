@@ -43,6 +43,16 @@ This produces the same `oclock` filename but links libgpiod v2 instead of
 WiringPi. Plain `make` and `make hardware` continue to select WiringPi for the
 existing Jessie deployment.
 
+The Zero W timing investigation also has an experimental exact-board build:
+
+```sh
+make GPIO_BACKEND=gpiod-mmap hardware
+```
+
+It retains libgpiod line ownership/configuration but uses the Raspberry Pi
+`/dev/gpiomem` value registers. It is not portable or deployment-approved;
+see [the Phase 5 fast-backend report](docs/wiringpi-phase5-fast-backend.md).
+
 On a development machine without GPIO hardware:
 
 ```sh

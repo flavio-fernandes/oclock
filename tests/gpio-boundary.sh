@@ -39,16 +39,34 @@ grep -Fqx 'const int MotionSensor::sensorGpioPin = 10; // 18;' \
 
 hardware_build=$(make -Bn hardware)
 gpiod_build=$(make -Bn GPIO_BACKEND=gpiod hardware)
+gpiod_mmap_build=$(make -Bn GPIO_BACKEND=gpiod-mmap hardware)
 sandbox_build=$(make -Bn sandbox)
 
 grep -q 'src/gpio/wiringPiGpio.cpp' <<<"${hardware_build}"
 grep -q -- '-lwiringPi' <<<"${hardware_build}"
 grep -q 'src/gpio/gpiodV2Gpio.cpp' <<<"${gpiod_build}"
+grep -q 'src/gpio/gpiodV2Factory.cpp' <<<"${gpiod_build}"
 grep -q -- '-lgpiod' <<<"${gpiod_build}"
 grep -q -- '-latomic' <<<"${gpiod_build}"
+if grep -q 'bcm2835MmapValueIo.cpp' <<<"${gpiod_build}" ||
+        grep -q 'gpiodMmapFactory.cpp' <<<"${gpiod_build}"; then
+    echo "pure libgpiod build unexpectedly selects the mmap value path" >&2
+    exit 1
+fi
 if grep -q 'src/gpio/wiringPiGpio.cpp' <<<"${gpiod_build}" ||
         grep -q -- '-lwiringPi' <<<"${gpiod_build}"; then
     echo "libgpiod build unexpectedly selects or links WiringPi" >&2
+    exit 1
+fi
+grep -q 'src/gpio/gpiodV2Gpio.cpp' <<<"${gpiod_mmap_build}"
+grep -q 'src/gpio/bcm2835GpioRegisters.cpp' <<<"${gpiod_mmap_build}"
+grep -q 'src/gpio/bcm2835MmapValueIo.cpp' <<<"${gpiod_mmap_build}"
+grep -q 'src/gpio/gpiodMmapFactory.cpp' <<<"${gpiod_mmap_build}"
+grep -q -- '-lgpiod' <<<"${gpiod_mmap_build}"
+grep -q -- '-latomic' <<<"${gpiod_mmap_build}"
+if grep -q 'src/gpio/wiringPiGpio.cpp' <<<"${gpiod_mmap_build}" ||
+        grep -q -- '-lwiringPi' <<<"${gpiod_mmap_build}"; then
+    echo "gpiod-mmap build unexpectedly selects or links WiringPi" >&2
     exit 1
 fi
 if grep -q -- '-latomic' <<<"${hardware_build}"; then
