@@ -203,9 +203,18 @@ modern hardware build; historical sources remain only as diagnostic evidence.
    That failure is not an artificial worst case. `src/displayInternal.cpp`
    updates the clock with `clear()` plus a redraw, and `clear()` sets the
    buffer's global rewrite flag, so an ordinary clock update already pays the
-   full-rewrite cost. The narrow bulk mmap transport is therefore justified by
-   measurement. Implement it, re-run the same gate, and only then run the
-   [whole-application trial](wiringpi-phase5-application-trial.md).
+   full-rewrite cost.
+
+   The narrow burst value path was then implemented and the same gate
+   **passed**: 20 of 20 renders inside the tick, mean 4,094 microseconds, worst
+   case 5,120, visually identical stripes. See the
+   [burst result](wiringpi-phase5-ht1632-burst-result.md). All three devices now
+   meet their budgets standalone.
+
+   The only remaining Phase 5 work is the
+   [whole-application trial](wiringpi-phase5-application-trial.md), which is the
+   first run under combined load. Remember it needs the strip bound first; that
+   binding does not survive a reboot and is a Phase 6 blocker.
 
    Preparing the application trial surfaced a Phase 6 blocker: the application
    only opens `/dev/spidev4.0` and never binds it, so the strip must be bound

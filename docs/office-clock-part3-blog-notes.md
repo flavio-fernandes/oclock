@@ -722,3 +722,19 @@ backward compatibility.”
   that the strip left the GPIO path?" and it answered yes, with a number, before
   any code was written. Good article beat: measure before you build, and be
   willing to have the measurement say "build it after all."
+- **2026-08-02:** The bulk HT1632 transport landed and the same gate **passed**:
+  20/20 renders inside the 12 ms tick, mean 4.094 ms (down from 19.164 ms), worst
+  case 5.120 ms, and stripes visually identical to the slow run. Roughly 0.58
+  microseconds per GPIO write, down from 2.7. The savings come from removing a
+  mutex, a configured-line lookup with validation, and two virtual dispatches per
+  edge, plus moving the memory barrier from every store to the burst boundary.
+  Two details worth telling readers. First, the old path met the HT1632's 50 ns
+  data-setup requirement *by accident*, because every write cost microseconds;
+  going 100x faster meant that guarantee had to become explicit and tunable.
+  Speeding something up can break a constraint that nobody wrote down because
+  nothing had ever threatened it. Second, the burst path bypasses the ordinary
+  write call, so no existing test would have noticed a mask wired to the wrong
+  pin — it would compile, pass everything, and silently drive the wrong wire.
+  The equivalence test that compares 15,044 edges between both paths, and which
+  fails at edge 0 when CS and WR are swapped, is the real deliverable of that
+  change.

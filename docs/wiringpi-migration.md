@@ -513,9 +513,9 @@ Every migration PR should answer all of these:
 
 The following should remain open until measured:
 
-- whether the bulk HT1632 path, once built, meets its timing budget (the
-  existing per-edge path was measured at 19.2 ms against a 12 ms tick and
-  rejected);
+- whether every device holds its timing under the real application tick and
+  during sustained animation (the strip, ADC, and matrix each meet their
+  budgets standalone, but none has been measured under combined load);
 - whether the 2 MHz strip holds its timing under the real application tick
   alongside matrix and ADC work, and during sustained animation (single-frame
   cadence and colored correctness are both already accepted);

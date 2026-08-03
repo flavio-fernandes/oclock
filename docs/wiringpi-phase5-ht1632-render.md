@@ -7,7 +7,9 @@ with a 19,164-microsecond mean. Content and rollback checks all passed and the
 operator confirmed even stripes. The measurement justifies building the bulk
 transport. See the [render result](wiringpi-phase5-ht1632-render-result.md).
 
-Re-run this same gate after the bulk transport is implemented.
+The bulk transport was then implemented and this same gate **passed**: 20 of
+20 renders inside the tick, 4,094-microsecond mean, visually identical output.
+See the [burst result](wiringpi-phase5-ht1632-burst-result.md).
 
 ## Why measure before building a new transport
 

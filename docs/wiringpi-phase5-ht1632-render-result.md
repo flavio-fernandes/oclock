@@ -105,7 +105,10 @@ this only if the bulk transport proves insufficient.
 
 ## Next work
 
-1. Implement the narrow bulk HT1632 transport and re-run this exact gate.
+1. ~~Implement the narrow bulk HT1632 transport and re-run this exact gate.~~
+   Done and accepted: see the
+   [burst result](wiringpi-phase5-ht1632-burst-result.md). The mean fell from
+   19,164 to 4,094 microseconds and all 20 renders met the tick.
 2. Then run the
    [whole-application trial](wiringpi-phase5-application-trial.md).
 3. The strip binding persistence question remains a separate Phase 6 blocker.
