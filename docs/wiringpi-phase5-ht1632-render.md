@@ -79,7 +79,7 @@ still succeeds under `-Werror`. Do not treat them as a failure.
 
 | Item | Value |
 | --- | --- |
-| Gate commit | `65ed79d0d1c1bcfa5e4b5e6cbb9e2ba1e3f30f1a` |
+| Gate commit | `65ed79d6b837266112bd38689788f0e41cf70969` |
 | Build kind | Clean, in a fresh `git archive` extraction |
 | Wall-clock build time | 70 seconds |
 | Binary SHA-256 | `d18f81b73d80682baba36d06885d1803d4f597ccf35833401fb8db98039dde0a` |
@@ -89,6 +89,13 @@ still succeeds under `-Werror`. Do not treat them as a failure.
 
 Built at `/tmp/oclock-ht1632-build` on the target and deliberately not
 executed. The visual and timing gate below has **not** been run.
+
+The commit above was re-derived from `git rev-parse FETCH_HEAD` on the target
+after the build, because the first recorded value was wrong: the build script
+echoed the fetched commit instead of asserting it against an expected value, so
+a mistyped expectation went unnoticed. The binary is genuinely from
+`65ed79d6b83`. Always keep the `test "${experiment_commit}" = "${expected_commit}"`
+assertion in the build gate; it exists precisely to catch this.
 
 ## Visual and timing gate
 
