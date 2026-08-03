@@ -170,9 +170,16 @@ remains.
 
 ## Remaining Phase 6 blockers
 
-1. **Strip binding persistence.** The application opens `/dev/spidev4.0` but
-   never binds it, and the binding does not survive a reboot. See the
-   [application trial gate](wiringpi-phase5-application-trial.md).
-2. No soak has been run. The longest continuous observation so far is five
-   minutes. CPU no longer needs its own investigation; track it during the
-   soak like any other metric.
+Both blockers recorded here were closed on 2026-08-03. Kept for the record of
+what this trial left open.
+
+1. ~~**Strip binding persistence.**~~ **Closed.** The application opens
+   `/dev/spidev4.0` but never binds it, and the hand-made binding did not
+   survive a reboot. Now performed at boot by
+   `oclock-strip-spi.service`; see
+   [the binding persistence gate](wiringpi-phase6-binding-persistence.md).
+2. ~~**No soak has been run.**~~ **Closed.** The longest continuous observation
+   at the time of this trial was five minutes. The clock was then left running
+   overnight for 8 h 53 min with zero restarts; see
+   [the overnight soak result](wiringpi-phase6-overnight-soak-result.md). CPU
+   was tracked there as an ordinary metric and needed no investigation.

@@ -354,8 +354,11 @@ An x86 VM result is never evidence that Pi Zero pulse timing is acceptable.
 zero failures on 2026-08-02 at commit `9677a0e`. Strip smoothness, timing, and
 automatic dimming — the three observations that rejected the earlier
 candidates — all passed, with timing rated better than production. See the
-[trial result](wiringpi-phase5-application-trial-result.md). Phase 6 remains
-blocked on strip binding persistence, CPU characterization, and a soak.
+[trial result](wiringpi-phase5-application-trial-result.md).
+
+The three items that blocked Phase 6 at that point — strip binding persistence,
+CPU characterization, and a soak — were all closed on 2026-08-03. See
+[Phase 6](#phase-6-opt-in-deployment-with-rollback) below.
 
 The historical record of the failed candidates follows.
 
@@ -462,23 +465,38 @@ hide a timing failure by reducing refresh behavior.
 
 ### Phase 6: opt-in deployment with rollback
 
+**Status: the blocking items are done; the waiting items are not.** As of
+2026-08-03 the modern stack is installed, enabled, and starts itself at boot on
+the Zero W/Trixie unit. What remains is elapsed time and a rollback rehearsal,
+neither of which can be hurried.
+
 Only after Phase 5 passes:
 
-0. **Make the strip `spidev` binding survive a reboot.** The application only
-   opens `/dev/spidev4.0`; it never binds the device, and the reviewed
-   `driver_override` binding is runtime-only. A deployed clock cannot depend on
-   a human running a bind command after every power cut. Design and review this
-   separately as a `udev` rule, a systemd unit ordered before `oclock.service`,
-   or a Device Tree change, each with its own rollback. Do not solve it by
-   giving the application privilege to bind its own device. See the
-   [application trial gate](wiringpi-phase5-application-trial.md).
-1. Install the modern binary and service on the Zero W/Trixie unit; preserve
-   application arguments, paths, and runtime defaults initially.
-2. Confirm NetworkManager reconnects onboard Wi-Fi after a cold boot and the
-   service starts only after usable networking.
-3. Repeat the functional checklist and monitor it for several days.
-4. Exercise rollback by powering off the Zero W and reconnecting the preserved
-   Zero/Jessie unit. No package downgrade or source rebuild should be required.
+0. ~~**Make the strip `spidev` binding survive a reboot.**~~ **Done
+   2026-08-03.** The application only opens `/dev/spidev4.0`; it never binds
+   the device, and the reviewed `driver_override` binding was runtime-only. A
+   deployed clock cannot depend on a human running a bind command after every
+   power cut. Solved with a systemd oneshot unit ordered before
+   `oclock.service`, not by giving the application privilege to bind its own
+   device. A `udev` rule and a Device Tree change were both considered and
+   rejected with reasons recorded. See
+   [the binding persistence gate](wiringpi-phase6-binding-persistence.md).
+1. **Done 2026-08-03.** The modern binary runs from
+   `/home/pi/oclock.git/oclock` with the original application arguments, paths,
+   and runtime defaults. The only service change is the added dependency on the
+   binding unit.
+2. **Done 2026-08-03.** NetworkManager reconnected onboard Wi-Fi after the
+   reboot, and MQTT reconnected on its own. Note that `oclock.service` orders
+   itself `After=network.target` rather than waiting for full connectivity;
+   this has not caused a failure across the observed boots, but see the note
+   below.
+3. **Partially done.** The functional checklist was repeated after the
+   unattended boot and an 8 h 53 min soak was observed; see
+   [the overnight soak result](wiringpi-phase6-overnight-soak-result.md).
+   "Several days" of monitoring has not happened and is not claimed.
+4. **Not exercised.** Rollback remains the preserved Zero/Jessie unit, powered
+   off and physically intact. Swapping it back has not been rehearsed since the
+   modern unit took over.
 
 The Zero W, Trixie, GCC 14, libgpiod, and onboard Wi-Fi are the approved target
 change. Compilation no longer applies owner/setuid changes as a side effect,

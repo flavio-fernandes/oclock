@@ -21,7 +21,7 @@ Raw capture archives remain outside Git because they can contain binaries and
 local runtime/network details. Record only their sanitized conclusions here
 and in the phase reports.
 
-## Current editorial snapshot — 2026-08-02
+## Current editorial snapshot — 2026-08-03
 
 The original office clock is still recoverable as a complete Raspberry Pi Zero
 Rev 1.2/Jessie/WiringPi unit. A separate Raspberry Pi Zero W Rev 1.1 now runs
@@ -68,10 +68,20 @@ IIO raw channels. The exact `spidev` source rejects a generic Device Tree
 by an explicit, guarded `driver_override` binding.
 
 **Phase 5 is complete.** The whole-application trial passed all 13 checks with
-zero failures on 2026-08-02. Phase 6 deployment remains blocked on two named
-items: the strip `spidev` binding does not survive a reboot, and no soak has
-run. The article must not yet say that the modern system is production-ready
-or that WiringPi has been completely removed.
+zero failures on 2026-08-02.
+
+**Phase 6's blocking items are also complete, as of 2026-08-03.** Both named
+blockers closed. The strip `spidev` binding is now made at boot by a systemd
+oneshot unit, proved by an actual reboot after which the clock came back with
+nothing done by hand. The soak blocker closed with an 8 h 53 min unattended run
+at zero restarts. The clock is currently keeping time on the modern stack and
+starts itself.
+
+What the article still must not say: that rollback has been tested, that a hard
+power cut has been survived, that it has run for days or weeks, or that
+WiringPi has been completely removed. The honest present-tense summary is that
+the modern unit is running and self-starting, and that the original Zero/Jessie
+unit remains preserved, powered off, and unrehearsed as a recovery path.
 
 The checksum-pinned overlay has now also booted successfully on the exact
 Zero W. Its two controllers claimed only the six reviewed GPIOs; the MCP3002
@@ -276,9 +286,9 @@ boot-config backup. Normal disablement and eventual uninstall still need to be
 exercised. The LPD8806 `spidev` override is intentionally runtime-only; a
 reboot clears it without removing the boot overlay.
 
-### Service procedure — mostly preserved, final ordering pending
+### Service procedure — SPI ordering now settled, Wi-Fi ordering still open
 
-The current unit uses:
+The original unit used:
 
 ```text
 WorkingDirectory=/home/pi/oclock.git
@@ -287,6 +297,25 @@ Restart=on-failure
 After=network.target
 ```
 
+The verified modern unit adds a dependency on the binding service, and nothing
+else:
+
+```text
+Requires=oclock-strip-spi.service
+After=oclock-strip-spi.service
+```
+
+`Requires=` rather than `Wants=` is the whole point and is worth a sentence in
+the article. Without the binding there is no `/dev/spidev*`, the clock cannot
+initialize its SPI output, and `Restart=on-failure` turns that into a crash
+loop. Refusing to start is the better failure, and it was demonstrated by
+hiding the binder and confirming the clock stayed inactive with `NRestarts=0`.
+
+The companion unit is
+[`misc/oclock-strip-spi.service`](../misc/oclock-strip-spi.service), a
+`Type=oneshot` with `RemainAfterExit=yes` because the binding is state rather
+than a process, and an `ExecStop` that reverses it.
+
 The existing service runs as root because no `User=` or `Group=` is set. The
 legacy executable is root-owned and owner-setuid. The current Makefile no
 longer applies ownership or setuid changes during compilation, but PR 3 has not
@@ -294,12 +323,20 @@ yet selected a new service identity or completed privilege hardening.
 
 Before the final post, decide and verify whether the Trixie service needs:
 
-- `network-online.target` rather than only `network.target`, based on MQTT and
-  onboard-Wi-Fi cold-boot behavior;
-- ordering after the SPI device nodes exist;
-- any explicit supplementary group or udev rule;
+- `network-online.target` rather than only `network.target`. Still open, and
+  now with a measurement behind it: on the verified boot MQTT needed two
+  connect attempts before succeeding, which is consistent with starting before
+  connectivity was usable. It recovers on its own, so this is a tidiness
+  question rather than a defect;
+- ~~ordering after the SPI device nodes exist~~ — **settled.** See above;
+- any explicit supplementary group or udev rule. A udev rule was evaluated for
+  the binding and rejected; the reasons are in
+  [the binding persistence gate](wiringpi-phase6-binding-persistence.md);
 - a modern unit installation directory such as `/etc/systemd/system` rather
-  than reproducing the old `/lib/systemd/system` copy command.
+  than reproducing the old `/lib/systemd/system` copy command. Both verified
+  units currently live in `/usr/lib/systemd/system` to match where
+  `oclock.service` already was, rather than introducing a second shadowing
+  copy. Worth revisiting for the published instructions.
 
 Do not broaden this migration merely to make the blog instructions look more
 modern. Record the tested deployment first; describe hardening as follow-up
@@ -470,14 +507,25 @@ tested command or file before drafting the article:
   failures, timing rated better than production.
 - [x] Backend/transport build knobs retired; `make` and `make hardware` select
   the modern profile.
-- [ ] **Strip `spidev` binding persistence across reboot.** Currently the
-  binding is runtime-only, so a power cut leaves the clock unable to open its
-  strip. This is the main thing standing between acceptance and deployment.
-- [ ] Cold-boot NetworkManager, HTTP, MQTT, and service-order validation.
-- [ ] Overnight soak with CPU, latency, throttling, and Wi-Fi evidence. Use the
-  recorded stress recipe so the soak covers loaded as well as idle behavior.
+- [x] **Strip `spidev` binding persistence across reboot.** Solved with
+  `oclock-strip-spi.service` and verified by an actual reboot on 2026-08-03:
+  the clock came back with the binding established and the service running,
+  with nothing done by hand. Includes a negative test proving a failed binding
+  refuses to start the clock rather than crash-looping, and 14 offline checks
+  covering the refusal paths a single reboot cannot reach.
+- [x] Reboot NetworkManager, HTTP, MQTT, and service-order validation. Note the
+  caveat: this was a clean reboot, not a cold boot from power-off, and MQTT
+  needed two connect attempts.
+- [x] Overnight soak with CPU, latency, throttling, and Wi-Fi evidence:
+  8 h 53 min, zero restarts, zero warnings, zero Wi-Fi drops. Carried ordinary
+  load; the recorded stress recipe still applies to a future loaded soak, and
+  the stressed numbers remain the Phase 5 run-1 measurements.
+- [ ] Hard power-cut recovery, as distinct from a clean reboot.
+- [ ] Sustained multi-day observation.
 - [ ] Physical rollback exercise using the preserved Zero/Jessie unit.
-- [ ] Service trimming (Phase 7) with before/after measurements.
+- [ ] Service trimming (Phase 7) with before/after measurements. The before
+  measurement now exists: a 2 min 24.8 s boot, `NetworkManager` 59.6 s,
+  `cloud-init` 21.6 s.
 - [ ] Merged commit, release/tag, and stable source links for the article.
 
 ## Migration chronology and evidence
@@ -574,25 +622,35 @@ final design.
   all-off. The colored-frame gate, which is the first real test of signal
   integrity at 2 MHz on arbitrary GPIO pins, has not run yet.
 
-### Phase 6/7 — pending
+### Phase 6 — blocking items complete 2026-08-03
 
-- No modern candidate has deployment approval.
-- The modern application **has** now run against the live overlay on the
-  experimental Zero W and passed its full trial, but that is acceptance, not
-  deployment.
-- **Blocker: the strip binding does not survive a reboot.** The application
-  opens `/dev/spidev4.0` but never binds it, and the reviewed
-  `driver_override` binding is runtime-only. A deployed clock cannot need a
-  human to run a bind command after a power cut. Needs a udev rule, a systemd
-  unit ordered before `oclock.service`, or a Device Tree change — reviewed
-  separately, and explicitly not solved by giving the application privilege to
-  bind its own device.
-- **Blocker: no soak.** The longest continuous observation is five minutes.
+Both blockers recorded here closed on 2026-08-03, and the modern stack now
+starts itself on the Zero W.
+
+- ~~**Blocker: the strip binding does not survive a reboot.**~~ **Closed.**
+  Solved with `oclock-strip-spi.service`, a systemd oneshot ordered before
+  `oclock.service`, with `Requires=` so a failed binding stops the clock from
+  starting rather than feeding a crash loop. A udev rule and a Device Tree
+  change were both considered and rejected with reasons worth retelling. Never
+  solved by giving the application privilege to bind its own device. See
+  [the binding persistence gate](wiringpi-phase6-binding-persistence.md).
+- ~~**Blocker: no soak.**~~ **Closed.** 8 h 53 min unattended, zero restarts,
+  zero warnings, zero Wi-Fi drops. See
+  [the overnight soak result](wiringpi-phase6-overnight-soak-result.md).
+- The clock now boots unattended, binds its own strip device, and starts
+  without a human. Verified by an actual reboot, with the operator confirming
+  display, strip, and motion afterwards.
+
+Still open, and none of it can be hurried:
+
 - No physical rollback exercise has been performed since the migration
-  completed.
-- Service trimming is deferred to Phase 7; see the section above.
-- The modern profile is the current source default, but must not be deployed
-  until these gates complete.
+  completed. The Zero/Jessie unit is preserved and powered off.
+- A hard power cut has not been tested; only a clean reboot.
+- Sustained multi-day observation has not happened.
+- Service trimming is deferred to Phase 7; see the section above. The reboot
+  produced a concrete before measurement to trim against: a 2 min 24.8 s boot
+  of which `NetworkManager` is 59.6 s and `cloud-init` is 21.6 s, against
+  4.96 s for the new binding unit.
 
 ## Technical explanations to prepare for readers
 
@@ -753,16 +811,13 @@ credentials, serial numbers, MAC addresses, or private network topology.
 Do not write any of these in past tense until their gates pass:
 
 - “The Office Clock no longer uses WiringPi.”
-- “The service reliably starts after Wi-Fi and SPI are ready.” — in fact the
-  opposite is currently true: the strip binding does not survive a reboot.
-- “The Zero W is the deployed production clock.”
-- “Rollback has been tested.” — not since the migration completed.
+- “Rollback has been tested.” — not since the migration completed. The
+  Zero/Jessie unit is preserved and powered off, but swapping it back has not
+  been rehearsed.
 - “These are the final installation commands.”
-- “It survives a power cut.”
-- “It has run for a day/week without problems.” — the longest continuous
-  observation is five minutes.
+- “It has run for a week without problems.”
 
-Two claims previously on this list are now supported by evidence and may be
+Four claims previously on this list are now supported by evidence and may be
 written carefully:
 
 - **Dimming.** It is accurate to say the dimming behavior now works and that
@@ -773,6 +828,26 @@ written carefully:
   times better than production. It is **not** accurate to say kernel software
   SPI is as fast as the original WiringPi implementation in general; the honest
   comparison is per-frame budget and observed behavior, not raw bit rate.
+- **Unattended boot.** It is accurate to say the clock starts itself, binds its
+  own strip device, and needs no human after a reboot. Proved on 2026-08-03;
+  see [the binding persistence gate](wiringpi-phase6-binding-persistence.md).
+  Be precise about scope: a **clean reboot** was tested, not a hard power cut.
+  A power cut should be strictly easier, because boot always begins from an
+  unbound child, but it has not been done. Write “it comes back on its own
+  after a reboot,” not “it survives a power cut.”
+- **A day of uptime.** It is accurate to say the clock ran unattended for
+  8 h 53 min with zero restarts, zero warnings, and no Wi-Fi drop; see
+  [the overnight soak result](wiringpi-phase6-overnight-soak-result.md). Nine
+  hours is not a day and is certainly not a week — say the number.
+
+Note also that “The service reliably starts after Wi-Fi and SPI are ready” is
+now **half** true and worth splitting. SPI is guaranteed:
+`Requires=oclock-strip-spi.service` means the clock cannot start before its
+strip device exists. Wi-Fi is not: `oclock.service` orders itself
+`After=network.target`, which does not wait for actual connectivity, and MQTT
+took two connect attempts on the verified boot before succeeding. It recovers
+on its own, so this is not a defect — but do not claim ordering that is not
+there.
 
 The safe phrasing before final deployment is: “The selected modern profile no
 longer links WiringPi; the repository and original recovery unit retain it for
@@ -809,6 +884,12 @@ backward compatibility.”
 - **HT1632 burst transport accepted**: [`wiringpi-phase5-ht1632-burst-result.md`](wiringpi-phase5-ht1632-burst-result.md)
 - Whole-application trial gate: [`wiringpi-phase5-application-trial.md`](wiringpi-phase5-application-trial.md)
 - **Whole-application trial result (Phase 5 complete)**: [`wiringpi-phase5-application-trial-result.md`](wiringpi-phase5-application-trial-result.md)
+- **Overnight soak result**: [`wiringpi-phase6-overnight-soak-result.md`](wiringpi-phase6-overnight-soak-result.md)
+- **Binding persistence gate and result (unattended boot)**: [`wiringpi-phase6-binding-persistence.md`](wiringpi-phase6-binding-persistence.md)
+- Boot binder: [`misc/bindOclockStripSpi.sh`](../misc/bindOclockStripSpi.sh)
+- Boot binder unit: [`misc/oclock-strip-spi.service`](../misc/oclock-strip-spi.service)
+- Clock service unit: [`misc/oclock.service`](../misc/oclock.service)
+- Binder offline tests: [`tests/strip-binding.sh`](../tests/strip-binding.sh)
 - Remote maintenance access: [`oclock-remote-access.md`](oclock-remote-access.md)
 - Modern build policy: [`wiringpi-modern-build-policy.md`](wiringpi-modern-build-policy.md)
 - Target selection rationale: [`wiringpi-phase3-target-selection.md`](wiringpi-phase3-target-selection.md)
@@ -1045,3 +1126,47 @@ backward compatibility.”
   Two items block Phase 6 and must not be written as done: the strip `spidev`
   binding does not survive a reboot, and no soak has run. Everything else in the
   hardware stack is measured and accepted.
+
+- **2026-08-03:** Phase 6's blocking items closed. The clock now starts itself.
+
+  **Binding persistence.** Solved with a systemd oneshot,
+  `oclock-strip-spi.service`, ordered before `oclock.service` with `Requires=`.
+  A udev rule and a Device Tree change were both considered and rejected, and
+  the reasons are more interesting than the solution: the DT route would have
+  required borrowing another product's `compatible` string to obtain a side
+  effect, and the udev route fails *silently*, which would hand the clock a
+  guaranteed crash loop. Verified by an actual reboot, plus a negative test
+  proving that a failed binding leaves the clock inactive with `NRestarts=0`
+  instead of crash-looping.
+
+  **Soak.** The clock ran unattended for 8 h 53 min at zero restarts, zero
+  warnings, and zero Wi-Fi drops. Not a scheduled gate — it came from leaving
+  the clock running overnight for fun, which is worth a line in the article
+  about how the least ceremonious evidence in the whole migration was also some
+  of the most convincing.
+
+  Three findings worth carrying into the draft:
+
+  - **The tests found a bug the reboot could not.** The binder originally
+    sampled the driver symlink and character device once, immediately after
+    writing to the bind control, and neither is guaranteed visible in that
+    instant on a single-core ARMv6 during boot. That defect would have produced
+    an intermittent boot failure, and rebooting a healthy unit would never have
+    found it reliably. It now polls for the end state.
+  - **The wait loop is insurance, not decoration.** On the verified boot the
+    strip child was already present, but the ADC child did not probe until five
+    seconds *after* the binder finished. These children appear asynchronously
+    across that window; a binder without the wait would work most boots.
+  - **A correction to our own record.** The Phase 5 trial result reported memory
+    as "about 101 MB RSS." That was the `vsz` column. Resident is 5.2 MB; the
+    101 MB is virtual address space, mostly thread stacks. On a 426 MB Pi Zero
+    the difference is the difference between an investigation and a non-event.
+
+  Also updated: the editorial snapshot, the service-procedure section (SPI
+  ordering is settled; Wi-Fi ordering is still open and now has a measurement
+  behind it), the Phase 6 chronology, the publication checklist, the
+  claims-that-must-wait list, and the source map.
+
+  What must still not be written as done: rollback has not been rehearsed, a
+  hard power cut has not been tested, and nothing has run for days or weeks.
+  Say "it comes back on its own after a reboot," not "it survives a power cut."
