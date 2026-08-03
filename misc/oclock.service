@@ -2,6 +2,14 @@
 Description=Office Clock Display Service
 After=network.target
 
+# The LPD8806 strip reaches the clock through a kernel spi-gpio controller
+# whose child is bound to spidev by oclock-strip-spi.service. Requires= rather
+# than Wants= is deliberate: without the binding /dev/spidev* does not exist,
+# the clock fails to initialize its SPI output, and Restart=on-failure below
+# turns that into a crash loop. Refusing to start is the better failure.
+Requires=oclock-strip-spi.service
+After=oclock-strip-spi.service
+
 [Service]
 Type=simple
 WorkingDirectory=/home/pi/oclock.git

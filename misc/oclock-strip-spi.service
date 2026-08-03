@@ -1,0 +1,32 @@
+[Unit]
+Description=Bind the Office Clock LPD8806 SPI child to spidev
+Documentation=file:///home/pi/oclock.git/docs/wiringpi-phase6-binding-persistence.md
+
+# The strip's character device does not exist until this unit runs, so it must
+# complete before the clock tries to open it. oclock.service pairs this with
+# Requires=, which means a failed binding stops the clock from starting at all
+# rather than letting Restart=on-failure produce a crash loop.
+Before=oclock.service
+
+# Deliberately no ConditionPathExists on the Device Tree child. A missing
+# overlay must fail loudly here, not silently skip the unit and hand a
+# guaranteed crash loop to oclock.service.
+
+[Service]
+Type=oneshot
+
+# The binding is state, not a process. RemainAfterExit keeps the unit active so
+# systemd treats the binding as held, and ExecStop reverses it when the unit or
+# oclock.service is stopped.
+RemainAfterExit=yes
+
+ExecStart=/home/pi/oclock.git/misc/bindOclockStripSpi.sh bind --wait 90
+ExecStop=/home/pi/oclock.git/misc/bindOclockStripSpi.sh unbind
+
+# spi_gpio is a module loaded during udev coldplug, so the SPI children appear
+# asynchronously; the reference unit probes them about 54 seconds after boot.
+# The helper waits up to 90 seconds, so the start timeout must exceed that.
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target

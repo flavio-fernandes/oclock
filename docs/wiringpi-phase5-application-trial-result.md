@@ -138,8 +138,17 @@ about 96 ms, and operator-rated timing **better than production** while that
 load was running.
 
 The earlier hypothesis in this document, that something time-dependent became
-expensive after several minutes, was wrong. Memory was stable at about 101 MB
-RSS throughout both runs.
+expensive after several minutes, was wrong. Memory was stable throughout both
+runs.
+
+An earlier revision of this document reported that stable figure as "about
+101 MB RSS." That was a misread: the harness records `rss` and `vsz` side by
+side and the wrong column was quoted. The real numbers, confirmed again after
+the overnight soak, are about **5.2 MB resident** and about **101 MB virtual**
+across 12 threads. The virtual figure is dominated by per-thread stack
+reservations and is not memory the clock actually occupies. On a 426 MB Pi
+Zero the distinction matters: 101 MB resident would have been worth
+investigating, and 5.2 MB is not.
 
 Some cost remains inherent and is worth stating plainly in the write-up: kernel
 `spi-gpio` is still bit-banging, so it is CPU-bound rather than offloaded. A

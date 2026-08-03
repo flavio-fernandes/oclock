@@ -8,6 +8,7 @@ endif
 	compatibility gpio-boundary test \
 	test-core test-gpio-protocols test-gpio-burst test-gpio-registers \
 	test-spi-output test-iio-analog test-spi-overlay check-arm-warnings \
+	test-strip-binding \
 	smoke test-shutdown valgrind spi-overlay \
 	phase5-lpd8806-all-off phase5-lpd8806-all-off-2mhz \
 	phase5-lpd8806-colors-2mhz phase5-ht1632-render \
@@ -281,12 +282,16 @@ compatibility: oclock-sandbox
 gpio-boundary:
 	$Q ./tests/gpio-boundary.sh
 
+test-strip-binding:
+	$Q ./tests/strip-binding.sh ./misc/bindOclockStripSpi.sh
+
 check-arm-warnings: build/tests/oclock-arm-warnings
 	$Q ./tests/smoke.sh ./build/tests/oclock-arm-warnings
 
 test: compatibility gpio-boundary test-core test-gpio-protocols \
 	test-gpio-burst \
 	test-gpio-registers test-spi-output test-iio-analog \
+	test-strip-binding \
 	check-arm-warnings smoke test-shutdown
 
 valgrind: oclock-sandbox
