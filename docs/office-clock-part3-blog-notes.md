@@ -323,6 +323,96 @@ Do not say that every historical WiringPi source file disappeared from the
 repository. Those sources remain diagnostic references, while the original
 binary, Jessie SD card, and original Pi are the intentional recovery assets.
 
+## Trimming unneeded services — pending, deferred to Phase 7
+
+**Status: pending.** Not yet applied or measured. Do not present the commands
+below as tested until a gate records before/after evidence.
+
+The 2016 setup trimmed background services on Jessie with:
+
+```sh
+sudo systemctl disable avahi-daemon && \
+sudo systemctl stop avahi-daemon && \
+sudo apt-get remove -y bluez bluez-firmware pi-bluetooth triggerhappy && \
+echo ok
+```
+
+That recipe is partly obsolete. A survey of the actual Trixie target on
+2026-08-02 found:
+
+| Item | State on the Zero W/Trixie target |
+| --- | --- |
+| `avahi-daemon.service` | enabled and active |
+| `avahi-daemon.socket` | enabled and active — the Jessie command misses this |
+| `bluetooth.service` | enabled and active |
+| `bluez`, `bluez-firmware` | installed |
+| `pi-bluetooth` | **not installed** |
+| `triggerhappy` | **not installed** |
+| `hciuart.service` | **not present on this image** |
+| `ModemManager`, `cups` | not present |
+
+So half the original command list no longer applies, and the part that does
+applies differently.
+
+### The modern equivalent
+
+```sh
+# avahi: disable the socket too, or socket activation restarts the service.
+sudo systemctl disable --now avahi-daemon.service avahi-daemon.socket
+sudo systemctl mask avahi-daemon.service avahi-daemon.socket
+
+# Bluetooth: stop the stack, then remove the packages that remain.
+sudo systemctl disable --now bluetooth.service
+sudo apt purge -y bluez bluez-firmware
+sudo apt autoremove -y
+```
+
+`systemctl disable --now` replaces the old separate disable-then-stop pair.
+Masking avahi is what actually prevents it coming back through socket
+activation or a dependency.
+
+Optionally, disable the Bluetooth radio at the hardware level in
+`/boot/firmware/config.txt`:
+
+```text
+dtoverlay=disable-bt
+```
+
+Note what that overlay actually does: it returns the PL011 UART to GPIO14/15.
+The Office Clock uses GPIOs 4, 6, 10, 13, 17, 19, 20, 21, 22, 26, and 27, so
+there is no conflict — but it is a **boot-file change**, and this project gates
+those separately with a backup and a documented rollback. Treat it as its own
+step, not as part of an `apt` cleanup.
+
+### What must not be trimmed
+
+This is the important half, and the reason the naive "disable everything"
+advice is dangerous on this particular device:
+
+- **`systemd-timesyncd`.** This is a *clock*. Wrong time is the most visible
+  possible failure, and it would look like an application bug rather than a
+  trimming mistake. Currently active and synchronized; leave it alone.
+- **NetworkManager and the Wi-Fi stack.** Onboard Wi-Fi replacing the USB
+  dongle is a migration requirement, and Trixie manages it through
+  NetworkManager.
+- **Bluetooth on a Zero W is not free of Wi-Fi.** Both are functions of the
+  same BCM43438. Disabling Bluetooth does not disable Wi-Fi, but any claim
+  about the radio should be verified rather than assumed.
+- **avahi has a cost.** Disabling it removes mDNS, so `oclock.local` stops
+  resolving. That was acceptable in 2016; confirm it is still acceptable before
+  repeating it, because it changes how the clock is reached on the LAN.
+
+### Why this is deferred
+
+The migration plan is explicit that deployment must not be combined with
+unrelated service, privilege, or configuration changes, because it makes
+failures harder to attribute and rollback harder to trust. Service trimming is
+exactly such a change. It belongs in Phase 7, after a sustained successful
+deployment, as its own reviewed step.
+
+When it is done, measure it: record CPU, memory, and boot time before and
+after. The 2016 article asserted the benefit; the follow-up can show it.
+
 ## What the final modern installation will need
 
 This is the publication checklist. Replace each pending item with the exact
