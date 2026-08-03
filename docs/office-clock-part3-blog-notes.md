@@ -167,7 +167,9 @@ historical article.
 ## Old and new installation comparison
 
 This table should become the installation centerpiece of the eventual post.
-Update the final column only after Phase 6 acceptance.
+Update the final column only after Phase 6 acceptance. Phase 6's blocking
+items passed on 2026-08-03, so rows that were waiting on a tested value now
+carry one; rows still marked as open are genuinely open.
 
 | 2016 Part 2 step | Modern status | Follow-up instruction |
 | --- | --- | --- |
@@ -181,10 +183,36 @@ Update the final column only after Phase 6 acceptance.
 | Install only `git libevent-dev` | Insufficient now | Install modern compiler/build, MQTT, GPIO, and overlay dependencies listed below |
 | Clone branch `rpi-0.1.y` | Historical reproducibility branch | Link the merged modernization release/tag after PR 3 and deployment are complete |
 | Plain `make` | Now selects the modern Zero W profile | Build with `make` or `make hardware`; transport selector variables are retired |
-| Copy unit to `/lib/systemd/system` | Works historically, final path TBD | Prefer the packaged/reviewed unit and `systemctl`; record exact install path used on Trixie |
+| Copy unit to `/lib/systemd/system` | Verified: `/usr/lib/systemd/system` on Trixie | Install **two** units there and `systemctl enable` both: `oclock.service` and `oclock-strip-spi.service`. They were placed alongside the existing unit rather than shadowing it from `/etc/`; mention that `/etc/systemd/system` is the more conventional choice for local units and that this was a deliberate consistency call |
 | Root/setuid executable | No longer a compiler side effect | The Makefile does not chown or setuid; define and test final service identity/device permissions separately |
 | Software-bit-bang every peripheral | Too expensive through pure libgpiod | Use subsystem-specific transports: libgpiod, kernel SPI, and a narrow matrix bulk path |
 | Repeated manual command/result relay | Replaced for development | Optional OpenSSH over Tailscale with a dedicated source-restricted key; not required by the application |
+
+### Modern steps with no 2016 counterpart
+
+The table above maps old steps to new ones, but the modern install has three
+steps the 2016 article had no reason to mention. Leaving them out would make
+the follow-up unreproducible, and they are the genuinely new part of the story.
+
+1. **Install and enable the Device Tree overlay.** Copy
+   `oclock-spi.dtbo` to `/boot/firmware/overlays/` and add one line,
+   `dtoverlay=oclock-spi`, to `/boot/firmware/config.txt`. This is what creates
+   the two `spi-gpio` controllers on the existing arbitrary pins. Use
+   [`misc/managePhase5SpiOverlay.sh`](../misc/managePhase5SpiOverlay.sh), which
+   pins the overlay checksum, keeps a byte-identical backup of `config.txt`,
+   and deliberately does not reboot for you.
+2. **Install the strip binding unit.** The strip's Device Tree child carries a
+   project-owned compatible that no in-tree driver claims, so `/dev/spidev*`
+   does not exist until something binds it. `oclock-strip-spi.service` does
+   that at boot, and `oclock.service` `Requires=` it.
+3. **Nothing for the ADC.** Worth stating explicitly because it is the happy
+   case: the MCP3002 is claimed automatically by the kernel's own `mcp320x`
+   driver and appears under IIO with no binding step at all. The contrast
+   between the two devices — one that the kernel adopts on sight and one that
+   needs an explicit override — is the clearest illustration in the whole
+   project of what "use a proper kernel subsystem" does and does not buy you.
+
+A reboot is required after step 1. Steps 2 and 3 need none.
 
 ## Installation details to preserve now
 
@@ -1244,3 +1272,39 @@ backward compatibility.”
   the assertions that now matter: that `oclock.service` keeps `Requires=` on
   the binding unit, that the binding unit cannot be silently skipped by a
   `Condition`, and that the boot binder never hard-codes a bus number.
+
+- **2026-08-03 (staleness audit):** Swept all 44 documents for claims that were
+  true when written and are not true now. Fourteen files needed correcting.
+
+  The worst was an internal contradiction: the resume handoff said the
+  thresholds were retuned to 460/700 in one paragraph and "preserve the 360/500
+  thresholds" in another. Both sentences were written the same day.
+
+  The pattern worth noting for the article is that **result documents age badly
+  in a specific way**: they end with a "next steps" or "limits of this
+  evidence" section, that work then gets done, and the closing section quietly
+  becomes false while the measurements above it stay true. Six documents had
+  exactly this shape. The fix throughout was to leave the original text and
+  append what actually happened, rather than rewrite history — a reader should
+  be able to see that the caution was reasonable *and* how it resolved.
+
+  `wiringpi-modern-build-policy.md` was the most consequential: its safety
+  boundary still said the whole application "must not run yet" and that
+  `oclock.service` "must stay inactive," which is policy language a future
+  reader could act on. It now separates what has been satisfied from what still
+  genuinely binds — no wiring change, no privilege change, rollback unrehearsed.
+
+  The audit also surfaced a requirement the plan set and nobody had closed:
+  "this table must become an executable pin-map test." It hadn't. It does now,
+  split across two files because the pins themselves split during the
+  migration — seven still live in application source and are asserted by
+  `tests/compatibility.sh`, while the MCP3002's four moved into the Device Tree
+  and are asserted against the merged overlay by `tests/spi-overlay.sh`. All
+  eleven BCM numbers are now checked, so "no existing wire moves" fails on a
+  laptop rather than on the clock. Six pin mutations were confirmed to fail it.
+
+  The installation comparison table gained the modern steps that have no 2016
+  counterpart, which were simply missing: installing and enabling the overlay,
+  installing the strip binding unit, and — worth saying out loud because it is
+  the contrast that makes the point — doing nothing at all for the ADC, which
+  the kernel claims on sight.

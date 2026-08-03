@@ -35,6 +35,21 @@ grep -q 'modern-cxx -c' "${test_dir}/compiler.txt"
 grep -Fq 'strncasecmp(key, "msg", strlen(key)) == 0' src/displayInternal.cpp
 grep -Fq 'strncasecmp(key, "animationStep", strlen(key)) == 0' src/displayInternal.cpp
 
+# The executable pin map required by docs/wiringpi-migration.md. "No existing
+# wire moves" is the migration's central compatibility promise, so the BCM
+# numbers are asserted rather than trusted.
+#
+# Only seven pins live in application source. The MCP3002's four (17, 27, 22,
+# and 4) moved into the Device Tree when the ADC became a native IIO device,
+# and are asserted by tests/spi-overlay.sh against the merged tree instead.
+grep -Fq 'const int Display::pinCS = 6;' src/display.cpp
+grep -Fq 'const int Display::pinWR = 13;' src/display.cpp
+grep -Fq 'const int Display::pinDATA = 19;' src/display.cpp
+grep -Fq 'const int Display::pinCLK = 26;' src/display.cpp
+grep -Fq 'const Int8U LedStrip::pinDATA = 21;' src/ledStrip.cpp
+grep -Fq 'const Int8U LedStrip::pinCLK = 20;' src/ledStrip.cpp
+grep -Fq 'const int MotionSensor::sensorGpioPin = 10;' src/motionSensor.cpp
+
 # The strip has no character device until something binds its deliberately
 # unclaimed Device Tree child. Requires= rather than Wants= is the whole point:
 # without the binding the clock cannot open its SPI output, and Restart=

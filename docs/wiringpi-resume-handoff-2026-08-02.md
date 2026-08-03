@@ -1,5 +1,18 @@
 # WiringPi migration resume handoff — 2026-08-02
 
+> **Superseded snapshot.** This is the state as it stood on 2026-08-02, kept
+> because it records how the work was handed over, not because it is current.
+> Both Phase 6 blockers it names were closed on 2026-08-03: the strip binding
+> now happens at boot
+> ([gate](wiringpi-phase6-binding-persistence.md)) and an 8 h 53 min soak has
+> run ([result](wiringpi-phase6-overnight-soak-result.md)). For current state
+> start from the [migration plan](wiringpi-migration.md) and the
+> [blog notebook](office-clock-part3-blog-notes.md).
+>
+> The operating advice below — explicit push refspec, wall-clock build timing,
+> overlapping ARM builds with local work — is still accurate and still worth
+> following.
+
 ## Resume anchor
 
 - Draft PR: [#3 — migrate the Office Clock hardware stack to Zero W/Trixie](https://github.com/flavio-fernandes/oclock/pull/3)
@@ -60,8 +73,13 @@ transport abstraction merely to make the design look uniform.
   [modern build policy](wiringpi-modern-build-policy.md).
 - No wiring change is authorized.
 - No modern candidate is deployment-approved; Phase 6 remains blocked.
+  **Update 2026-08-03:** Phase 6's blocking items are done and the modern
+  stack now runs and self-starts on the Zero W. What remains is elapsed time
+  and a rollback rehearsal, not a gate.
 - Do not change the light thresholds until raw MCP3002 channels are compared
-  under controlled covered/uncovered conditions.
+  under controlled covered/uncovered conditions. **Done:** that comparison
+  ran, and the thresholds are now the measured 460/700 rather than the
+  original 360/500.
 - Enable the Device Tree overlay only through the documented guarded live-boot
   gate. Its GPIO claims, normal disablement, SD-card rescue, service boundary,
   and boot behavior are now documented. Once enabled, the SPI controller owns
@@ -70,7 +88,10 @@ transport abstraction merely to make the design look uniform.
   follow-up. Do not turn it into a general replacement for kernel SPI.
 - At the end of the last captured trial, the candidate exited cleanly and the
   Zero W `oclock.service` was inactive. Confirm live state rather than assuming
-  it remains so tomorrow.
+  it remains so tomorrow. **It does not:** `oclock.service` and
+  `oclock-strip-spi.service` are now both enabled and running. The advice to
+  confirm live state rather than assume it stands, and is exactly why this
+  line needed updating.
 
 ## Completed phases and evidence
 
@@ -124,7 +145,7 @@ per strip frame, while the kernel's native `mcp320x` driver exposes the ADC
 through IIO. `spi-gpio` drives the existing pins for both. The matrix keeps a
 narrow custom path only because its select topology is not ordinary SPI.
 
-## Current next work
+## Work in progress as of 2026-08-02
 
 The read-only target discovery completed on 2026-08-02. Archive
 `oclock-phase5-spi-20260802T135213Z-RCuWzN1Y.tar.gz` has SHA-256
@@ -221,8 +242,9 @@ modern hardware build; historical sources remain only as diagnostic evidence.
    between 355 and 478 depending on conditions, always above 360. It is now
    460/700, measured rather than guessed.
 
-   Phase 6 is blocked on two things: the strip binding does not survive a
-   reboot, and no soak has been run.
+   Phase 6 was blocked on two things at the time of this handoff: the strip
+   binding did not survive a reboot, and no soak had been run. **Both closed on
+   2026-08-03.**
 
    CPU is not a blocker. Run 1's 18.29% mean and 75.68% peak were recorded
    while the operator deliberately stressed the clock with LED-strip animations
@@ -232,13 +254,17 @@ modern hardware build; historical sources remain only as diagnostic evidence.
 
    Preparing the application trial surfaced a Phase 6 blocker: the application
    only opens `/dev/spidev4.0` and never binds it, so the strip must be bound
-   externally before the app starts and the binding does not survive a reboot.
-   A persistence mechanism must be designed and reviewed before deployment.
+   externally before the app starts, and a hand-made binding did not survive a
+   reboot. **Resolved 2026-08-03** by `oclock-strip-spi.service`, a systemd
+   oneshot ordered before `oclock.service` with `Requires=`; see
+   [the binding persistence gate](wiringpi-phase6-binding-persistence.md).
 2. The MCP3002 application path now uses native IIO and its guarded first read
    passed all 13 checks. The controlled ten-sample windows then averaged 997.3
-   uncovered, 179.0 fully covered, and 995.0 restored. Preserve the 360/500
-   thresholds until representative room-light behavior can be observed during
-   a later guarded application run.
+   uncovered, 179.0 fully covered, and 995.0 restored. The 360/500 thresholds
+   were preserved at this point pending representative room-light behavior.
+   That observation happened during the application trial and **replaced them
+   with the measured 460/700**, as recorded earlier in this document; a covered
+   sensor and a dark room turned out to be very different conditions.
 3. Revisit the HT1632 only after the two standard SPI devices are settled.
 
 The 1 MHz kernel `spi-gpio` strip cannot meet the 12 ms animation cadence, but

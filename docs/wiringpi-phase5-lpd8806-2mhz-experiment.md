@@ -88,6 +88,11 @@ reporting `throttled=0x0`.
 The remaining one-frame and cadence gates are blocked on an operator who can
 watch the physical strip; they must not be run unattended.
 
+**Both ran and passed on 2026-08-02.** The single frame took 3.193 ms and the
+25-frame benchmark met the 12 ms budget 25 times out of 25 at a 3.001 ms
+median. Production was promoted to 2 MHz on that evidence; see the
+[2 MHz result](wiringpi-phase5-lpd8806-2mhz-result.md).
+
 ## One-frame safety gate
 
 Confirm that `oclock.service` is inactive and the strip is unbound. Then run

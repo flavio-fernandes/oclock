@@ -113,3 +113,9 @@ The next gates are an Incus compile/test result, a native ARMv6 build with
 recorded dependencies and checksum, and the same guarded hardware acceptance.
 If the experimental candidate cannot meet the timing budget, discard it and
 plan the kernel `spi-gpio` transport rather than reducing refresh behavior.
+
+**That is exactly what happened.** The `gpiod-mmap` candidate was measurably
+faster and still failed the same operator observations; see the
+[mapped result](wiringpi-phase5-fast-result.md). It was discarded, the kernel
+`spi-gpio` transport was planned instead, and refresh behavior was never
+reduced to make a transport look acceptable.

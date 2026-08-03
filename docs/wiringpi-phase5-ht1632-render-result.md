@@ -111,4 +111,6 @@ this only if the bulk transport proves insufficient.
    19,164 to 4,094 microseconds and all 20 renders met the tick.
 2. Then run the
    [whole-application trial](wiringpi-phase5-application-trial.md).
-3. The strip binding persistence question remains a separate Phase 6 blocker.
+3. ~~The strip binding persistence question remains a separate Phase 6
+   blocker.~~ **Closed 2026-08-03**; see
+   [the binding persistence gate](wiringpi-phase6-binding-persistence.md).

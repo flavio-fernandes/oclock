@@ -56,17 +56,35 @@ hardware or WiringPi.
 
 ## Safety boundary
 
-This build-policy decision is not deployment approval. The current whole
-application must not run yet. Its MCP3002 path now uses the overlay-owned
-native IIO device instead of requesting those GPIOs directly, and its
-[exact-board first-read](wiringpi-phase5-mcp3002-iio-result.md) has passed. The
-standalone
-[guarded LPD8806 all-off transfer](wiringpi-phase5-lpd8806-first-transfer.md)
-has passed; the [MCP3002/IIO conversion](wiringpi-phase5-mcp3002-iio.md) now has
-hardware-free, live-read, and controlled covered/uncovered evidence.
-Representative-room dimming observation, HT1632 work, and a dedicated strip
-cadence gate still precede a full application trial.
+This build-policy decision was never deployment approval on its own. The gates
+it deferred to have since run, so this section records both the boundary and
+where it now stands.
 
-No wiring change, threshold change, privilege change, or production service
-change is implied by this policy. The Zero W remains experimental and
-`oclock.service` must stay inactive until a documented gate says otherwise.
+Every gate this policy named as preceding a full application trial has passed:
+the [MCP3002/IIO conversion](wiringpi-phase5-mcp3002-iio.md) with hardware-free,
+live-read, and controlled covered/uncovered evidence; the standalone
+[guarded LPD8806 all-off transfer](wiringpi-phase5-lpd8806-first-transfer.md);
+the dedicated strip cadence gate, which rejected 1 MHz and accepted
+[2 MHz](wiringpi-phase5-lpd8806-2mhz-result.md); the
+[HT1632 burst transport](wiringpi-phase5-ht1632-burst-result.md); and
+representative-room dimming observation, which
+[retuned the thresholds](wiringpi-phase5-application-trial-result.md) to a
+measured 460/700.
+
+The whole application then passed its
+[trial](wiringpi-phase5-application-trial-result.md) 13 checks to 0, and
+`oclock.service` is now installed, enabled, and running on the Zero W alongside
+`oclock-strip-spi.service`, which establishes the strip binding at boot.
+
+What this policy still forbids, and what has genuinely not changed:
+
+- **No wiring change.** Not one wire has moved, and
+  `make test-spi-overlay` pins all six BCM numbers so none quietly can.
+- **No privilege change.** The Makefile still does not chown or setuid, and the
+  application was never given permission to bind its own SPI device. Final
+  service identity and device permissions remain a separate, untested question.
+- **Rollback is still the preserved Zero/Jessie unit**, powered off and
+  physically intact. Swapping it back has not been rehearsed.
+
+Threshold changes are no longer forbidden but are still evidence-gated: 460/700
+replaced 360/500 only after the values were measured in the actual room.

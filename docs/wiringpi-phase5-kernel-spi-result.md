@@ -37,7 +37,11 @@ no absolute or parent-traversal paths. The raw archive remains outside Git.
 - Every existing BCM offset—4, 6, 10, 13, 17, 19, 20, 21, 22, 26, and 27—was
   visible through the selected Broadcom GPIO chip.
 - `oclock.service` was inactive/dead and disabled. It must stay inactive while
-  an overlay claims GPIO 4, 17, 20, 21, 22, and 27.
+  an overlay claims GPIO 4, 17, 20, 21, 22, and 27 **and the application still
+  requests those lines directly**. That is what later changed: the application
+  moved to the overlay's native IIO device for the ADC and to `spidev` for the
+  strip, so it no longer competes for those GPIOs. The service is now enabled
+  and running with the overlay active.
 - `/boot/firmware/config.txt` contains no Office Clock or general SPI enable;
   `/boot/config.txt` is a separate regular file and is not the selected edit
   target.

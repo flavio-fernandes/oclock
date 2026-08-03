@@ -12,6 +12,11 @@ separate, guarded all-off first-transfer trial. It does not authorize running
 the whole application because the MCP3002 application path has not yet moved
 to the overlay's native IIO interface.
 
+**Since superseded.** The ADC path did move to native `mcp320x`/IIO, and the
+whole application subsequently passed its
+[trial](wiringpi-phase5-application-trial-result.md) and now runs on the Zero W.
+The restriction above applied only at the time of this gate.
+
 ## Evidence
 
 | Item | Value |
