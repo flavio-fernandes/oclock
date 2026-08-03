@@ -894,3 +894,10 @@ backward compatibility.”
   machine was being asked to do is not evidence of anything. The honest version
   of this section is "comparable to the original at rest, and it holds up under
   deliberate pounding," not "CPU went up."
+- **Stress reproduction recipe.** The load that produced the 75.68% peak was a
+  continuous strip animation plus `stickManAnimation.sh` over HTTP. The strip
+  side is started with:
+  `curl -X POST -d 'ledStripMode=4&timeout=7200' http://127.0.0.1/ledStrip`.
+  Worth keeping for the article and for any future soak, since it exercises the
+  240-pixel strip continuously through the 2 MHz kernel SPI path while the
+  matrix and HTTP server are also busy.

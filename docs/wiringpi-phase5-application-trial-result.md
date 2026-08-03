@@ -108,10 +108,21 @@ banked a clean pass on that point and shipped a clock that could never dim.
 
 CPU differed sharply between runs, and the operator supplied the explanation:
 **run 1 was a deliberate stress test.** During that window the operator was
-driving LED-strip animations and simultaneously running
+running a continuous LED-strip animation and simultaneously running
 [`stickManAnimation.sh`](../misc/stickManAnimation.sh), which posts repeated
 image and message updates over HTTP to `localhost:80`. Run 3 carried ordinary
 load.
+
+The strip animation was started with:
+
+```sh
+curl -X POST -d 'ledStripMode=4&timeout=7200' http://127.0.0.1/ledStrip
+```
+
+That is a useful reproduction recipe: it drives the 240-pixel strip
+continuously through the same 2 MHz kernel SPI path the gates measured, so
+pairing it with `stickManAnimation.sh` reproduces the stressed profile for any
+future soak or comparison.
 
 | Measurement | Run 1 (stressed, 300 s) | Run 3 (ordinary, 180 s) | Phase 0 baseline |
 | --- | --- | --- | --- |
