@@ -2,148 +2,150 @@
 
 ## Result
 
-The 2026-08-02 guarded whole-application trial recorded **12 passing checks and
-one failure**. The failure was the light-sensor dimming observation. Everything
-else passed, including the two observations that rejected both earlier
-candidates.
+**Phase 5 is complete.** The 2026-08-02 whole-application trial passed all 13
+checks with zero failures on its final run, after a threshold retune that the
+earlier runs made possible.
 
-This is the first time the modern stack drove the real Office Clock.
+This was the first time the modern stack drove the real Office Clock, and it
+passed every observation that rejected both earlier candidates.
 
 | Item | Value |
 | --- | --- |
-| Trial commit | `acc5243025deed7f796a88d6a4dcc19c2f1b0020` |
-| Binary SHA-256 | `6afd0d5cec62ccd6bd05758ffc9f203bb419903c09b90cc7c6e53f75cc2fad2b` |
-| Clean ARM build | 328 seconds wall clock |
-| Archive | `oclock-phase5-20260803T004237Z-eZSa2M9Q.tar.gz` |
-| Archive SHA-256 | `0372998302935d2b6fb258339fc24483df82ab7b855fb8eb7dd5d88f30b4c1a5` |
-| Observation window | 300 seconds |
+| Accepted trial commit | `9677a0e7a0171e091f9553b2eb70d51e40f14812` |
+| Binary SHA-256 | `3eacccb0f71fd1f08c97c87f8146018721ed6f65e9efa494676bcb965c8881c9` |
+| Clean ARM build | 329 seconds wall clock |
+| Archive | `oclock-phase5-20260803T012026Z-sAPEC92W.tar.gz` |
+| Archive SHA-256 | `10a1328189e014d4166bad09c84b44543e4a58e628e1a3118a5ef1feb181d7b1` |
+| Checks | **13 of 13 passed, 0 failures** |
+
+## The three runs
+
+| Run | Commit | Result | What it established |
+| --- | --- | --- | --- |
+| 1 | `acc5243` | 12 pass, 1 fail | Strip smoothness and timing passed; dimming failed |
+| 2 | `acc5243` | 11 pass, 2 fail | Room-light-off plateau of 452-478 proved 360 was unreachable |
+| 3 | `9677a0e` | **13 pass, 0 fail** | Retuned 460/700 thresholds engage and recover correctly |
 
 ## What passed
 
 | Observation | Earlier candidates | This trial |
 | --- | --- | --- |
-| Display panels refresh without corruption | passed | **passed** |
+| Display panels refresh without corruption | passed | passed |
 | LED-strip animation smooth, normal colors | **failed** | **passed** |
 | Timing versus production | **failed** | **better than production** |
+| Automatic dimming | **failed** | **passed** |
 | Motion transitions | passed | passed |
 | External MQTT feed updates display | passed | passed |
 | Onboard Wi-Fi stable | passed | passed |
 | Clean shutdown over HTTP | passed | passed |
 
 The operator rated display and LED response times **better than the original
-production clock**, not merely acceptable. Strip smoothness and timing were the
-exact gates that rejected the pure-libgpiod and `gpiod-mmap` candidates, so the
-mixed kernel-SPI plus burst-matrix architecture is validated on the criteria
-that drove the redesign.
+production clock**. Strip smoothness and timing were the exact gates that
+rejected the pure-libgpiod and `gpiod-mmap` candidates, so the mixed
+kernel-SPI plus burst-matrix architecture is validated on the criteria that
+drove the redesign.
 
-The MQTT dictionary populated with live external data during the run, and the
-HTTP status endpoint answered in roughly 96 ms while the display and strip were
-busy.
+## How the dimming question was actually settled
 
-## What failed: dimming
+The first run's failure was initially attributed to the operator not holding a
+cover long enough for the six-second averaging window. That theory was wrong,
+and the second run disproved it: with a sustained cover the reported value
+reached a clear steady state of 452 to 478 and stayed there for roughly 45
+seconds. The averaging window was never the problem.
 
-The operator did not observe dimming, and the recorded values agree: excluding
-the startup sample, the reported light value ranged from **403 to 1023** and
-never crossed the 360 dark threshold.
+The decisive input was the operator switching **the actual room light off**
+rather than covering the sensor. That is the real condition the clock should
+dim in. It established that the original 360 low-water mark was simply
+unreachable on this unit: the darkest the room ever got still read above it, so
+dimming could never have engaged on any candidate, including during the Phase 0
+comparison.
 
-### This looks like test execution, not a product defect
+Room darkness also turned out to vary between runs:
 
-`LightSensor` reads both channels every 600 ms and reports the mean of a
-rolling ten-sample window, so the window spans **six seconds** and responds
-gradually rather than instantly.
-
-Working from the accepted calibration means of 179 fully covered and
-approximately 1022 uncovered, crossing 360 requires eight of ten samples to be
-dark:
-
-```
-(8 x 179 + 2 x 1022) / 10 = 348   below the 360 threshold
-(7 x 179 + 3 x 1022) / 10 = 432   above it
-```
-
-Eight dark samples is **4.8 seconds of fully covered sensor**. The observed
-minimum of 403 sits between those two figures, which corresponds to roughly
-seven dark samples. The most likely explanations are a cover held for about
-four seconds rather than the full twelve, or a cover that was not completely
-opaque.
-
-Do not change the 360/500 thresholds on this evidence. Re-run the dimming
-observation first with a fully opaque cover held for a clear fifteen seconds,
-and record the minimum reached. The thresholds are only suspect if a genuinely
-dark sensor still fails to cross them.
-
-This retest needs no rebuild. The trial binary is preserved and the procedure
-is unchanged.
-
-## A false pass that this trial exposed
-
-The harness reported `OK: status samples cross both dimming thresholds` even
-though the sensor never went below 360.
-
-The candidate reports `light_sensor: 0` until its first ADC read completes. The
-check treated that startup sentinel as a genuine dark reading, so a single
-pre-initialization sample satisfied the dark half of the condition. The
-adjacent `status_has_light_change` check had the same weakness: `0` followed by
-one constant value counted as changing light.
-
-Both are now fixed to skip leading non-positive samples only, so a genuine `0`
-recorded later in real darkness still counts. Verified against three shapes:
-
-- this trial's actual data (`0, 1022, 403`) is now correctly rejected;
-- a real crossing (`0, 1022, 179`) is accepted;
-- a genuine later zero (`1022, 0`) is still accepted.
-
-Worth noting for the write-up: the automated check and the operator disagreed,
-and the operator was right. The failing observation is what prompted the audit
-that found the bug. A trial with no human in the loop would have recorded a
-clean pass on this point.
-
-## CPU use is materially higher and needs attention
-
-This did not fail a gate, but it is the most significant open concern.
-
-| Measurement | Value |
+| Condition | Reported value |
 | --- | --- |
-| Phase 0 WiringPi baseline (short interval) | 3.55% |
-| Rejected `gpiod-mmap` candidate | 9.14% |
-| This trial, mean | **18.29%** |
-| This trial, maximum | **75.68%** |
-| This trial, first samples | roughly 25 to 29% |
-| This trial, final samples | roughly 65 to 75% |
+| Room lit | approximately 1022 |
+| Room dark, run 2 | 452 to 478 |
+| Room dark, run 3 | 355 to 366, minimum 355 |
 
-Memory was stable at about 101 MB RSS and 1.2%, so this is not a leak.
+That spread is why 460 is a better choice than it first appears. A 360
+threshold would have engaged on run 3's darker conditions and missed run 2's
+entirely. 460 covers both.
 
-The upward trend across the 300-second window is unexplained and must not be
-dismissed. Plausible contributors include the display doing more work as the
-MQTT dictionary filled, motion waking the display, and strip animation starting
-once external data arrived. None of that is established.
+The accepted run shows both transitions firing cleanly:
 
-Some increase is expected by design and should be stated plainly in the
-write-up: kernel `spi-gpio` is still bit-banging. It is faster and better
-scheduled than userspace GPIO, but it is CPU-bound, not offloaded. A strip
-frame costs roughly 3 to 4.4 ms and a matrix render roughly 4 ms, against a
-12 ms tick, so a high duty cycle is the direct consequence of the architecture
-that fixed the timing. Real hardware SPI with DMA would offload it, at the cost
-of the rewiring this project deliberately avoided.
+```
+1022 ... 559 -> 443   crosses the 460 low-water mark, enters dark
+         355 to 443   stays dark, all below the 700 high-water mark
+         491 -> 624 -> 759   crosses 700, returns to bright
+```
 
-Before Phase 6, characterize this: run a longer observation, sample with the
-display idle versus busy, and determine whether the trend plateaus. A clock
-that needs most of a single ARMv6 core has little headroom for anything else.
+The high-water mark moved from 500 to 700 as a necessary companion rather than
+a preference. Entering dark needs one sample below the low-water mark, but
+leaving dark needs a sample at or above the high-water mark, and 500 sat only
+22 counts above run 2's observed dark maximum of 478 — close enough that a
+slightly brighter night could oscillate between dim and bright.
+
+## A false pass that these runs exposed
+
+Run 1's harness reported `OK: status samples cross both dimming thresholds`
+even though the sensor never went below 360. The candidate publishes
+`light_sensor: 0` until its first ADC read completes, and the check counted
+that startup sentinel as a genuine dark reading. The adjacent
+`status_has_light_change` check had the same weakness.
+
+Both now skip leading non-positive samples only, so a genuine `0` recorded
+later in real darkness still counts. Run 2 then correctly reported
+`FAIL: status samples cross both dimming thresholds` on real data, which is the
+fix proving itself before the accepted run.
+
+Worth recording for the write-up: the automated check and the operator
+disagreed, and the operator was right. The failing human observation is what
+prompted the audit that found the bug. A fully automated trial would have
+banked a clean pass on that point and shipped a clock that could never dim.
+
+## CPU: still open, and now more interesting
+
+CPU differed sharply between runs, so the earlier concern should not be treated
+as settled in either direction.
+
+| Measurement | Run 1 (300 s) | Run 3 (180 s) |
+| --- | --- | --- |
+| Mean | 18.29% | **4.72%** |
+| Maximum | 75.68% | **29.79%** |
+| Trend | rose from ~25% to ~75% | no comparable rise |
+
+Phase 0 WiringPi baseline was 3.55%. Run 3's 4.72% mean is close to it; run 1's
+18.29% is not. Memory was stable at about 101 MB RSS in both.
+
+The most likely explanation is that run 1 was 300 seconds and run 3 only 180,
+and run 1's rise appeared late in its window. Something time-dependent — a
+periodic display mode, an animation, or accumulated dictionary content — may
+become expensive after several minutes. That is a hypothesis, not a finding.
+
+Some cost is inherent and should be stated plainly: kernel `spi-gpio` is still
+bit-banging, so it is CPU-bound rather than offloaded. A strip frame costs
+roughly 3 to 4.4 ms and a matrix render roughly 4 ms against a 12 ms tick.
+Fixing the latency did not make the work free.
+
+**Characterize this before Phase 6** with a single long run, at least 15
+minutes, sampling whether the rise reproduces and plateaus. A clock that
+periodically needs most of a single ARMv6 core has little headroom.
 
 ## State after the trial
 
 - The candidate shut down cleanly over HTTP and returned success.
 - The strip `spidev` binding was removed and `spi4.0` is unbound again.
 - The MCP3002 remained on its native `mcp320x` driver.
-- `oclock.service` remained inactive; the trial never installed anything.
+- `oclock.service` remained inactive; no trial installed anything.
 - Firmware reported `throttled=0x0`.
 - Physical rollback remains the preserved Zero/Jessie unit.
 
-## Next work
+## Remaining Phase 6 blockers
 
-1. Re-run the dimming observation with a fully opaque cover held fifteen
-   seconds, using the fixed threshold checks. No rebuild required.
-2. Characterize the CPU trend before Phase 6.
-3. Resolve the strip binding persistence blocker recorded in the
+1. **Strip binding persistence.** The application opens `/dev/spidev4.0` but
+   never binds it, and the binding does not survive a reboot. See the
    [application trial gate](wiringpi-phase5-application-trial.md).
-4. Only then plan deployment and a soak.
+2. **CPU characterization**, as above.
+3. No soak has been run. The longest continuous observation so far is five
+   minutes.

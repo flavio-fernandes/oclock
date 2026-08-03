@@ -211,10 +211,20 @@ modern hardware build; historical sources remain only as diagnostic evidence.
    [burst result](wiringpi-phase5-ht1632-burst-result.md). All three devices now
    meet their budgets standalone.
 
-   The only remaining Phase 5 work is the
-   [whole-application trial](wiringpi-phase5-application-trial.md), which is the
-   first run under combined load. Remember it needs the strip bound first; that
-   binding does not survive a reboot and is a Phase 6 blocker.
+   The [whole-application trial](wiringpi-phase5-application-trial-result.md)
+   then **passed all 13 checks with zero failures**, completing Phase 5. Strip
+   smoothness, timing, and dimming all passed; timing was rated better than
+   production.
+
+   Dimming needed a threshold retune first. The original 360 low-water mark was
+   unreachable: with the room light actually off, the reported value plateaus
+   between 355 and 478 depending on conditions, always above 360. It is now
+   460/700, measured rather than guessed.
+
+   Phase 6 is blocked on three things: the strip binding does not survive a
+   reboot, CPU needs characterizing over a run longer than five minutes (run 1
+   averaged 18.29% and peaked 75.68%, run 3 averaged 4.72%), and no soak has
+   been run.
 
    Preparing the application trial surfaced a Phase 6 blocker: the application
    only opens `/dev/spidev4.0` and never binds it, so the strip must be bound

@@ -350,7 +350,16 @@ An x86 VM result is never evidence that Pi Zero pulse timing is acceptable.
 
 ### Phase 5: run the Zero W hardware trial
 
-**Status: pure and first mapped target trials failed.** Both 2026-08-02
+**Status: complete.** The whole-application trial passed all 13 checks with
+zero failures on 2026-08-02 at commit `9677a0e`. Strip smoothness, timing, and
+automatic dimming — the three observations that rejected the earlier
+candidates — all passed, with timing rated better than production. See the
+[trial result](wiringpi-phase5-application-trial-result.md). Phase 6 remains
+blocked on strip binding persistence, CPU characterization, and a soak.
+
+The historical record of the failed candidates follows.
+
+**Earlier status: pure and first mapped target trials failed.** Both 2026-08-02
 exact-board runs passed functional display, strip, ADC response, motion, MQTT,
 HTTP, and onboard-Wi-Fi checks, but failed automatic-dimming and
 acceptable-timing observations. The mapped backend was clearly faster, but the

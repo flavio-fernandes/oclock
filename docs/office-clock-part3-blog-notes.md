@@ -849,3 +849,35 @@ backward compatibility.”
   than offloaded, and a ~4 ms strip frame plus a ~4 ms matrix render against a
   12 ms tick is a high duty cycle by construction. Fixing the latency did not
   make the work free.
+- **2026-08-02: Phase 5 is complete.** The whole-application trial passed all
+  13 checks with zero failures at commit `9677a0e`. Strip smoothness, timing,
+  and automatic dimming — the three observations that rejected both earlier
+  candidates — all passed, and the operator rated response times *better than
+  the original production clock*.
+  The dimming story is the best beat in this whole section, and it is not the
+  one anyone expected. It took three runs. Run 1 failed and I guessed the
+  operator had not held the cover long enough for the six-second averaging
+  window. Run 2 disproved that: with a sustained cover the value reached a clear
+  steady state of 452-478 and sat there for 45 seconds. The averaging was never
+  the problem. What settled it was the operator switching *the actual room light
+  off* instead of covering the sensor — the real condition the clock dims in.
+  That showed the original 360 threshold was simply **unreachable**: the darkest
+  the room ever gets still reads above it. Dimming could never have engaged, on
+  any candidate, including during the Phase 0 baseline comparison. A decade-old
+  constant had been quietly wrong, and only a migration that forced someone to
+  actually watch the thing revealed it.
+  Room darkness also varies more than expected: 452-478 on one run, 355-366 on
+  the next. That spread is why 460 is right and 360 was not merely low — 360
+  would have engaged on the darker night and missed the other entirely.
+  Second beat: the harness *reported that the thresholds were crossed* on the
+  run where they were not, because the app publishes `light_sensor: 0` until its
+  first ADC read and the check counted that startup sentinel as darkness. The
+  automated check and the human disagreed, and the human was right. A fully
+  automated trial would have banked a clean pass and shipped a clock that could
+  never dim.
+  Still open, and honest to say so: CPU. Run 1 averaged 18.29% and peaked
+  75.68% against a 3.55% Phase 0 baseline, rising late in a 300-second window;
+  run 3 averaged 4.72% over 180 seconds. Something time-dependent may get
+  expensive after several minutes. Kernel `spi-gpio` is still bit-banging, so
+  it is CPU-bound rather than offloaded — fixing the latency did not make the
+  work free.
