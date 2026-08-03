@@ -1,34 +1,82 @@
 # Development sandbox
 
-The production clock ran on a Raspberry Pi Zero with Raspbian 8 (Jessie).
-The practical modern equivalent for development on the Intel Mac mini is a
-Debian 12 (Bookworm) Incus VM:
+The production clock ran on a Raspberry Pi Zero with Raspbian 8 (Jessie). The
+modern clock runs Raspberry Pi OS Lite 32-bit, which is Debian 13 (Trixie), so
+the development sandbox is a **Debian 13 Trixie** Incus instance:
 
 ```sh
-incus launch images:debian/12/cloud oclock-dev --vm \
-  --device root,size=12GiB \
+incus launch images:debian/13 oclock-gpiod-v2 \
   --config limits.cpu=2 \
   --config limits.memory=2GiB
 
-incus exec oclock-dev -- cloud-init status --wait
-incus exec oclock-dev -- bash -lc \
-  'apt-get update && apt-get install -y build-essential git libevent-dev libmosquitto-dev libmosquittopp1 valgrind gdb curl ca-certificates pkg-config device-tree-compiler'
+incus exec oclock-gpiod-v2 -- bash -lc \
+  'apt-get update && apt-get install -y build-essential git pkg-config \
+   libevent-dev libmosquitto-dev libgpiod-dev \
+   device-tree-compiler valgrind shellcheck gdb curl ca-certificates'
 ```
 
-Copy a local checkout into the VM and build it:
+## Why Trixie specifically, and not Bookworm
+
+This is not a preference. **Debian 12 Bookworm cannot build the hardware
+profile at all.** Its newest `libgpiod-dev` is 1.6.3, which is the v1 API, and
+`make hardware-preflight` correctly rejects anything that is not `2.*`:
+
+```
+error: libgpiod v2 development files are required
+```
+
+Trixie supplies libgpiod **2.2.1**, the exact version on the clock, and GCC
+**14.2.0**, also the version on the clock. Matching those two is most of the
+value of this sandbox.
+
+## What only this environment catches
+
+`make test` passes without libgpiod at all, because every test target builds
+against `fakeGpio`. That means **nothing in the test suite ever compiles
+`src/gpio/gpiodV2Gpio.cpp`** — the real GPIO backend. Neither does
+`check-arm-warnings`, which also uses the fake.
+
+So `make hardware` here is the only check of that file short of building on the
+Pi. Run it before pushing anything that touches `src/gpio/`:
 
 ```sh
-incus file push --recursive oclock.git oclock-dev/root/
-incus exec oclock-dev -- chown -R root:root /root/oclock.git
-incus exec oclock-dev -- bash -lc 'cd /root/oclock.git && make sandbox && make test'
+incus exec oclock-gpiod-v2 -- bash -lc 'cd /root/oclock.git && make hardware'
 ```
+
+## Syncing a checkout in
+
+`incus file push --recursive` has been unreliable for whole trees; piping a tar
+of the tracked files is faster and avoids pushing `build/` and `.git/`:
+
+```sh
+git ls-files -z | tar --null -T - -cf - \
+  | incus exec oclock-gpiod-v2 -- bash -c \
+      'mkdir -p /root/oclock.git && tar -C /root/oclock.git -xf -'
+
+incus exec oclock-gpiod-v2 -- bash -lc \
+  'cd /root/oclock.git && make sandbox && make test'
+```
+
+`tar` may warn that timestamps are in the future; that is clock skew between
+host and instance and is harmless.
+
+## Container or VM
+
+A container is enough and is what the commands above create. One limitation is
+worth knowing: an unprivileged container cannot `mknod`, so a test needing a
+real character device must symlink `/dev/null` instead —
+[`tests/strip-binding.sh`](../tests/strip-binding.sh) does exactly that. Add
+`--vm` if you want that restriction lifted, at the cost of a heavier instance.
+
+## What the sandbox cannot tell you
 
 The sandbox binary uses `src/gpio/fakeGpio.cpp` through the project-owned GPIO
 interface; it exercises the application, threading, HTTP, MQTT client,
 rendering logic, and clean shutdown without touching GPIO or linking WiringPi.
-The VM is x86-64, while the original Pi Zero is ARMv6 and its GPIO devices and
-bit-bang timing are not virtualized. A final hardware build and
-electrical/timing test must therefore still run on a Raspberry Pi:
+The instance is x86-64, while the clock is ARMv6, and its GPIO devices and
+bit-bang timing are not virtualized. Every timing conclusion in this project
+came from the real board for that reason. A final hardware build and
+electrical/timing test must still run on the Pi:
 
 ```sh
 make hardware
