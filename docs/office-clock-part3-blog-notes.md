@@ -707,3 +707,18 @@ backward compatibility.”
   power cut, so a persistence mechanism (udev rule, ordered systemd unit, or a
   Device Tree change) must be designed and reviewed before deployment. The fix
   must not be to give the application privilege to bind its own device.
+- **2026-08-02:** The HT1632 render gate **failed on timing**, and that failure
+  is the useful part. Content was perfect (even green then red stripes across
+  all 16 chips, ending dark), but 0 of 20 forced full rewrites met the 12 ms
+  tick: 18.9 ms minimum, 19.2 ms mean, 21.5 ms maximum. Working backward from
+  roughly 7,100 GPIO writes per full rewrite gives about 2.7 microseconds per
+  write, which is the same per-edge abstraction cost that defeated the strip
+  before it moved to kernel SPI.
+  The obvious objection is that `render()` is dirty-tracked, so production
+  might rarely pay this. It does pay it: the clock update path calls `clear()`
+  before redrawing, and `clear()` sets the buffer's global rewrite flag. So an
+  ordinary clock tick already costs a full rewrite. This is the gate doing its
+  job — it was written to ask "does the matrix still need a bulk transport now
+  that the strip left the GPIO path?" and it answered yes, with a number, before
+  any code was written. Good article beat: measure before you build, and be
+  willing to have the measurement say "build it after all."

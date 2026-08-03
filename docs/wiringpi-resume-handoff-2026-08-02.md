@@ -194,12 +194,18 @@ modern hardware build; historical sources remain only as diagnostic evidence.
    the existing arbitrary-pin wiring is no longer an open question, and the
    production speed has been promoted to 2 MHz.
 
-   Still do not run the full application. Remaining Phase 5 work is the
-   [HT1632 render gate](wiringpi-phase5-ht1632-render.md), which measures the
-   existing matrix path before deciding whether a bulk transport is needed at
-   all, and then the
-   [whole-application trial](wiringpi-phase5-application-trial.md). Both are
-   written, built, and attended-ready; neither has been run.
+   Still do not run the full application. The
+   [HT1632 render gate](wiringpi-phase5-ht1632-render-result.md) ran on
+   2026-08-02 and **failed on timing**: 0 of 20 forced full rewrites met the
+   12 ms tick, mean 19,164 microseconds, about 2.7 microseconds per GPIO write.
+   Content was correct and the operator confirmed even stripes.
+
+   That failure is not an artificial worst case. `src/displayInternal.cpp`
+   updates the clock with `clear()` plus a redraw, and `clear()` sets the
+   buffer's global rewrite flag, so an ordinary clock update already pays the
+   full-rewrite cost. The narrow bulk mmap transport is therefore justified by
+   measurement. Implement it, re-run the same gate, and only then run the
+   [whole-application trial](wiringpi-phase5-application-trial.md).
 
    Preparing the application trial surfaced a Phase 6 blocker: the application
    only opens `/dev/spidev4.0` and never binds it, so the strip must be bound

@@ -1,5 +1,14 @@
 # Phase 5 guarded HT1632 render gate
 
+## Status
+
+Ran on 2026-08-02 and **failed on timing**: 0 of 20 renders met the 12 ms tick,
+with a 19,164-microsecond mean. Content and rollback checks all passed and the
+operator confirmed even stripes. The measurement justifies building the bulk
+transport. See the [render result](wiringpi-phase5-ht1632-render-result.md).
+
+Re-run this same gate after the bulk transport is implemented.
+
 ## Why measure before building a new transport
 
 The migration plan reserved a "narrow bulk mmap transport" for the matrix. That
