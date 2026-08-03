@@ -49,7 +49,7 @@ The selected next architecture is mixed:
 | Motion sensor | libgpiod v2 input | 10 | Implemented and functionally tested |
 | LPD8806 strip | kernel `spi-gpio` plus explicit `spidev` binding | clock 20, data 21 | Accepted at 2 MHz on both timing (25/25 all-off frames inside 12 ms, 3.001 ms median) and colored correctness (uniform RGB, 4.424 ms worst frame); production speed promoted to 2 MHz |
 | MCP3002 ADC | second `spi-gpio` plus native `mcp320x`/IIO | clock 17, MISO 27, MOSI 22, CS 4 | Native reads and controlled covered response accepted; thresholds retained pending room trial |
-| HT1632 matrix | narrow bulk mmap transport | CS 6, WR 13, data 19, select clock 26 | Selected direction; not implemented |
+| HT1632 matrix | narrow bulk mmap transport | CS 6, WR 13, data 19, select clock 26 | Justified by measurement, not yet implemented: the existing per-edge path renders correct content but takes 19.2 ms against a 12 ms tick (0/20 in budget) |
 
 The 2026-08-02 read-only kernel-SPI run established that the exact Zero W
 kernel has the SPI core, `spi-gpio`, and `spidev`, and that all office-clock
