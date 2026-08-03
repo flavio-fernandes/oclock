@@ -164,7 +164,10 @@ remains.
 - The candidate shut down cleanly over HTTP and returned success.
 - The strip `spidev` binding was removed and `spi4.0` is unbound again.
 - The MCP3002 remained on its native `mcp320x` driver.
-- `oclock.service` remained inactive; no trial installed anything.
+- `oclock.service` remained inactive; no trial installed anything. **This
+  describes the end of the trial, not the present:** the service and its
+  companion `oclock-strip-spi.service` are now both installed, enabled, and
+  running.
 - Firmware reported `throttled=0x0`.
 - Physical rollback remains the preserved Zero/Jessie unit.
 

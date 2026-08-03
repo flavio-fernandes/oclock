@@ -85,5 +85,11 @@ remaining Phase 5 work is the
 first run under real load and the first chance to judge the retained 360/500
 light thresholds against representative room light.
 
-The strip `spidev` binding persistence question remains a separate Phase 6
-blocker.
+**Both of those resolved.** The trial
+[passed 13 of 13](wiringpi-phase5-application-trial-result.md), and the light
+thresholds did not survive contact with a genuinely dark room: 360 turned out
+to be unreachable on this unit, and they are now the measured 460/700.
+
+~~The strip `spidev` binding persistence question remains a separate Phase 6
+blocker.~~ **Closed 2026-08-03**; see
+[the binding persistence gate](wiringpi-phase6-binding-persistence.md).

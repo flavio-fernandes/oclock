@@ -87,8 +87,10 @@ Record these honestly before treating 2 MHz as settled:
 - The measurement covers `show()` only. It excludes the HT1632 matrix work, ADC
   reads, and the rest of the application tick, so it is a necessary but not
   sufficient condition for meeting the cadence in production.
-- The production factory remains at 1 MHz. `OCLOCK_STRIP_SPEED_HZ` was
-  overridden only for the separately named helper.
+- The production factory remained at 1 MHz at the moment this gate ran;
+  `OCLOCK_STRIP_SPEED_HZ` was overridden only for the separately named helper.
+  **On this evidence it was then promoted to 2 MHz**, which is the current
+  production value in `src/spi/StripSpeed.h`.
 - Frames were issued as sequential process invocations, not from the
   application's timer thread under real scheduling pressure.
 

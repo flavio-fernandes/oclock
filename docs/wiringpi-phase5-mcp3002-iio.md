@@ -31,8 +31,10 @@ for both channels. It never assumes `iio:device0` or a dynamic SPI bus number.
 Reads accept only strict decimal values from 0 through 1023.
 
 `LightSensor` still reads both channels every 600 ms, averages each pair, and
-retains the ten-sample moving average and existing 360/500 hysteresis
-thresholds. This transport change deliberately does not recalibrate dimming.
+retains the ten-sample moving average. This transport change deliberately did
+not recalibrate dimming, so it kept the existing 360/500 hysteresis thresholds.
+They were later replaced with a measured **460/700** — see the note at the end
+of this document.
 
 ## Build boundary
 
@@ -69,5 +71,12 @@ uncovered again. It reports channels separately and does not change thresholds.
 
 That capture passed; see the
 [controlled light result](wiringpi-phase5-mcp3002-calibration-result.md). It
-proves a strong covered/uncovered response and preserves the existing
+proves a strong covered/uncovered response and preserved the existing
 thresholds pending representative-room observation in a later application gate.
+
+That observation happened during the
+[whole-application trial](wiringpi-phase5-application-trial-result.md) and
+changed the answer. A covered sensor reads far darker than a dark room: the
+covered average here was 179.0, while the room with its light actually off
+plateaus between 355 and 478. The original 360 low-water mark was therefore
+unreachable in practice, and the thresholds are now the measured **460/700**.

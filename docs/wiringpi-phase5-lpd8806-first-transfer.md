@@ -22,7 +22,9 @@ but exceeds the existing 12 ms application tick. The repeatable
 rejected that speed after 0/25 frames met the budget. The next guarded
 [2 MHz experiment](wiringpi-phase5-lpd8806-2mhz-experiment.md) reuses the same
 frame and rollback boundaries while exercising the running kernel's undelayed
-`spi-gpio` path. The normal application remains at 1 MHz pending that result.
+`spi-gpio` path. The normal application remained at 1 MHz pending that result. **That
+experiment passed and production is now 2 MHz**; see the
+[2 MHz result](wiringpi-phase5-lpd8806-2mhz-result.md).
 
 ## Scope
 

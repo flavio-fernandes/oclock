@@ -41,7 +41,9 @@ The two raw values prove that both IIO attributes are readable independently
 and remain in the MCP3002's 10-bit range. Their average is 1014 using the
 application's integer averaging rule. This single ambient sample is far above
 the existing 360/500 dimming hysteresis thresholds and is consistent with the
-earlier observation that automatic dimming never engaged.
+earlier observation that automatic dimming never engaged. (Those thresholds
+were later replaced with a measured 460/700; this sample sits far above either
+pair, so the reasoning here is unaffected.)
 
 It is not enough to distinguish room conditions, sensor orientation, channel
 behavior, or a calibration issue. Do not change thresholds from this sample.

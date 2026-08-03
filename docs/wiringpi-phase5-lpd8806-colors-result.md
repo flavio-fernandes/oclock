@@ -68,11 +68,15 @@ a single strip frame at 2 MHz.
 
 - Only uniform full-strip colors were tested. Per-pixel patterns, gradients,
   and animation transitions have not yet been driven through this path.
+  **Since closed:** the whole-application trial drove real animations through
+  it, and the operator later ran a continuous strip animation for hours.
 - Half brightness was used. Full brightness across all 240 pixels remains
   untested and is a larger simultaneous current draw.
 - The sequence was standalone. It did not run under the application's timer
   thread, alongside matrix updates and ADC reads.
 - Four frames is not a soak. Sustained animation behavior is still unproven.
+  **Since closed:** an 8 h 53 min unattended run followed; see
+  [the overnight soak result](wiringpi-phase6-overnight-soak-result.md).
 
 ## Next work
 

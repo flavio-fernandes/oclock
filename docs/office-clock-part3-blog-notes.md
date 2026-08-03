@@ -7,7 +7,7 @@ This is the living source notebook for a future follow-up to
 The likely article is “Office Clock Project Part 3” or “Modernizing the Office
 Clock a Decade Later,” but the final title is deliberately undecided.
 
-Update this file whenever PR 3 changes the migration decision, installation
+Update this file whenever the project changes the migration decision, installation
 procedure, hardware result, dependency set, deployment state, or rollback
 story. Do not rely on chat history alone. Keep facts in these categories:
 
@@ -167,7 +167,9 @@ historical article.
 ## Old and new installation comparison
 
 This table should become the installation centerpiece of the eventual post.
-Update the final column only after Phase 6 acceptance.
+Update the final column only after Phase 6 acceptance. Phase 6's blocking
+items passed on 2026-08-03, so rows that were waiting on a tested value now
+carry one; rows still marked as open are genuinely open.
 
 | 2016 Part 2 step | Modern status | Follow-up instruction |
 | --- | --- | --- |
@@ -179,12 +181,38 @@ Update the final column only after Phase 6 acceptance.
 | Edit `wpa_supplicant.conf`; run `ifdown`/`ifup` | Obsolete on selected image | Use Trixie's NetworkManager flow; document the final headless provisioning commands after cold-boot validation |
 | Clone WiringPi from `git.drogon.net`; run `./build` | Not needed for the modern build | Keep it only on the preserved Jessie rollback unit; the current tree no longer supports a WiringPi target |
 | Install only `git libevent-dev` | Insufficient now | Install modern compiler/build, MQTT, GPIO, and overlay dependencies listed below |
-| Clone branch `rpi-0.1.y` | Historical reproducibility branch | Link the merged modernization release/tag after PR 3 and deployment are complete |
+| Clone branch `rpi-0.1.y` | Historical reproducibility branch for Part 2 | The direct equivalent is **`rpi-2.0.y`**, created the same way and for the same reason: a stable line the article can point at that can still take bugfixes. Tell readers to clone `rpi-2.0.y`, not `master`. Cite **`v2.0.0`** alongside it when an exact, immutable state matters |
 | Plain `make` | Now selects the modern Zero W profile | Build with `make` or `make hardware`; transport selector variables are retired |
-| Copy unit to `/lib/systemd/system` | Works historically, final path TBD | Prefer the packaged/reviewed unit and `systemctl`; record exact install path used on Trixie |
+| Copy unit to `/lib/systemd/system` | Verified: `/usr/lib/systemd/system` on Trixie | Install **two** units there and `systemctl enable` both: `oclock.service` and `oclock-strip-spi.service`. They were placed alongside the existing unit rather than shadowing it from `/etc/`; mention that `/etc/systemd/system` is the more conventional choice for local units and that this was a deliberate consistency call |
 | Root/setuid executable | No longer a compiler side effect | The Makefile does not chown or setuid; define and test final service identity/device permissions separately |
 | Software-bit-bang every peripheral | Too expensive through pure libgpiod | Use subsystem-specific transports: libgpiod, kernel SPI, and a narrow matrix bulk path |
 | Repeated manual command/result relay | Replaced for development | Optional OpenSSH over Tailscale with a dedicated source-restricted key; not required by the application |
+
+### Modern steps with no 2016 counterpart
+
+The table above maps old steps to new ones, but the modern install has three
+steps the 2016 article had no reason to mention. Leaving them out would make
+the follow-up unreproducible, and they are the genuinely new part of the story.
+
+1. **Install and enable the Device Tree overlay.** Copy
+   `oclock-spi.dtbo` to `/boot/firmware/overlays/` and add one line,
+   `dtoverlay=oclock-spi`, to `/boot/firmware/config.txt`. This is what creates
+   the two `spi-gpio` controllers on the existing arbitrary pins. Use
+   [`misc/managePhase5SpiOverlay.sh`](../misc/managePhase5SpiOverlay.sh), which
+   pins the overlay checksum, keeps a byte-identical backup of `config.txt`,
+   and deliberately does not reboot for you.
+2. **Install the strip binding unit.** The strip's Device Tree child carries a
+   project-owned compatible that no in-tree driver claims, so `/dev/spidev*`
+   does not exist until something binds it. `oclock-strip-spi.service` does
+   that at boot, and `oclock.service` `Requires=` it.
+3. **Nothing for the ADC.** Worth stating explicitly because it is the happy
+   case: the MCP3002 is claimed automatically by the kernel's own `mcp320x`
+   driver and appears under IIO with no binding step at all. The contrast
+   between the two devices — one that the kernel adopts on sight and one that
+   needs an explicit override — is the clearest illustration in the whole
+   project of what "use a proper kernel subsystem" does and does not buy you.
+
+A reboot is required after step 1. Steps 2 and 3 need none.
 
 ## Installation details to preserve now
 
@@ -366,8 +394,9 @@ than a process, and an `ExecStop` that reverses it.
 
 The existing service runs as root because no `User=` or `Group=` is set. The
 legacy executable is root-owned and owner-setuid. The current Makefile no
-longer applies ownership or setuid changes during compilation, but PR 3 has not
-yet selected a new service identity or completed privilege hardening.
+longer applies ownership or setuid changes during compilation, but the
+migration has not yet selected a new service identity or completed privilege
+hardening.
 
 Before the final post, decide and verify whether the Trixie service needs:
 
@@ -574,7 +603,21 @@ tested command or file before drafting the article:
 - [ ] Service trimming (Phase 7) with before/after measurements. The before
   measurement now exists: a 2 min 24.8 s boot, `NetworkManager` 59.6 s,
   `cloud-init` 21.6 s.
-- [ ] Merged commit, release/tag, and stable source links for the article.
+- [x] Merged commit, release/tag, and stable source links for the article.
+  Squash-merged to `master` on 2026-08-03, tagged
+  [`v2.0.0`](https://github.com/flavio-fernandes/oclock/releases/tag/v2.0.0),
+  and branched as `rpi-2.0.y`. The annotated tag carries the release notes,
+  including an explicit "not claimed" section.
+
+  **Which reference to use where.** The article should point at the branch
+  `rpi-2.0.y`, exactly as Part 2 pointed at `rpi-0.1.y` — that is what lets a
+  reader clone something that still receives fixes. Use the `v2.0.0` tag when
+  the text depends on an exact state, such as a measurement or a file that may
+  later change. Do not send readers to `master`, which will move. The
+  development branch `agent/plan-wiringpi-migration` is preserved because the
+  squash merge collapsed 67 commits, so it is the only place the
+  commit-by-commit narrative survives; it is a source for writing the article,
+  not something to cite in it.
 
 ## Migration chronology and evidence
 
@@ -902,6 +945,16 @@ longer links WiringPi; the repository and original recovery unit retain it for
 backward compatibility.”
 
 ## Source map for the future author
+
+**Where the code lives**, mirroring the convention Part 2 established:
+
+| Reference | What it is | Use it for |
+| --- | --- | --- |
+| `rpi-0.1.y` | The Part 2 line: Pi Zero, Jessie, WiringPi | Historical comparison only |
+| `rpi-2.0.y` | The Part 3 line: Zero W, Trixie, libgpiod plus kernel SPI | **What the article tells readers to clone** |
+| `v2.0.0` | Annotated tag on the squash merge | Citing an exact state: measurements, file contents |
+| `master` | Moves | Nothing in the article |
+| `agent/plan-wiringpi-migration` | The 67 pre-squash commits, preserved | Writing the article, not citing in it |
 
 - Overall plan: [`wiringpi-migration.md`](wiringpi-migration.md)
 - **Make target reference** (what every build and test target does, and which are opt-in): [`development.md`](development.md#make-targets)
@@ -1244,3 +1297,39 @@ backward compatibility.”
   the assertions that now matter: that `oclock.service` keeps `Requires=` on
   the binding unit, that the binding unit cannot be silently skipped by a
   `Condition`, and that the boot binder never hard-codes a bus number.
+
+- **2026-08-03 (staleness audit):** Swept all 44 documents for claims that were
+  true when written and are not true now. Fourteen files needed correcting.
+
+  The worst was an internal contradiction: the resume handoff said the
+  thresholds were retuned to 460/700 in one paragraph and "preserve the 360/500
+  thresholds" in another. Both sentences were written the same day.
+
+  The pattern worth noting for the article is that **result documents age badly
+  in a specific way**: they end with a "next steps" or "limits of this
+  evidence" section, that work then gets done, and the closing section quietly
+  becomes false while the measurements above it stay true. Six documents had
+  exactly this shape. The fix throughout was to leave the original text and
+  append what actually happened, rather than rewrite history — a reader should
+  be able to see that the caution was reasonable *and* how it resolved.
+
+  `wiringpi-modern-build-policy.md` was the most consequential: its safety
+  boundary still said the whole application "must not run yet" and that
+  `oclock.service` "must stay inactive," which is policy language a future
+  reader could act on. It now separates what has been satisfied from what still
+  genuinely binds — no wiring change, no privilege change, rollback unrehearsed.
+
+  The audit also surfaced a requirement the plan set and nobody had closed:
+  "this table must become an executable pin-map test." It hadn't. It does now,
+  split across two files because the pins themselves split during the
+  migration — seven still live in application source and are asserted by
+  `tests/compatibility.sh`, while the MCP3002's four moved into the Device Tree
+  and are asserted against the merged overlay by `tests/spi-overlay.sh`. All
+  eleven BCM numbers are now checked, so "no existing wire moves" fails on a
+  laptop rather than on the clock. Six pin mutations were confirmed to fail it.
+
+  The installation comparison table gained the modern steps that have no 2016
+  counterpart, which were simply missing: installing and enabling the overlay,
+  installing the strip binding unit, and — worth saying out loud because it is
+  the contrast that makes the point — doing nothing at all for the ADC, which
+  the kernel claims on sight.

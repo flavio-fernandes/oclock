@@ -2,6 +2,22 @@
 
 ## Status and decision
 
+**Where this stands as of 2026-08-03.** Phases 0 through 5 are complete and
+Phase 6's blocking items are done. The modern stack runs the real Office Clock
+on the Zero W, starts itself at boot, and has held an 8 h 53 min unattended
+soak at zero restarts. Phase 7 has not started.
+
+| Still open | Why it is not a gate |
+| --- | --- |
+| Rollback rehearsal | The Zero/Jessie unit is preserved and powered off; swapping it back has never been practiced |
+| Hard power-cut recovery | Only a clean reboot has been tested |
+| Multi-day observation | Nine hours is the longest run |
+| Service trimming (Phase 7) | Deferred deliberately; a before measurement now exists |
+| Final service identity and device permissions | Never in scope for this migration |
+
+None of those require code changes. They require elapsed time, a physical
+swap, and a separate hardening decision.
+
 Phase 0 and Phase 1 preserve the original Zero/Jessie production baseline and
 are recorded in the [production baseline](wiringpi-phase0-baseline.md) and
 [GPIO interface report](wiringpi-phase1-interface.md). Phases 2 through 4
@@ -13,8 +29,8 @@ system. See the [retarget decision](wiringpi-zero-w-retarget.md).
 The migration removes WiringPi from the supported current-tree hardware build.
 The original Raspberry Pi Zero is protected as a complete physical rollback
 unit rather than by requiring the modern branch to rebuild its Jessie stack.
-The separate Zero W must still be proven on the same wiring and electrical
-load before deployment.
+The separate Zero W has now been proven on the same wiring and electrical load:
+not one wire moved, and the whole application passed its trial and runs on it.
 
 Keep the future public narrative synchronized with the living
 [Office Clock follow-up blog notes](office-clock-part3-blog-notes.md). Update
@@ -76,6 +92,15 @@ installation, and physical rollback gates remain mandatory.
 `wiringPiSetupGpio()` means every number below is a Broadcom GPIO number, not a
 physical header-pin number. This table records the source as of this plan and
 must become an executable pin-map test before backend work begins.
+
+**That test now exists, split across two files** because the pins themselves
+split during the migration. The seven still defined in application source —
+the four matrix pins, both strip pins, and motion — are asserted by
+[`tests/compatibility.sh`](../tests/compatibility.sh). The MCP3002's four moved
+into the Device Tree when the ADC became a native IIO device and are asserted
+against the merged overlay by [`tests/spi-overlay.sh`](../tests/spi-overlay.sh)
+(`make test-spi-overlay`). Between them all eleven numbers below are checked,
+so "no existing wire moves" fails on a laptop rather than on the clock.
 
 | Device | Signal | BCM GPIO | Current direction | Source |
 | --- | --- | ---: | --- | --- |
@@ -421,15 +446,22 @@ the 1 MHz profile: all frames were valid and visually safe, but 0/25 met the
 budget (20,473 microseconds median; 24,722 microseconds at the 95th
 percentile). The full application must not run yet. A guarded 2 MHz all-off
 experiment will test the running kernel's undelayed `spi-gpio` path without
-rewiring or changing the live overlay. Its
+rewiring or changing the live overlay. **That experiment passed**, production
+moved to 2 MHz, and the full application has since run; see the
+[2 MHz result](wiringpi-phase5-lpd8806-2mhz-result.md) and the
+[trial result](wiringpi-phase5-application-trial-result.md). Its
 [MCP3002/IIO path](wiringpi-phase5-mcp3002-iio.md) is now implemented without
 requesting the overlay-owned ADC GPIOs. Its guarded
 [exact-board first read](wiringpi-phase5-mcp3002-iio-result.md) passed 13 checks
 and preserved all hardware/service state. The subsequent
 [controlled light capture](wiringpi-phase5-mcp3002-calibration-result.md)
 recorded a 997.3 uncovered mean, 179.0 fully covered mean, and 995.0 restored
-mean. The 360/500 thresholds remain unchanged until representative room-light
-behavior can be observed during a later guarded application run.
+mean. The 360/500 thresholds remained unchanged at that point, pending
+representative room-light behavior during a later guarded application run.
+**That run happened and changed them to a measured 460/700**: with the room
+light actually off the sensor only falls to 355-478, so the original 360
+low-water mark was unreachable. See
+[the trial result](wiringpi-phase5-application-trial-result.md).
 
 Run every follow-up modern transport profile on the Zero W and compare it with
 Phase 0, Phase 1, and protocol-trace evidence from the preserved Zero/Jessie
