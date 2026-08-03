@@ -2,9 +2,14 @@
 
 ## Status
 
-Not yet run. This is the last Phase 5 gate and the first time the modern
-application drives the real clock. It must not be started until the strip and
-matrix gates have passed and an operator is present.
+Ran on 2026-08-02: **12 checks passed, one failed.** Strip smoothness and
+timing — the two observations that rejected both earlier candidates — passed,
+with timing rated better than production. Dimming failed, most likely because
+the cover was not held long enough for the six-second averaging window. See the
+[trial result](wiringpi-phase5-application-trial-result.md).
+
+The trial also exposed a false pass in the harness: a startup `light_sensor: 0`
+sentinel satisfied the dark-threshold check. Fixed.
 
 ## Prerequisite discovered while preparing this gate
 

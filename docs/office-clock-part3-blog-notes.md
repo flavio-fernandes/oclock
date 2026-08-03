@@ -828,3 +828,24 @@ backward compatibility.”
   The equivalence test that compares 15,044 edges between both paths, and which
   fails at edge 0 when CS and WR are swapped, is the real deliverable of that
   change.
+- **2026-08-02:** The whole application ran on the real clock for the first
+  time: **12 checks passed, one failed.** The two observations that rejected
+  both earlier candidates — strip smoothness and timing — passed, and the
+  operator rated response times *better than the original production clock*.
+  Display, motion, MQTT, onboard Wi-Fi, and clean HTTP shutdown all passed.
+  The failure was dimming, and the arithmetic suggests test execution rather
+  than a defect: the reported light value is a rolling mean of ten samples taken
+  every 600 ms, so crossing 360 from a 1022 baseline needs eight dark samples,
+  about 4.8 seconds of *fully covered* sensor. The observed minimum of 403
+  corresponds to roughly seven. Retest before touching the thresholds.
+  Two things worth telling readers. First, the harness reported that the
+  dimming thresholds *were* crossed, because the candidate publishes
+  `light_sensor: 0` until its first ADC read and the check counted that startup
+  sentinel as darkness. The automated check and the human disagreed, and the
+  human was right; the failing observation is what prompted the audit that found
+  the bug. Second, CPU is now a real open question: mean 18.29% and peak 75.68%
+  against a 3.55% Phase 0 baseline, rising across the window. Some of that is
+  inherent — kernel `spi-gpio` is still bit-banging, so it is CPU-bound rather
+  than offloaded, and a ~4 ms strip frame plus a ~4 ms matrix render against a
+  12 ms tick is a high duty cycle by construction. Fixing the latency did not
+  make the work free.

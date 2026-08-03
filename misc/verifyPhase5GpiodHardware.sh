@@ -505,14 +505,30 @@ status_has_motion_transition()
 }
 status_has_light_change()
 {
-    [[ $(awk '/^light_sensor: / { print $2 }' "${status_samples}" | sort -u | wc -l) -ge 2 ]]
+    # Same startup sentinel: 0 followed by one constant reading is not a
+    # changing light value.
+    [[ $(awk '/^light_sensor: / {
+        value = $2 + 0
+        if (!started) { if (value <= 0) next; started = 1 }
+        print value
+    }' "${status_samples}" | sort -u | wc -l) -ge 2 ]]
 }
 status_crosses_light_thresholds()
 {
+    # The candidate reports light_sensor 0 until its first ADC read completes.
+    # Counting that startup sentinel as darkness made this check pass on a
+    # trial where the sensor never actually dropped below the dark threshold.
+    # Skip leading non-positive samples only, so a genuine 0 in real darkness
+    # later in the run still counts.
     awk -v dark="${dark_threshold}" -v bright="${bright_threshold}" '
         /^light_sensor: / {
-            if ($2 < dark) saw_dark = 1
-            if ($2 >= bright) saw_bright = 1
+            value = $2 + 0
+            if (!started) {
+                if (value <= 0) next
+                started = 1
+            }
+            if (value < dark) saw_dark = 1
+            if (value >= bright) saw_bright = 1
         }
         END { exit !(saw_dark && saw_bright) }
     ' "${status_samples}"
