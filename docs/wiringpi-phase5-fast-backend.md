@@ -134,7 +134,7 @@ The binary must be 32-bit ARM EABI5, resolve `libgpiod.so.3` and
 Preserve the binary and checksum outside `/tmp` before transferring the
 harness. The accepted candidate above has already satisfied this requirement.
 
-Run the updated `misc/verifyPhase5GpiodHardware.sh` with that exact binary,
+Run the updated `misc/junk/wiringpi-migration/verifyPhase5GpiodHardware.sh` with that exact binary,
 commit, and checksum. The verifier now requires `/dev/gpiomem`, rejects a pure
 libgpiod binary, samples interval CPU and HTTP latency, uses a 90-second
 window, and requires sustained sensor values on both sides of the existing

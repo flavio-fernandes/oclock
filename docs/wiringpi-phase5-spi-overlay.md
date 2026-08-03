@@ -45,7 +45,7 @@ git archive FETCH_HEAD | tar -x -C "${spi_overlay_dir}"
 cd "${spi_overlay_dir}"
 
 make spi-overlay
-sudo misc/verifyPhase5SpiOverlayDryRun.sh \
+sudo misc/junk/wiringpi-migration/verifyPhase5SpiOverlayDryRun.sh \
   --overlay hardware/oclock-spi-overlay.dts
 
 printf 'spi_overlay_commit=%s\nspi_overlay_dir=%s\n' \

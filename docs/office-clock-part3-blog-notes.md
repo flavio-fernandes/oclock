@@ -890,6 +890,7 @@ backward compatibility.”
 - Boot binder unit: [`misc/oclock-strip-spi.service`](../misc/oclock-strip-spi.service)
 - Clock service unit: [`misc/oclock.service`](../misc/oclock.service)
 - Binder offline tests: [`tests/strip-binding.sh`](../tests/strip-binding.sh)
+- **Retired gate tooling and what each file proved**: [`misc/junk/wiringpi-migration/CATALOG.md`](../misc/junk/wiringpi-migration/CATALOG.md)
 - Remote maintenance access: [`oclock-remote-access.md`](oclock-remote-access.md)
 - Modern build policy: [`wiringpi-modern-build-policy.md`](wiringpi-modern-build-policy.md)
 - Target selection rationale: [`wiringpi-phase3-target-selection.md`](wiringpi-phase3-target-selection.md)
@@ -1170,3 +1171,27 @@ backward compatibility.”
   What must still not be written as done: rollback has not been rehearsed, a
   hard power cut has not been tested, and nothing has run for days or weeks.
   Say "it comes back on its own after a reboot," not "it survives a power cut."
+
+- **2026-08-03 (cleanup):** Retired the spent migration tooling. Twenty-one
+  files — eight evidence collectors, eight guarded gate verifiers, the
+  superseded binding helper, and four standalone measurement programs — moved
+  to [`misc/junk/wiringpi-migration/`](../misc/junk/wiringpi-migration/CATALOG.md)
+  with a catalog recording what each one proved and which result document holds
+  its numbers. The five `make phase5-*` targets were removed and the four gate
+  procedure documents now carry a banner saying so, since their command
+  sequences no longer run.
+
+  What stayed in `misc/` is the useful distinction for the article: the boot
+  binder and its unit (live), the overlay manager (any new SD card needs it),
+  the Tailscale bootstrap (maintenance access), and the animation and test
+  scripts that predate this whole project.
+
+  `tests/compatibility.sh` was rewritten rather than repointed. It had grown a
+  long tail of assertions about one-shot gate scripts — checking that a
+  collector contained no GPIO command, that a verifier prompted for the right
+  confirmation word. Those were valuable while the gates were live and are
+  noise now. It asserts nothing about the retired directory, so that directory
+  can be deleted with a plain `git rm` and nothing else. In its place it gained
+  the assertions that now matter: that `oclock.service` keeps `Requires=` on
+  the binding unit, that the binding unit cannot be silently skipped by a
+  `Condition`, and that the boot binder never hard-codes a bus number.

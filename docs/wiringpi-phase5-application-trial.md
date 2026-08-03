@@ -51,7 +51,7 @@ gate with its own rollback.
 
 ## Scope
 
-The existing [`verifyPhase5GpiodHardware.sh`](../misc/verifyPhase5GpiodHardware.sh)
+The existing [`verifyPhase5GpiodHardware.sh`](../misc/junk/wiringpi-migration/verifyPhase5GpiodHardware.sh)
 trial harness is transport-agnostic: it validates target identity, starts the
 candidate, samples HTTP status, checks light values and dimming thresholds,
 collects CPU and memory, and asks the operator for visual observations. It is
@@ -70,14 +70,14 @@ Confirm the overlay is active, the ADC is on `mcp320x`, and the service is
 inactive. Then bind the strip for the duration of the trial:
 
 ```sh
-sudo misc/managePhase5Lpd8806Binding.sh status
-sudo misc/managePhase5Lpd8806Binding.sh bind --confirm BIND
+sudo misc/junk/wiringpi-migration/managePhase5Lpd8806Binding.sh status
+sudo misc/junk/wiringpi-migration/managePhase5Lpd8806Binding.sh bind --confirm BIND
 ```
 
 Run the trial with the modern binary built from the gate commit:
 
 ```sh
-sudo misc/verifyPhase5GpiodHardware.sh \
+sudo misc/junk/wiringpi-migration/verifyPhase5GpiodHardware.sh \
   --binary build/oclock \
   --commit "${trial_commit}" \
   --sha256 "${trial_sha256}" \
@@ -87,7 +87,7 @@ sudo misc/verifyPhase5GpiodHardware.sh \
 Always unbind afterwards, including after a failure:
 
 ```sh
-sudo misc/managePhase5Lpd8806Binding.sh unbind --confirm UNBIND
+sudo misc/junk/wiringpi-migration/managePhase5Lpd8806Binding.sh unbind --confirm UNBIND
 ```
 
 ## What to observe

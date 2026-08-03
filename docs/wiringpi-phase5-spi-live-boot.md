@@ -86,7 +86,7 @@ git archive FETCH_HEAD | tar -x -C "${spi_boot_dir}"
 cd "${spi_boot_dir}"
 
 sudo misc/managePhase5SpiOverlay.sh status
-sudo misc/collectPhase5SpiOverlayBoot.sh
+sudo misc/junk/wiringpi-migration/collectPhase5SpiOverlayBoot.sh
 
 printf 'spi_boot_commit=%s\nspi_boot_dir=%s\n' \
   "${spi_boot_commit}" "${spi_boot_dir}"

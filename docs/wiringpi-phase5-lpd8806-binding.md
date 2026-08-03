@@ -42,9 +42,9 @@ binding_dir=$(mktemp -d /tmp/oclock-lpd-binding-XXXXXXXX)
 git archive FETCH_HEAD | tar -x -C "${binding_dir}"
 cd "${binding_dir}"
 
-sudo misc/managePhase5Lpd8806Binding.sh status
-sudo misc/managePhase5Lpd8806Binding.sh bind --confirm BIND
-sudo misc/collectPhase5Lpd8806Binding.sh
+sudo misc/junk/wiringpi-migration/managePhase5Lpd8806Binding.sh status
+sudo misc/junk/wiringpi-migration/managePhase5Lpd8806Binding.sh bind --confirm BIND
+sudo misc/junk/wiringpi-migration/collectPhase5Lpd8806Binding.sh
 
 printf 'binding_commit=%s\nbinding_dir=%s\n' \
   "${binding_commit}" "${binding_dir}"
@@ -74,8 +74,8 @@ After collecting evidence, leave the binding in place only if the next
 instructions explicitly require it. Otherwise undo it with:
 
 ```sh
-sudo misc/managePhase5Lpd8806Binding.sh unbind --confirm UNBIND
-sudo misc/managePhase5Lpd8806Binding.sh status
+sudo misc/junk/wiringpi-migration/managePhase5Lpd8806Binding.sh unbind --confirm UNBIND
+sudo misc/junk/wiringpi-migration/managePhase5Lpd8806Binding.sh status
 ```
 
 The unbind action removes the strip binding and clears `driver_override`; it

@@ -53,7 +53,7 @@ Fixture tests cover:
 ## First-read gate
 
 Before any whole-application run, build `phase5-mcp3002-read` from a pinned PR
-commit and use `misc/verifyPhase5Mcp3002FirstRead.sh` to read each raw channel
+commit and use `misc/junk/wiringpi-migration/verifyPhase5Mcp3002FirstRead.sh` to read each raw channel
 separately. The gate
 must require the exact Zero W/Trixie target, accepted overlay, native
 `mcp320x` binding, inactive `oclock.service`, and an unchanged strip binding.
@@ -63,7 +63,7 @@ The first read passed all 13 checks at commit `d47629b`. It establishes
 transport correctness, not calibration. The following operator-assisted
 capture recorded controlled covered/uncovered values for both channels before
 making any threshold decision.
-`misc/collectPhase5Mcp3002Calibration.sh` implements three ten-sample windows
+`misc/junk/wiringpi-migration/collectPhase5Mcp3002Calibration.sh` implements three ten-sample windows
 at the application's 600 ms sampling interval: uncovered, covered, and
 uncovered again. It reports channels separately and does not change thresholds.
 

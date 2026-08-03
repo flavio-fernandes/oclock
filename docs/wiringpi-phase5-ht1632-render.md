@@ -1,5 +1,12 @@
 # Phase 5 guarded HT1632 render gate
 
+> **Retired tooling.** This gate has passed and its scripts and standalone
+> build targets have been retired to
+> [`misc/junk/wiringpi-migration/`](../misc/junk/wiringpi-migration/CATALOG.md).
+> The `make phase5-*` targets referenced below no longer exist. The procedure
+> is preserved as the record of how the recorded result was produced, not as a
+> command sequence that still runs.
+
 ## Status
 
 Ran on 2026-08-02 and **failed on timing**: 0 of 20 renders met the 12 ms tick,
@@ -113,7 +120,7 @@ assertion in the build gate; it exists precisely to catch this.
 This is an attended gate. The whole sequence takes under 30 seconds.
 
 ```sh
-sudo misc/verifyPhase5Ht1632Render.sh \
+sudo misc/junk/wiringpi-migration/verifyPhase5Ht1632Render.sh \
   --tool build/phase5-ht1632-render \
   --commit "${experiment_commit}"
 ```

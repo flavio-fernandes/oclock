@@ -9,10 +9,7 @@ endif
 	test-core test-gpio-protocols test-gpio-burst test-gpio-registers \
 	test-spi-output test-iio-analog test-spi-overlay check-arm-warnings \
 	test-strip-binding \
-	smoke test-shutdown valgrind spi-overlay \
-	phase5-lpd8806-all-off phase5-lpd8806-all-off-2mhz \
-	phase5-lpd8806-colors-2mhz phase5-ht1632-render \
-	phase5-mcp3002-read clean
+	smoke test-shutdown valgrind spi-overlay clean
 
 # Keep the original CC override working even though every source is C++.
 CC = g++
@@ -199,62 +196,12 @@ build/tests/linuxSpidevOutput.cpp.o: src/spi/linuxSpidevOutput.cpp
 	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) \
 		-funsigned-char -Werror $< -o $@
 
-build/phase5-lpd8806-all-off: misc/phase5Lpd8806AllOff.cpp \
-		lpd8806/LPD8806.cpp src/gpio/fakeGpio.cpp \
-		src/spi/linuxSpidevOutput.cpp
-	$Q echo "[Build Phase 5 1 MHz all-off transfer tool] $@"
-	$Q mkdir -p $(@D)
-	$Q $(CXX) $(CPPFLAGS) $(CXXFLAGS) \
-		-DOCLOCK_STRIP_SPEED_HZ=1000000U \
-		-funsigned-char -Werror $^ -o $@ -lpthread
-
-phase5-lpd8806-all-off: build/phase5-lpd8806-all-off
-
-build/phase5-lpd8806-all-off-2mhz: misc/phase5Lpd8806AllOff.cpp \
-		lpd8806/LPD8806.cpp src/gpio/fakeGpio.cpp \
-		src/spi/linuxSpidevOutput.cpp
-	$Q echo "[Build Phase 5 2 MHz all-off transfer tool] $@"
-	$Q mkdir -p $(@D)
-	$Q $(CXX) $(CPPFLAGS) $(CXXFLAGS) \
-		-DOCLOCK_STRIP_SPEED_HZ=2000000U \
-		-funsigned-char -Werror $^ -o $@ -lpthread
-
-phase5-lpd8806-all-off-2mhz: build/phase5-lpd8806-all-off-2mhz
-
-build/phase5-lpd8806-colors-2mhz: misc/phase5Lpd8806Colors.cpp \
-		lpd8806/LPD8806.cpp src/gpio/fakeGpio.cpp \
-		src/spi/linuxSpidevOutput.cpp
-	$Q echo "[Build Phase 5 2 MHz color transfer tool] $@"
-	$Q mkdir -p $(@D)
-	$Q $(CXX) $(CPPFLAGS) $(CXXFLAGS) \
-		-DOCLOCK_STRIP_SPEED_HZ=2000000U \
-		-funsigned-char -Werror $^ -o $@ -lpthread
-
-phase5-lpd8806-colors-2mhz: build/phase5-lpd8806-colors-2mhz
-
-build/phase5-ht1632-render: misc/phase5Ht1632Render.cpp \
-		ht1632/HT1632.cpp src/gpio/gpiodV2Gpio.cpp \
-		src/gpio/gpiodMmapFactory.cpp src/gpio/bcm2835MmapValueIo.cpp \
-		src/gpio/bcm2835GpioRegisters.cpp
-	$Q echo "[Build Phase 5 HT1632 render benchmark] $@"
-	$Q mkdir -p $(@D)
-	$Q $(CXX) $(CPPFLAGS) $(CXXFLAGS) \
-		-funsigned-char -Werror $^ -o $@ -lgpiod -latomic -lpthread
-
-phase5-ht1632-render: build/phase5-ht1632-render
-
-build/phase5-mcp3002-read: misc/phase5Mcp3002Read.cpp \
-		src/adc/linuxIioAnalogInput.cpp
-	$Q echo "[Build Phase 5 MCP3002 reader] $@"
-	$Q mkdir -p $(@D)
-	$Q $(CXX) $(CPPFLAGS) $(CXXFLAGS) \
-		-funsigned-char -Werror $^ -o $@ -lpthread
-
-phase5-mcp3002-read: build/phase5-mcp3002-read
+# The Phase 5 standalone measurement tools (all-off, colors, HT1632 render,
+# MCP3002 read) were retired to misc/junk/wiringpi-migration/ once their gates
+# closed. Their measurements live in docs/; see that directory's CATALOG.md.
 
 test-spi-output: build/tests/spi_output_tests \
-		build/tests/linuxSpidevOutput.cpp.o \
-		build/phase5-lpd8806-all-off
+		build/tests/linuxSpidevOutput.cpp.o
 	$Q ASAN_OPTIONS=detect_leaks=1 ./build/tests/spi_output_tests
 
 build/tests/iio_analog_input_tests: tests/iio_analog_input_tests.cpp \
@@ -266,9 +213,8 @@ build/tests/iio_analog_input_tests: tests/iio_analog_input_tests.cpp \
 		-fsanitize=address,undefined -fno-omit-frame-pointer \
 		$^ -o $@ -lpthread
 
-test-iio-analog: build/tests/iio_analog_input_tests build/phase5-mcp3002-read
+test-iio-analog: build/tests/iio_analog_input_tests
 	$Q ASAN_OPTIONS=detect_leaks=1 ./build/tests/iio_analog_input_tests
-	$Q test -x build/phase5-mcp3002-read
 
 smoke: oclock-sandbox
 	$Q ./tests/smoke.sh ./oclock-sandbox

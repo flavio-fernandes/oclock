@@ -22,45 +22,71 @@ grep -q 'broker to connect to (default: 192.168.10.238)' "${test_dir}/help.txt"
 grep -q 'port of that mqtt server (default: 1883)' "${test_dir}/help.txt"
 grep -q 'keep alive interval in seconds (default: 182)' "${test_dir}/help.txt"
 
-# Preserve current application/service paths while the final Trixie deployment
-# unit is still being designed. Hardware transport selection is tested in the
-# boundary suite.
+# Preserve current application/service paths. Hardware transport selection is
+# tested in the boundary suite.
 grep -qx 'After=network.target' misc/oclock.service
 grep -qx 'ExecStart=/home/pi/oclock.git/oclock' misc/oclock.service
 grep -qx 'StandardOutput=null' misc/oclock.service
 grep -qx 'Alias=oclock.service' misc/oclock.service
-make -n CC=modern-cxx hardware >"${test_dir}/compiler.txt"
+make -B -n CC=modern-cxx hardware >"${test_dir}/compiler.txt"
 grep -q 'modern-cxx -c' "${test_dir}/compiler.txt"
 
 # Existing clients may abbreviate display POST keys; preserve that behavior.
 grep -Fq 'strncasecmp(key, "msg", strlen(key)) == 0' src/displayInternal.cpp
 grep -Fq 'strncasecmp(key, "animationStep", strlen(key)) == 0' src/displayInternal.cpp
 
-# The SPI collector is also metadata-only. Its tool check must use commands
-# whose successful exit status is stable on the selected raspi-utils release;
-# bare `dtoverlay -h` prints help but deliberately returns 1 there.
-bash -n misc/collectPhase5SpiTarget.sh
-misc/collectPhase5SpiTarget.sh --help >"${test_dir}/phase5-spi-help.txt"
-grep -Fq 'dtoverlay-list-active.txt' misc/collectPhase5SpiTarget.sh
-grep -Fq 'dtoverlay-list-available.txt' misc/collectPhase5SpiTarget.sh
-grep -Fq 'CONFIG_MCP320X' misc/collectPhase5SpiTarget.sh
-grep -Fq 'mcp320x-modinfo' misc/collectPhase5SpiTarget.sh
-if grep -Eq '(^|[[:space:]])(gpioget|gpioset|gpiomon|gpionotify)([[:space:]]|$)' \
-        misc/collectPhase5SpiTarget.sh; then
-    echo "SPI collector contains a GPIO line-access command" >&2
+# The strip has no character device until something binds its deliberately
+# unclaimed Device Tree child. Requires= rather than Wants= is the whole point:
+# without the binding the clock cannot open its SPI output, and Restart=
+# on-failure would turn that into a crash loop. Refusing to start is better.
+grep -qx 'Requires=oclock-strip-spi.service' misc/oclock.service
+grep -qx 'After=oclock-strip-spi.service' misc/oclock.service
+grep -qx 'Restart=on-failure' misc/oclock.service
+
+# The binding is state, not a process, and stopping it must reverse it.
+grep -qx 'Type=oneshot' misc/oclock-strip-spi.service
+grep -qx 'RemainAfterExit=yes' misc/oclock-strip-spi.service
+grep -qx 'Before=oclock.service' misc/oclock-strip-spi.service
+grep -Fq 'ExecStop=' misc/oclock-strip-spi.service
+# A missing overlay must fail loudly here rather than silently skipping the
+# unit and handing a guaranteed crash loop to oclock.service.
+if grep -Eq '^[[:space:]]*Condition' misc/oclock-strip-spi.service; then
+    echo "the strip binding unit can be silently skipped by a Condition" >&2
+    exit 1
+fi
+# The start timeout must exceed the helper's own wait or systemd kills it
+# mid-binding.
+grep -qx 'TimeoutStartSec=120' misc/oclock-strip-spi.service
+grep -Fq 'bind --wait 90' misc/oclock-strip-spi.service
+
+# spi_gpio is a module loaded during udev coldplug, so the SPI children appear
+# asynchronously. The boot binder must wait for its child and must discover it
+# by Device Tree path, never by a dynamic bus number.
+bash -n misc/bindOclockStripSpi.sh
+misc/bindOclockStripSpi.sh --help >"${test_dir}/strip-bind-help.txt"
+grep -Fq '/oclock-strip-spi/lpd8806@0' misc/bindOclockStripSpi.sh
+grep -Fq 'await_strip_device' misc/bindOclockStripSpi.sh
+grep -Fq 'Incomplete strip binding was rolled back.' misc/bindOclockStripSpi.sh
+if grep -Fq 'spi4.0' misc/bindOclockStripSpi.sh; then
+    echo "boot strip binder hard-codes a dynamic SPI device" >&2
+    exit 1
+fi
+# The binder must never open the device or drive the application.
+if grep -Eq '(^|[[:space:]])(systemctl|dtoverlay|reboot|shutdown|gpioset|gpioget|gpiomon)[[:space:]]' \
+        misc/bindOclockStripSpi.sh; then
+    echo "boot strip binder contains an out-of-scope command" >&2
     exit 1
 fi
 
-bash -n misc/verifyPhase5SpiOverlayDryRun.sh
-misc/verifyPhase5SpiOverlayDryRun.sh --help \
-    >"${test_dir}/phase5-spi-dry-run-help.txt"
-grep -Fq 'Nothing is applied to the live tree' \
-    misc/verifyPhase5SpiOverlayDryRun.sh
+# The overlay identifies the strip with a project-owned compatible precisely so
+# no in-tree driver claims it by accident.
 grep -Fq 'compatible = "flaviof,oclock-lpd8806"' \
     hardware/oclock-spi-overlay.dts
 grep -Fq 'compatible = "microchip,mcp3002"' \
     hardware/oclock-spi-overlay.dts
 
+# The overlay manager is deployment tooling and still in use. It must keep its
+# checksum pin and its refusal to reboot.
 bash -n misc/managePhase5SpiOverlay.sh
 misc/managePhase5SpiOverlay.sh --help \
     >"${test_dir}/phase5-spi-manager-help.txt"
@@ -69,97 +95,9 @@ grep -Fq '53b593f4c30a78c8beb446cf506816af29a817d0daf93bb899a9054c7aa61959' \
 grep -Fq 'backup is not byte-identical' misc/managePhase5SpiOverlay.sh
 grep -Fq 'does not reboot' "${test_dir}/phase5-spi-manager-help.txt"
 
-bash -n misc/collectPhase5SpiOverlayBoot.sh
-misc/collectPhase5SpiOverlayBoot.sh --help \
-    >"${test_dir}/phase5-spi-boot-help.txt"
-grep -Fq 'No spidev binding or hardware' \
-    "${test_dir}/phase5-spi-boot-help.txt"
-if grep -Eq '^[[:space:]]*(modprobe|dtoverlay|reboot|shutdown|gpioset|gpioget|gpiomon)[[:space:]]' \
-        misc/collectPhase5SpiOverlayBoot.sh; then
-    echo "live SPI collector contains a state-changing or GPIO-access command" >&2
-    exit 1
-fi
-
-# The binding manager may change only the deliberately unbound strip child's
-# runtime driver. It must discover dynamic SPI names from Device Tree, retain
-# the native ADC binding, and offer explicit rollback. The paired collector is
-# metadata-only and must never perform the binding or open the device.
-bash -n misc/managePhase5Lpd8806Binding.sh
-misc/managePhase5Lpd8806Binding.sh --help \
-    >"${test_dir}/phase5-lpd-bind-manager-help.txt"
-grep -Fq 'runtime binding does not survive a' \
-    "${test_dir}/phase5-lpd-bind-manager-help.txt"
-grep -Fq '*/oclock-strip-spi/lpd8806@0' \
-    misc/managePhase5Lpd8806Binding.sh
-grep -Fq '*/oclock-adc-spi/mcp3002@0' \
-    misc/managePhase5Lpd8806Binding.sh
-grep -Fq 'MCP3002 SPI child is not bound to mcp320x' \
-    misc/managePhase5Lpd8806Binding.sh
-grep -Fq 'Incomplete strip binding was rolled back.' \
-    misc/managePhase5Lpd8806Binding.sh
-if grep -Fq 'spi4.0' misc/managePhase5Lpd8806Binding.sh; then
-    echo "LPD8806 binding manager hard-codes a dynamic SPI device" >&2
-    exit 1
-fi
-
-bash -n misc/collectPhase5Lpd8806Binding.sh
-misc/collectPhase5Lpd8806Binding.sh --help \
-    >"${test_dir}/phase5-lpd-bind-collector-help.txt"
-grep -Fq 'No device is opened' \
-    "${test_dir}/phase5-lpd-bind-collector-help.txt"
-if grep -Eq '^[[:space:]]*(modprobe|dtoverlay|reboot|shutdown|gpioset|gpioget|gpiomon)[[:space:]]' \
-        misc/collectPhase5Lpd8806Binding.sh; then
-    echo "LPD8806 binding collector contains a state-changing command" >&2
-    exit 1
-fi
-if grep -Eq '(^|[[:space:]])(driver_override|/sys/bus/spi/drivers/[^[:space:]]+/(bind|unbind))[[:space:]]*>' \
-        misc/collectPhase5Lpd8806Binding.sh; then
-    echo "LPD8806 binding collector writes a driver control" >&2
-    exit 1
-fi
-
-bash -n misc/collectPhase5Lpd8806Build.sh
-misc/collectPhase5Lpd8806Build.sh --help \
-    >"${test_dir}/phase5-lpd-build-help.txt"
-grep -Fq 'binary is never executed' \
-    "${test_dir}/phase5-lpd-build-help.txt"
-grep -Fq '/oclock-strip-spi/lpd8806@0' \
-    misc/collectPhase5Lpd8806Build.sh
-if grep -Eq '^[[:space:]]*(modprobe|dtoverlay|reboot|shutdown|gpioset|gpioget|gpiomon)[[:space:]]' \
-        misc/collectPhase5Lpd8806Build.sh; then
-    echo "native LPD8806 build collector contains a state-changing command" >&2
-    exit 1
-fi
-
-# The first-transfer gate must use the standalone all-off tool, retain an
-# explicit human confirmation, and make unbind part of its exit path. It must
-# never use the partial application as a transfer vehicle.
-bash -n misc/verifyPhase5Lpd8806FirstTransfer.sh
-misc/verifyPhase5Lpd8806FirstTransfer.sh --help \
-    >"${test_dir}/phase5-lpd-transfer-help.txt"
-grep -Fq 'Type TRANSFER' misc/verifyPhase5Lpd8806FirstTransfer.sh
-grep -Fq 'Emergency rollback: unbinding the strip' \
-    misc/verifyPhase5Lpd8806FirstTransfer.sh
-grep -Fq 'timeout --signal=TERM --kill-after=5s 15s "${transfer_tool}"' \
-    misc/verifyPhase5Lpd8806FirstTransfer.sh
-grep -Fq 'runtime strip binding was removed before the operator prompt' \
-    misc/verifyPhase5Lpd8806FirstTransfer.sh
-grep -Fq 'const Int16U ledCount = 240;' \
-    misc/phase5Lpd8806AllOff.cpp
-grep -Fq 'strip.show();' misc/phase5Lpd8806AllOff.cpp
+# 1 MHz missed the 12 ms tick 25 of 25 times; 2 MHz takes the kernel's
+# undelayed free-running path. This constant is the whole difference.
 grep -Fq 'OCLOCK_STRIP_SPEED_HZ 2000000U' src/spi/StripSpeed.h
-make -n phase5-lpd8806-all-off-2mhz \
-    >"${test_dir}/phase5-lpd-2mhz-build.txt"
-grep -Fq -- '-DOCLOCK_STRIP_SPEED_HZ=2000000U' \
-    "${test_dir}/phase5-lpd-2mhz-build.txt"
-# The historical 1 MHz helper must stay pinned so the rejected profile remains
-# reproducible now that production no longer defaults to it.
-make -n phase5-lpd8806-all-off \
-    >"${test_dir}/phase5-lpd-1mhz-build.txt"
-grep -Fq -- '-DOCLOCK_STRIP_SPEED_HZ=1000000U' \
-    "${test_dir}/phase5-lpd-1mhz-build.txt"
-grep -Fq -- '--speed-hz must be 1000000 or the reviewed 2000000 experiment' \
-    misc/verifyPhase5Lpd8806FirstTransfer.sh
 grep -Fq 'std::uint32_t mode = SPI_MODE_0;' \
     src/spi/linuxSpidevOutput.cpp
 if grep -Fq 'SPI_MODE_0 | SPI_NO_CS' src/spi/linuxSpidevOutput.cpp; then
@@ -178,96 +116,25 @@ if grep -Eq '/sys/bus/iio/devices/iio:device[0-9]+' \
     echo "IIO ADC path hard-codes a dynamic device number" >&2
     exit 1
 fi
-bash -n misc/verifyPhase5Mcp3002FirstRead.sh
-misc/verifyPhase5Mcp3002FirstRead.sh --help \
-    >"${test_dir}/phase5-mcp3002-read-help.txt"
-grep -Fq 'Type READ' misc/verifyPhase5Mcp3002FirstRead.sh
-grep -Fq 'runuser -u "${operator}" -- "${tool}"' \
-    misc/verifyPhase5Mcp3002FirstRead.sh
-grep -Fq 'No calibration decision or whole-application run was included.' \
-    misc/verifyPhase5Mcp3002FirstRead.sh
-if grep -Eq '(^|[[:space:]])(gpioget|gpioset|gpiomon|gpionotify)[[:space:]]' \
-        misc/verifyPhase5Mcp3002FirstRead.sh; then
-    echo "MCP3002 verifier contains a GPIO line-access command" >&2
-    exit 1
-fi
-bash -n misc/collectPhase5Mcp3002Calibration.sh
-misc/collectPhase5Mcp3002Calibration.sh --help \
-    >"${test_dir}/phase5-mcp3002-calibration-help.txt"
-grep -Fq 'samples_per_window=10' misc/collectPhase5Mcp3002Calibration.sh
-grep -Fq 'sample_interval=0.6' misc/collectPhase5Mcp3002Calibration.sh
-grep -Fq 'Type BASELINE' misc/collectPhase5Mcp3002Calibration.sh
-grep -Fq 'Type COVERED' misc/collectPhase5Mcp3002Calibration.sh
-grep -Fq 'Type RESTORED' misc/collectPhase5Mcp3002Calibration.sh
-grep -Fq 'It does not change or approve dimming thresholds.' \
-    misc/collectPhase5Mcp3002Calibration.sh
-if grep -Eq '(^|[[:space:]])(gpioget|gpioset|gpiomon|gpionotify)[[:space:]]' \
-        misc/collectPhase5Mcp3002Calibration.sh; then
-    echo "MCP3002 calibration collector contains a GPIO line-access command" >&2
-    exit 1
-fi
-if grep -Fq 'strip.begin();' misc/phase5Lpd8806AllOff.cpp; then
-    echo "all-off tool contains an extra initial latch transfer" >&2
-    exit 1
-fi
-bash -n misc/verifyPhase5Lpd8806Cadence.sh
-misc/verifyPhase5Lpd8806Cadence.sh --help \
-    >"${test_dir}/phase5-lpd-cadence-help.txt"
-grep -Fq 'frame_count=25' misc/verifyPhase5Lpd8806Cadence.sh
-grep -Fq 'tick_budget_microseconds=12000' \
-    misc/verifyPhase5Lpd8806Cadence.sh
-grep -Fq 'Type BENCHMARK' misc/verifyPhase5Lpd8806Cadence.sh
-grep -Fq -- '--speed-hz must be 1000000 or the reviewed 2000000 experiment' \
-    misc/verifyPhase5Lpd8806Cadence.sh
-grep -Fq 'Emergency rollback: unbinding the strip' \
-    misc/verifyPhase5Lpd8806Cadence.sh
-grep -Fq 'Did the entire LED strip remain off and stable?' \
-    misc/verifyPhase5Lpd8806Cadence.sh
-grep -Fq 'The whole application and ADC were not run.' \
-    misc/verifyPhase5Lpd8806Cadence.sh
 
-# The colored gate is the only strip gate that latches non-zero pixel data.
-# Its final all-off frame is a safety requirement, not a nicety: LPD8806
-# pixels retain their last value after the runtime binding is removed.
-bash -n misc/verifyPhase5Lpd8806Colors.sh
-misc/verifyPhase5Lpd8806Colors.sh --help \
-    >"${test_dir}/phase5-lpd-colors-help.txt"
-grep -Fq 'Type COLORS' misc/verifyPhase5Lpd8806Colors.sh
-grep -Fq 'tick_budget_microseconds=12000' misc/verifyPhase5Lpd8806Colors.sh
-grep -Fq 'expected_brightness=63' misc/verifyPhase5Lpd8806Colors.sh
-grep -Fq 'Emergency rollback: unbinding the strip' \
-    misc/verifyPhase5Lpd8806Colors.sh
-grep -Fq 'final_state=off' misc/verifyPhase5Lpd8806Colors.sh
-grep -Fq '{"off", 0, 0, 0, false},' misc/phase5Lpd8806Colors.cpp
-grep -Fq 'const Int8U halfBrightness = 0x3F;' misc/phase5Lpd8806Colors.cpp
-make -n phase5-lpd8806-colors-2mhz \
-    >"${test_dir}/phase5-lpd-colors-build.txt"
-grep -Fq -- '-DOCLOCK_STRIP_SPEED_HZ=2000000U' \
-    "${test_dir}/phase5-lpd-colors-build.txt"
-
-# The dimming thresholds are measured values, not arbitrary constants, and the
-# trial harness must agree with the application or a gate can pass on the wrong
-# comparison.
+# The dimming thresholds are measured values, not arbitrary constants. The
+# original 360 was unreachable on this unit, so dimming could never engage.
 grep -Fq 'darkRoomThresholdLowWaterMark = 460' src/lightSensor.cpp
 grep -Fq 'darkRoomThresholdHighWaterMark = 700' src/lightSensor.cpp
-grep -Fq 'dark_threshold=460' misc/verifyPhase5GpiodHardware.sh
-grep -Fq 'bright_threshold=700' misc/verifyPhase5GpiodHardware.sh
-# The startup sentinel must never count as darkness again.
-grep -Fq 'startup sentinel' misc/verifyPhase5GpiodHardware.sh
 
 # The HT1632 burst path bypasses Gpio::write(). Its test hook replaces the real
 # register store, so it must never reach a hardware or sandbox build.
-make -n hardware >"${test_dir}/burst-hardware-build.txt"
+make -B -n hardware >"${test_dir}/burst-hardware-build.txt"
 if grep -Fq 'OCLOCK_GPIO_BURST_TEST_HOOK' "${test_dir}/burst-hardware-build.txt"; then
     echo "the burst test hook leaked into the hardware build" >&2
     exit 1
 fi
-make -n sandbox >"${test_dir}/burst-sandbox-build.txt"
+make -B -n sandbox >"${test_dir}/burst-sandbox-build.txt"
 if grep -Fq 'OCLOCK_GPIO_BURST_TEST_HOOK' "${test_dir}/burst-sandbox-build.txt"; then
     echo "the burst test hook leaked into the sandbox build" >&2
     exit 1
 fi
-make -n test-gpio-burst >"${test_dir}/burst-test-build.txt"
+make -B -n test-gpio-burst >"${test_dir}/burst-test-build.txt"
 grep -Fq -- '-DOCLOCK_GPIO_BURST_TEST_HOOK' "${test_dir}/burst-test-build.txt"
 
 # Declining a burst must remain valid: the default returns false and the
@@ -280,26 +147,6 @@ grep -Fq 'OCLOCK_GPIO_BURST_SETUP_NOPS' src/gpio/GpioBurst.h
 grep -Fq 'gpioBurstSetupDelay();' ht1632/HT1632.h
 # Only lines already configured as outputs may be handed out.
 grep -Fq 'GPIOD_LINE_DIRECTION_OUTPUT' src/gpio/gpiodV2Gpio.cpp
-
-# The HT1632 matrix keeps its own narrow transport. Its GPIOs are outside the
-# SPI overlay, so its gate must not create a spidev binding or touch the ADC.
-bash -n misc/verifyPhase5Ht1632Render.sh
-misc/verifyPhase5Ht1632Render.sh --help \
-    >"${test_dir}/phase5-ht1632-help.txt"
-grep -Fq 'Type RENDER' misc/verifyPhase5Ht1632Render.sh
-grep -Fq 'tick_budget_microseconds=12000' misc/verifyPhase5Ht1632Render.sh
-grep -Fq 'matrix_gpios=(6 13 19 26)' misc/verifyPhase5Ht1632Render.sh
-grep -Fq 'no strip spidev binding was created' \
-    misc/verifyPhase5Ht1632Render.sh
-grep -Fq 'final_state=off' misc/phase5Ht1632Render.cpp
-grep -Fq 'const long long tickBudgetMicroseconds = 12000;' \
-    misc/phase5Ht1632Render.cpp
-# The benchmark must measure forced full rewrites, not dirty-chunk shortcuts.
-grep -Fq 'matrix.clear();' misc/phase5Ht1632Render.cpp
-if grep -Eq 'spidev|mcp320x|driver_override' misc/phase5Ht1632Render.cpp; then
-    echo "HT1632 benchmark unexpectedly references SPI or ADC state" >&2
-    exit 1
-fi
 
 # Remote maintenance uses existing OpenSSH over a non-routing Tailscale node.
 # Keep the dedicated key source-restricted and prevent this bootstrap from
@@ -322,6 +169,13 @@ if grep -Eq 'meteor-copperhead|100\.108\.157\.127' \
         misc/bootstrapOclockTailscale.sh docs/oclock-remote-access.md; then
     echo "remote-access files expose private tailnet topology" >&2
     exit 1
+fi
+
+# Retired Phase 5 gate tooling lives in misc/junk/wiringpi-migration/ and is
+# deliberately not asserted here, so that directory can be deleted with a plain
+# git rm and nothing else. Its catalog records what each file proved.
+if [[ -d misc/junk/wiringpi-migration ]]; then
+    grep -Fq 'wiringpi-migration' misc/junk/wiringpi-migration/CATALOG.md
 fi
 
 echo "application compatibility tests passed"

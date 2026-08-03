@@ -83,7 +83,7 @@ unchanged.
 
 ## Collector correction
 
-[`collectPhase5SpiTarget.sh`](../misc/collectPhase5SpiTarget.sh) now:
+[`collectPhase5SpiTarget.sh`](../misc/junk/wiringpi-migration/collectPhase5SpiTarget.sh) now:
 
 - treats successful `dtoverlay -l` and `dtoverlay -a` as the tooling gate;
 - captures `CONFIG_IIO`, `CONFIG_MCP320X`, `mcp320x` module metadata, and
@@ -97,7 +97,7 @@ but is not required to reinterpret the already captured `dtoverlay` output.
 
 Build [`oclock-spi-overlay.dts`](../hardware/oclock-spi-overlay.dts) with
 `make spi-overlay`, then run
-[`verifyPhase5SpiOverlayDryRun.sh`](../misc/verifyPhase5SpiOverlayDryRun.sh) on
+[`verifyPhase5SpiOverlayDryRun.sh`](../misc/junk/wiringpi-migration/verifyPhase5SpiOverlayDryRun.sh) on
 the Zero W. The verifier compiles the overlay and merges it into a file copy of
 the active Device Tree. It does not apply the overlay or touch `/boot`.
 

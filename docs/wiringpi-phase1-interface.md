@@ -141,7 +141,7 @@ worktree, then run it against the already-built candidate:
 cd /home/pi/oclock.git
 git fetch origin agent/plan-wiringpi-migration
 phase1_verifier=/tmp/verifyPhase1Hardware.sh
-git show FETCH_HEAD:misc/verifyPhase1Hardware.sh >"${phase1_verifier}"
+git show FETCH_HEAD:misc/junk/wiringpi-migration/verifyPhase1Hardware.sh >"${phase1_verifier}"
 chmod 0755 "${phase1_verifier}"
 sudo "${phase1_verifier}" \
     --binary /tmp/oclock-phase1-build-mileEVez/oclock \

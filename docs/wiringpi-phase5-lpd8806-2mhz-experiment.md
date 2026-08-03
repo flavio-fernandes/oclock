@@ -1,5 +1,12 @@
 # Phase 5 guarded LPD8806 2 MHz experiment
 
+> **Retired tooling.** This gate has passed and its scripts and standalone
+> build targets have been retired to
+> [`misc/junk/wiringpi-migration/`](../misc/junk/wiringpi-migration/CATALOG.md).
+> The `make phase5-*` targets referenced below no longer exist. The procedure
+> is preserved as the record of how the recorded result was produced, not as a
+> command sequence that still runs.
+
 ## Status
 
 Both gates passed on 2026-08-02 with zero failures and zero warnings. The
@@ -87,9 +94,9 @@ Confirm that `oclock.service` is inactive and the strip is unbound. Then run
 one all-off frame through the existing guarded verifier:
 
 ```sh
-sudo misc/managePhase5Lpd8806Binding.sh status
+sudo misc/junk/wiringpi-migration/managePhase5Lpd8806Binding.sh status
 
-sudo misc/verifyPhase5Lpd8806FirstTransfer.sh \
+sudo misc/junk/wiringpi-migration/verifyPhase5Lpd8806FirstTransfer.sh \
   --tool build/phase5-lpd8806-all-off-2mhz \
   --commit "${experiment_commit}" \
   --speed-hz 2000000
@@ -108,7 +115,7 @@ Only after the one-frame archive is accepted, use the same binary for 25
 all-off frames:
 
 ```sh
-sudo misc/verifyPhase5Lpd8806Cadence.sh \
+sudo misc/junk/wiringpi-migration/verifyPhase5Lpd8806Cadence.sh \
   --tool build/phase5-lpd8806-all-off-2mhz \
   --commit "${experiment_commit}" \
   --speed-hz 2000000

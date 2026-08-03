@@ -42,7 +42,7 @@ clock/data wiring pair, and forcing them onto one bus would require rewiring.
 
 ## What the collector records
 
-[`collectPhase5SpiTarget.sh`](../misc/collectPhase5SpiTarget.sh) captures:
+[`collectPhase5SpiTarget.sh`](../misc/junk/wiringpi-migration/collectPhase5SpiTarget.sh) captures:
 
 - the exact Zero W model, revision, Trixie release, ARMv6 runtime, armhf
   package architecture, running kernel, and installed kernel packages;
@@ -77,7 +77,7 @@ git fetch origin agent/plan-wiringpi-migration
 
 spi_discovery_commit=$(git rev-parse FETCH_HEAD)
 collector=/tmp/collectPhase5SpiTarget.sh
-git show FETCH_HEAD:misc/collectPhase5SpiTarget.sh >"${collector}"
+git show FETCH_HEAD:misc/junk/wiringpi-migration/collectPhase5SpiTarget.sh >"${collector}"
 chmod 0755 "${collector}"
 
 sudo "${collector}"

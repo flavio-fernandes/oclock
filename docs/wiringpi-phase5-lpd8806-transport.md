@@ -106,7 +106,7 @@ strings ./oclock | grep -F '/oclock-strip-spi/lpd8806@0'
 sha256sum ./oclock
 dpkg-query -S /usr/include/linux/spi/spidev.h
 
-misc/collectPhase5Lpd8806Build.sh \
+misc/junk/wiringpi-migration/collectPhase5Lpd8806Build.sh \
   --binary ./oclock \
   --commit "${transport_commit}"
 ```

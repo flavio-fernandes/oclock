@@ -59,7 +59,7 @@ target acceptance.
 
 ## Safety behavior
 
-`misc/verifyPhase5GpiodHardware.sh` refuses to drive lines unless all of these
+`misc/junk/wiringpi-migration/verifyPhase5GpiodHardware.sh` refuses to drive lines unless all of these
 preconditions hold:
 
 - model `Raspberry Pi Zero W Rev 1.1`, revision `9000c1`;

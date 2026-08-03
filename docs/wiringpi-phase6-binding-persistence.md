@@ -72,7 +72,7 @@ than crash-looping. It also never assumes a bus number.
   `Requires=oclock-strip-spi.service` and the matching `After=`.
 
 The production binder is deliberately *not* the Phase 5 gate helper
-([`managePhase5Lpd8806Binding.sh`](../misc/managePhase5Lpd8806Binding.sh)).
+([`managePhase5Lpd8806Binding.sh`](../misc/junk/wiringpi-migration/managePhase5Lpd8806Binding.sh)).
 The gate helper demands a confirmation word, asserts the board model and the
 overlay checksum, and refuses to run while `oclock.service` is active. Every
 one of those is correct for proving a trial ran against a reviewed overlay, and

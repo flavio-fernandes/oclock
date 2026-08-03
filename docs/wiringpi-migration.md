@@ -192,7 +192,7 @@ the deployed worktree, then run it:
 cd /home/pi/oclock.git
 phase0_collector=/tmp/collectHardwareBaseline.sh
 git fetch origin agent/plan-wiringpi-migration
-git show FETCH_HEAD:misc/collectHardwareBaseline.sh >"${phase0_collector}"
+git show FETCH_HEAD:misc/junk/wiringpi-migration/collectHardwareBaseline.sh >"${phase0_collector}"
 chmod 0755 "${phase0_collector}"
 sudo "${phase0_collector}"
 ```

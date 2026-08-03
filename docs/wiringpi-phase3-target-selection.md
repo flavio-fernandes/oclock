@@ -80,7 +80,7 @@ git clone https://github.com/flavio-fernandes/oclock.git ~/oclock-phase3
 cd ~/oclock-phase3
 git fetch origin agent/plan-wiringpi-migration
 phase3_collector=/tmp/collectGpioTarget.sh
-git show FETCH_HEAD:misc/collectGpioTarget.sh >"${phase3_collector}"
+git show FETCH_HEAD:misc/junk/wiringpi-migration/collectGpioTarget.sh >"${phase3_collector}"
 chmod 0755 "${phase3_collector}"
 sudo "${phase3_collector}"
 ```

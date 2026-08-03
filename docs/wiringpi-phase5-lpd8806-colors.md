@@ -1,5 +1,12 @@
 # Phase 5 guarded LPD8806 colored sequence
 
+> **Retired tooling.** This gate has passed and its scripts and standalone
+> build targets have been retired to
+> [`misc/junk/wiringpi-migration/`](../misc/junk/wiringpi-migration/CATALOG.md).
+> The `make phase5-*` targets referenced below no longer exist. The procedure
+> is preserved as the record of how the recorded result was produced, not as a
+> command sequence that still runs.
+
 ## Status
 
 Passed on 2026-08-02 with all 23 checks, zero failures, and zero warnings. The
@@ -78,9 +85,9 @@ guarded verifier. This is an attended gate: watch the strip for the whole
 sequence, which lasts about ten seconds.
 
 ```sh
-sudo misc/managePhase5Lpd8806Binding.sh status
+sudo misc/junk/wiringpi-migration/managePhase5Lpd8806Binding.sh status
 
-sudo misc/verifyPhase5Lpd8806Colors.sh \
+sudo misc/junk/wiringpi-migration/verifyPhase5Lpd8806Colors.sh \
   --tool build/phase5-lpd8806-colors-2mhz \
   --commit "${experiment_commit}" \
   --speed-hz 2000000
