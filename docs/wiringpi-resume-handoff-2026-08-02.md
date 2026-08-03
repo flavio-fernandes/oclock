@@ -221,10 +221,14 @@ modern hardware build; historical sources remain only as diagnostic evidence.
    between 355 and 478 depending on conditions, always above 360. It is now
    460/700, measured rather than guessed.
 
-   Phase 6 is blocked on three things: the strip binding does not survive a
-   reboot, CPU needs characterizing over a run longer than five minutes (run 1
-   averaged 18.29% and peaked 75.68%, run 3 averaged 4.72%), and no soak has
-   been run.
+   Phase 6 is blocked on two things: the strip binding does not survive a
+   reboot, and no soak has been run.
+
+   CPU is not a blocker. Run 1's 18.29% mean and 75.68% peak were recorded
+   while the operator deliberately stressed the clock with LED-strip animations
+   and `stickManAnimation.sh` posting over HTTP. Every functional observation
+   still passed under that load. Ordinary operation in run 3 averaged 4.72%,
+   close to the 3.55% Phase 0 baseline.
 
    Preparing the application trial surfaced a Phase 6 blocker: the application
    only opens `/dev/spidev4.0` and never binds it, so the strip must be bound

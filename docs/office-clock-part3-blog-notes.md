@@ -881,3 +881,16 @@ backward compatibility.”
   expensive after several minutes. Kernel `spi-gpio` is still bit-banging, so
   it is CPU-bound rather than offloaded — fixing the latency did not make the
   work free.
+- **2026-08-02 (correction):** The CPU figures from the first trial run were not
+  a warning sign, and the earlier note guessing at a time-dependent cost was
+  wrong. The operator was deliberately stressing the clock during that window
+  with LED-strip animations plus `stickManAnimation.sh` posting image and
+  message updates over HTTP. So 18.29% mean and 75.68% peak describe a **stress
+  test that the modern stack passed**: roughly 25% headroom left at peak, with
+  the display clean, the strip smooth, HTTP answering in about 96 ms, and
+  operator-rated timing still better than production while all that ran.
+  Ordinary operation measured 4.72% mean, close to the 3.55% Phase 0 baseline.
+  Good reminder for the write-up: a number without the context of what the
+  machine was being asked to do is not evidence of anything. The honest version
+  of this section is "comparable to the original at rest, and it holds up under
+  deliberate pounding," not "CPU went up."

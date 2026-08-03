@@ -104,33 +104,40 @@ disagreed, and the operator was right. The failing human observation is what
 prompted the audit that found the bug. A fully automated trial would have
 banked a clean pass on that point and shipped a clock that could never dim.
 
-## CPU: still open, and now more interesting
+## CPU: explained, and a good result rather than a worry
 
-CPU differed sharply between runs, so the earlier concern should not be treated
-as settled in either direction.
+CPU differed sharply between runs, and the operator supplied the explanation:
+**run 1 was a deliberate stress test.** During that window the operator was
+driving LED-strip animations and simultaneously running
+[`stickManAnimation.sh`](../misc/stickManAnimation.sh), which posts repeated
+image and message updates over HTTP to `localhost:80`. Run 3 carried ordinary
+load.
 
-| Measurement | Run 1 (300 s) | Run 3 (180 s) |
-| --- | --- | --- |
-| Mean | 18.29% | **4.72%** |
-| Maximum | 75.68% | **29.79%** |
-| Trend | rose from ~25% to ~75% | no comparable rise |
+| Measurement | Run 1 (stressed, 300 s) | Run 3 (ordinary, 180 s) | Phase 0 baseline |
+| --- | --- | --- | --- |
+| Mean | 18.29% | 4.72% | 3.55% |
+| Maximum | 75.68% | 29.79% | not comparable |
 
-Phase 0 WiringPi baseline was 3.55%. Run 3's 4.72% mean is close to it; run 1's
-18.29% is not. Memory was stable at about 101 MB RSS in both.
+Read correctly, this inverts the earlier concern. Run 3's 4.72% mean sits close
+to the Phase 0 WiringPi baseline, so ordinary operation is comparable to the
+original clock. Run 1 shows what happens under deliberate pressure: roughly 25%
+headroom remained at peak, and every functional observation still passed —
+display clean, strip smooth, motion and MQTT responsive, HTTP answering in
+about 96 ms, and operator-rated timing **better than production** while that
+load was running.
 
-The most likely explanation is that run 1 was 300 seconds and run 3 only 180,
-and run 1's rise appeared late in its window. Something time-dependent — a
-periodic display mode, an animation, or accumulated dictionary content — may
-become expensive after several minutes. That is a hypothesis, not a finding.
+The earlier hypothesis in this document, that something time-dependent became
+expensive after several minutes, was wrong. Memory was stable at about 101 MB
+RSS throughout both runs.
 
-Some cost is inherent and should be stated plainly: kernel `spi-gpio` is still
-bit-banging, so it is CPU-bound rather than offloaded. A strip frame costs
-roughly 3 to 4.4 ms and a matrix render roughly 4 ms against a 12 ms tick.
-Fixing the latency did not make the work free.
+Some cost remains inherent and is worth stating plainly in the write-up: kernel
+`spi-gpio` is still bit-banging, so it is CPU-bound rather than offloaded. A
+strip frame costs roughly 3 to 4.4 ms and a matrix render roughly 4 ms against
+a 12 ms tick. Fixing the latency did not make the work free — but the headroom
+measured under animation stress indicates the budget is adequate.
 
-**Characterize this before Phase 6** with a single long run, at least 15
-minutes, sampling whether the rise reproduces and plateaus. A clock that
-periodically needs most of a single ARMv6 core has little headroom.
+No separate CPU investigation is required. Ordinary soak monitoring covers what
+remains.
 
 ## State after the trial
 
@@ -146,6 +153,6 @@ periodically needs most of a single ARMv6 core has little headroom.
 1. **Strip binding persistence.** The application opens `/dev/spidev4.0` but
    never binds it, and the binding does not survive a reboot. See the
    [application trial gate](wiringpi-phase5-application-trial.md).
-2. **CPU characterization**, as above.
-3. No soak has been run. The longest continuous observation so far is five
-   minutes.
+2. No soak has been run. The longest continuous observation so far is five
+   minutes. CPU no longer needs its own investigation; track it during the
+   soak like any other metric.
