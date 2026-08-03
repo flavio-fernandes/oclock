@@ -247,14 +247,62 @@ make hardware
 # Hardware-free development and tests.
 make sandbox
 make test
-make check-arm-warnings
+
+# Opt-in, not part of make test.
+make valgrind
+make test-spi-overlay
 ```
 
 `GPIO_BACKEND` and `STRIP_TRANSPORT` are retired; supplying either is an error.
-The WiringPi and slow experimental commands remain valid only when checking
-out the historical commits that introduced them. The current build is still
-not an install command or deployment approval because the ADC and matrix
-conversions remain pending.
+The WiringPi and slow experimental commands remain valid only when checking out
+the historical commits that introduced them. The ADC and matrix conversions are
+now complete and the whole application has run against the live overlay, but
+these are still build commands, not an install procedure — see the service and
+overlay sections below for that.
+
+The full target reference lives in
+[`docs/development.md`](development.md#make-targets). Do not reproduce the
+table in the article; link it. What belongs in the prose is the handful of
+targets that are interesting *because of this migration*:
+
+- **`gpio-boundary`** is the guard that keeps the whole premise honest. It is a
+  `grep` over the production sources for direct WiringPi calls outside the one
+  legacy backend file. The claim "the application no longer talks to WiringPi"
+  is enforced by a test rather than by discipline, which is the difference
+  between a migration and an intention.
+- **`check-arm-warnings`** compiles everything with `-funsigned-char` and
+  warnings as errors. Plain `char` is signed on x86-64 and unsigned on ARM, so
+  a laptop will happily compile a signedness bug that only misbehaves on the
+  clock. This target is how an x86-64 dev box stays honest about an ARMv6
+  target, and it is a genuinely transferable tip for readers cross-developing
+  for a Pi.
+- **`test-spi-overlay`** pins all six BCM GPIO numbers in the merged Device
+  Tree. That is the no-rewiring contract — the promise that not one wire moves
+  — encoded as an assertion. If someone tidies a pin number, it fails on a
+  laptop instead of on a clock that no longer lights up.
+- **`valgrind`** is worth a mention precisely because it is *not* in
+  `make test`. The six C++ test binaries already run under AddressSanitizer and
+  UBSan, but those cover units in isolation. `make valgrind` runs the **whole
+  application** — every thread, the event loop, the MQTT client, and the
+  shutdown path, together — under `--leak-check=full` with
+  `--errors-for-leak-kinds=definite,possible`. That combination is where the
+  interesting leaks actually live. The good part, measured rather than assumed:
+  it finishes in **about 3.5 seconds**. It sits outside `make test` only
+  because it needs `valgrind` installed, not because it is expensive — which
+  makes "I'll run it later" a much weaker excuse than it sounds.
+- **`test-strip-binding`** is the newest and makes a point worth stating
+  plainly: it found a real defect that the reboot could not. Writing tests for
+  a fourteen-line shell helper sounds like ceremony until one of them catches
+  a race that would have produced an intermittently dead clock months later.
+
+There is a smaller lesson in `compatibility` that may be worth a sentence.
+Four of its assertions inspected build output via `make -n`, and `make -n`
+prints nothing when the artifact is already built — so those assertions matched
+nothing and passed vacuously. They only ever worked because that target ran
+first in a clean tree. Running the suite twice in a row exposed it. A test that
+passes for the wrong reason is worse than no test, and the way this one was
+found — by accident, while checking whether *different* assertions could fail —
+is the honest version of how such things usually surface.
 
 ### Boot overlay procedure — live enable and inspection passed
 
@@ -856,6 +904,7 @@ backward compatibility.”
 ## Source map for the future author
 
 - Overall plan: [`wiringpi-migration.md`](wiringpi-migration.md)
+- **Make target reference** (what every build and test target does, and which are opt-in): [`development.md`](development.md#make-targets)
 - Original baseline: [`wiringpi-phase0-baseline.md`](wiringpi-phase0-baseline.md)
 - GPIO seam: [`wiringpi-phase1-interface.md`](wiringpi-phase1-interface.md)
 - Protocol tests: [`wiringpi-phase2-protocol-tests.md`](wiringpi-phase2-protocol-tests.md)

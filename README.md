@@ -35,9 +35,10 @@ strip. They do not change the binary's owner or setuid mode. The former
 `GPIO_BACKEND` and `STRIP_TRANSPORT` build knobs have been removed; supplying
 either is an error.
 
-This is still an in-progress migration profile. Do not run the whole hardware
-application while the Office Clock Device Tree overlay owns the MCP3002 pins;
-the application ADC path has not yet moved to IIO. See the
+The hardware application now runs against the live overlay: the ADC path uses
+the native `mcp320x`/IIO driver and the strip uses kernel `spidev`. The clock
+starts itself at boot, with `oclock-strip-spi.service` binding the strip's SPI
+child before `oclock.service` starts. See the
 [migration plan](docs/wiringpi-migration.md) and
 [modern build policy](docs/wiringpi-modern-build-policy.md).
 
@@ -47,9 +48,19 @@ On a development machine without GPIO hardware:
 make sandbox
 ./oclock-sandbox -b 127.0.0.1 -p 8080 -M 127.0.0.1
 make test
-make check-arm-warnings
-make valgrind
 ```
+
+`make test` runs twelve hardware-free targets and is what to run before a
+commit. Two more sit outside it only because they need tools that are not in
+the base build dependencies. Neither is slow:
+
+```sh
+make valgrind          # whole application under leak-check=full
+make test-spi-overlay  # merge and verify the Device Tree overlay
+```
+
+Every target is described in
+[docs/development.md](docs/development.md#make-targets).
 
 For compatibility with the deployed clock, the runtime defaults remain
 `0.0.0.0:80` and MQTT broker `192.168.10.238:1883`. Use `-b`, `-p`, `-M`,
