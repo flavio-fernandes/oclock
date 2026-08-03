@@ -39,8 +39,10 @@ deterministic fake-hardware tests. Historical WiringPi, pure-libgpiod, and
 bit-banged implementations remain in the source for diagnosis, but the current
 tree supports only the selected modern build. The first pure-libgpiod and
 mapped hardware trials were functional but too slow, especially for the
-240-pixel LPD8806 strip. Automatic dimming also did not pass because the
-observed light values did not cross the existing dark threshold.
+240-pixel LPD8806 strip. Automatic dimming also did not pass, and the cause
+turned out to be neither the transport nor the migration: the original 360 dark
+threshold was unreachable on this unit, so dimming could never have engaged on
+any candidate. It is now measured and retuned to 460/700, and passes.
 
 The selected next architecture is mixed:
 
@@ -65,9 +67,11 @@ IIO raw channels. The exact `spidev` source rejects a generic Device Tree
 `spidev` compatible, so the LPD8806 uses an honest project identifier followed
 by an explicit, guarded `driver_override` binding.
 
-Phase 6 deployment remains blocked. The article must not yet say that the
-modern system is production-ready or that WiringPi has been completely
-removed.
+**Phase 5 is complete.** The whole-application trial passed all 13 checks with
+zero failures on 2026-08-02. Phase 6 deployment remains blocked on two named
+items: the strip `spidev` binding does not survive a reboot, and no soak has
+run. The article must not yet say that the modern system is production-ready
+or that WiringPi has been completely removed.
 
 The checksum-pinned overlay has now also booted successfully on the exact
 Zero W. Its two controllers claimed only the six reviewed GPIOs; the MCP3002
@@ -444,20 +448,36 @@ tested command or file before drafting the article:
   verifier implemented.
 - [x] Corrected mode-0 all-off frame transferred on the Zero W with clean
   rollback and no visible flash.
-- [ ] LPD8806 Zero W timing acceptance at the existing 12 ms application tick;
-  the 1 MHz profile failed 0/25 and a guarded 2 MHz kernel free-run experiment
-  is next.
+- [x] LPD8806 Zero W timing acceptance at the existing 12 ms application tick:
+  the 1 MHz profile failed 0/25, and the 2 MHz kernel free-run profile passed
+  25/25 with a 3.001 ms median. Production speed promoted to 2 MHz.
+- [x] LPD8806 colored-frame correctness at 2 MHz, confirming GRB byte order and
+  signal integrity on the existing arbitrary-pin wiring.
 - [x] MCP3002 native-IIO application conversion with dynamic Device Tree
   discovery and deterministic fixture tests.
 - [x] MCP3002 exact-board raw channel verification.
 - [x] Controlled uncovered/covered/restored samples captured with both channels
-  separate; existing thresholds deliberately retained.
-- [ ] HT1632 bulk transport and timing acceptance.
+  separate.
+- [x] Dimming thresholds retuned against measured room darkness and verified
+  live: 460 low-water and 700 high-water, replacing an unreachable 360/500.
+- [x] HT1632 per-edge path measured and rejected at 19.2 ms against the 12 ms
+  tick, which is what justified building the bulk transport rather than
+  assuming it.
+- [x] HT1632 burst transport implemented and accepted at a 4.094 ms mean,
+  20/20 renders in budget, with edge-order equivalence tests against the
+  ordinary write path.
+- [x] Whole-application trial on the exact Zero W: 13 of 13 checks, zero
+  failures, timing rated better than production.
 - [x] Backend/transport build knobs retired; `make` and `make hardware` select
   the modern profile.
+- [ ] **Strip `spidev` binding persistence across reboot.** Currently the
+  binding is runtime-only, so a power cut leaves the clock unable to open its
+  strip. This is the main thing standing between acceptance and deployment.
 - [ ] Cold-boot NetworkManager, HTTP, MQTT, and service-order validation.
-- [ ] Overnight soak with CPU, latency, throttling, and Wi-Fi evidence.
+- [ ] Overnight soak with CPU, latency, throttling, and Wi-Fi evidence. Use the
+  recorded stress recipe so the soak covers loaded as well as idle behavior.
 - [ ] Physical rollback exercise using the preserved Zero/Jessie unit.
+- [ ] Service trimming (Phase 7) with before/after measurements.
 - [ ] Merged commit, release/tag, and stable source links for the article.
 
 ## Migration chronology and evidence
@@ -494,7 +514,17 @@ tested command or file before drafting the article:
 - Commit `91d0645` produced a 32-bit ARM EABI5 binary linking libgpiod and
   libatomic without WiringPi.
 
-### Phase 5 — exact-board experiments, incomplete
+### Phase 5 — exact-board experiments, complete
+
+**Outcome: passed, 13 of 13 checks, zero failures, at commit `9677a0e`.** The
+accepted architecture is libgpiod for motion, kernel `spi-gpio` plus `spidev`
+at 2 MHz for the strip, native `mcp320x`/IIO for the ADC, and a narrow burst
+value path for the matrix. Strip smoothness, timing, and dimming — the three
+observations that rejected both earlier candidates — all passed, with timing
+rated better than the original production clock.
+
+The failed experiments below are kept deliberately: they are what produced the
+final design.
 
 - Pure libgpiod: functional, but dimming and timing failed.
 - Restricted `/dev/gpiomem` probe: passed without driving a line.
@@ -547,9 +577,20 @@ tested command or file before drafting the article:
 ### Phase 6/7 — pending
 
 - No modern candidate has deployment approval.
-- The overlay is enabled only on the experimental Zero W; no modern
-  application has been run against it.
-- No soak or physical rollback exercise has passed.
+- The modern application **has** now run against the live overlay on the
+  experimental Zero W and passed its full trial, but that is acceptance, not
+  deployment.
+- **Blocker: the strip binding does not survive a reboot.** The application
+  opens `/dev/spidev4.0` but never binds it, and the reviewed
+  `driver_override` binding is runtime-only. A deployed clock cannot need a
+  human to run a bind command after a power cut. Needs a udev rule, a systemd
+  unit ordered before `oclock.service`, or a Device Tree change — reviewed
+  separately, and explicitly not solved by giving the application privilege to
+  bind its own device.
+- **Blocker: no soak.** The longest continuous observation is five minutes.
+- No physical rollback exercise has been performed since the migration
+  completed.
+- Service trimming is deferred to Phase 7; see the section above.
 - The modern profile is the current source default, but must not be deployed
   until these gates complete.
 
@@ -576,8 +617,23 @@ files.
 
 A fixed hardware SPI controller would be faster but uses designated alternate
 function pins. The strip's current clock/data order and the ADC's arbitrary
-pins do not match those interfaces, so hardware SPI would mean rewiring. It is
-a fallback only if kernel software SPI misses the final timing budget.
+pins do not match those interfaces, so hardware SPI would mean rewiring. It
+stayed a fallback and was never needed.
+
+**The best technical surprise in the project lives here.** At 1 MHz the strip
+missed the 12 ms tick on 25 of 25 frames, with a 20.5 ms median. At 2 MHz the
+same code on the same wires took 3.0 ms. The cause is a hard threshold in the
+kernel driver, not anything electrical: `spi-gpio` calls a nanosecond delay
+helper on both sides of every clock edge whenever the requested half-cycle is
+at least 500 ns — which is exactly 1 MHz or slower — and that helper is often a
+rounded-up microsecond delay. Requesting *more* speed made the driver stop
+waiting and free-run.
+
+Worth being precise for readers: kernel `spi-gpio` is still bit-banging. It is
+faster and better scheduled than doing it from userspace, but it is CPU-bound
+rather than offloaded to a hardware engine with DMA. Fixing the latency did not
+make the work free, which is why CPU under load is worth reporting honestly
+alongside the frame times.
 
 ### Why the HT1632 remains special
 
@@ -586,12 +642,44 @@ The matrix has an extra panel-select shift chain plus command/data fields of
 transactions. Keeping one narrowly bounded bulk implementation is clearer
 than forcing unlike protocols through an artificial common abstraction.
 
-### Why the ADC threshold is a separate question
+What that implementation turned out to be: the four matrix pins are resolved to
+register masks once, and the bit loops then store straight to the BCM value
+registers, skipping the per-edge mutex, line lookup, validation, and virtual
+dispatch. The memory barrier moves from every store to the burst boundary,
+which is legitimate because the BCM2835 orders accesses within a single
+peripheral. Measured effect: 19.2 ms down to 4.1 ms for a full rewrite.
 
-The ADC can return changing values while the display still never dims. First
-prove both MCP3002 IIO raw channels and record controlled covered/uncovered
-values. Only then decide whether Trixie/transport behavior changed the signal
-or whether the old threshold simply does not fit the new physical setup.
+Two details worth telling readers, because both are the kind of thing that
+bites quietly:
+
+- The HT1632 needs at least 50 ns between a data change and the WR rising edge.
+  The old path satisfied that **by accident**, because every write cost
+  microseconds. Going roughly a hundred times faster meant the guarantee had to
+  become explicit and tunable. A speedup can invalidate an assumption that was
+  only ever true incidentally.
+- The burst path bypasses the ordinary write call, so no existing test would
+  have noticed a mask assigned to the wrong pin. It would compile, pass the
+  whole suite, and silently drive the wrong wire. The equivalence test that
+  compares both paths edge for edge is the real deliverable of that change.
+
+### Why the ADC threshold is a separate question — and what the answer was
+
+The ADC can return changing values while the display still never dims. That
+separation mattered: the transport was proven first, by reading both MCP3002
+IIO raw channels and recording controlled covered and uncovered values, and
+only then was the threshold questioned.
+
+The answer was that **the old threshold simply did not fit**, and it never had.
+With the real room light switched off, the reported value settles between 355
+and 478 depending on conditions — always above the original 360 low-water mark.
+Dimming could not have engaged on any candidate, including the Phase 0
+baseline on the original clock. A decade-old constant had been quietly wrong,
+and only a migration that forced someone to stand and watch the hardware
+surfaced it.
+
+This is the strongest argument in the whole project for separating transport
+correctness from calibration. Had they been debugged together, the obvious and
+wrong conclusion would have been that the new transport broke dimming.
 
 ## Proposed article outline
 
@@ -617,12 +705,19 @@ or whether the old threshold simply does not fit the new physical setup.
 8. **What ten years changed in the application**
    - MQTT graduated from “future enhancement”; graceful shutdown and tests;
      HTTP/display behavior remains familiar.
-9. **Measurements and final acceptance**
-   - Strip frame time, matrix timing, CPU, HTTP latency, light values, Wi-Fi,
-     soak, and rollback.
-10. **Lessons from keeping old hardware alive**
+9. **The bug that was never in the migration**
+   - The dimming story: three runs, a wrong first theory about averaging, and
+     the room light switch that proved a decade-old threshold had always been
+     unreachable. Include the harness false pass, where the automated check
+     disagreed with the human and the human was right.
+10. **Measurements and final acceptance**
+    - Strip frame time, matrix timing, CPU under animation stress versus at
+      rest, HTTP latency, light values, Wi-Fi, soak, and rollback.
+11. **Lessons from keeping old hardware alive**
     - Modernization is not library substitution; preserve working baselines;
-      failed measurements are design input.
+      failed measurements are design input; measure before building the thing
+      you assumed you would need; and a speedup can break a constraint that was
+      only ever satisfied by accident.
 
 ## Visuals and snippets to capture before publication
 
@@ -637,7 +732,13 @@ or whether the old threshold simply does not fit the new physical setup.
 - A logic-analyzer view or measured frame-time table comparing legacy,
   libgpiod, mapped, and final SPI paths.
 - CPU/HTTP latency comparison under the same animation workload.
-- Covered/uncovered raw ADC values plus final threshold behavior.
+- The light-sensor trace with the **room light** switched off and back on,
+  annotated with the 460/700 thresholds. This is better evidence than a covered
+  sensor, and it is the plot that shows why 360 was unreachable.
+- Before/after matrix render timing: 19.2 ms per-edge versus 4.1 ms burst,
+  against the 12 ms tick line.
+- Before/after strip frame timing: 20.5 ms at 1 MHz versus 3.0 ms at 2 MHz,
+  showing the kernel delay-threshold cliff.
 - Cold-boot and overnight-soak summary.
 - Screenshot/photo demonstrating MQTT-triggered external display input, since
   the 2016 post listed MQTT as future work.
@@ -652,12 +753,26 @@ credentials, serial numbers, MAC addresses, or private network topology.
 Do not write any of these in past tense until their gates pass:
 
 - “The Office Clock no longer uses WiringPi.”
-- “Kernel software SPI is as fast as the original WiringPi implementation.”
-- “The display dimming bug is fixed.”
-- “The service reliably starts after Wi-Fi and SPI are ready.”
+- “The service reliably starts after Wi-Fi and SPI are ready.” — in fact the
+  opposite is currently true: the strip binding does not survive a reboot.
 - “The Zero W is the deployed production clock.”
-- “Rollback has been tested.”
+- “Rollback has been tested.” — not since the migration completed.
 - “These are the final installation commands.”
+- “It survives a power cut.”
+- “It has run for a day/week without problems.” — the longest continuous
+  observation is five minutes.
+
+Two claims previously on this list are now supported by evidence and may be
+written carefully:
+
+- **Dimming.** It is accurate to say the dimming behavior now works and that
+  the root cause was an unreachable threshold rather than the migration. Be
+  precise: the constant was wrong before the migration too.
+- **Speed.** It is accurate to say the strip meets the 12 ms application tick
+  with better than 2x margin at 2 MHz, and that the operator rated response
+  times better than production. It is **not** accurate to say kernel software
+  SPI is as fast as the original WiringPi implementation in general; the honest
+  comparison is per-frame budget and observed behavior, not raw bit rate.
 
 The safe phrasing before final deployment is: “The selected modern profile no
 longer links WiringPi; the repository and original recovery unit retain it for
@@ -686,6 +801,21 @@ backward compatibility.”
 - LPD8806 first-transfer result: [`wiringpi-phase5-lpd8806-first-transfer-result.md`](wiringpi-phase5-lpd8806-first-transfer-result.md)
 - LPD8806 cadence result: [`wiringpi-phase5-lpd8806-cadence-result.md`](wiringpi-phase5-lpd8806-cadence-result.md)
 - Guarded LPD8806 2 MHz experiment: [`wiringpi-phase5-lpd8806-2mhz-experiment.md`](wiringpi-phase5-lpd8806-2mhz-experiment.md)
+- **LPD8806 2 MHz accepted result**: [`wiringpi-phase5-lpd8806-2mhz-result.md`](wiringpi-phase5-lpd8806-2mhz-result.md)
+- Guarded LPD8806 colored gate: [`wiringpi-phase5-lpd8806-colors.md`](wiringpi-phase5-lpd8806-colors.md)
+- **LPD8806 colored result**: [`wiringpi-phase5-lpd8806-colors-result.md`](wiringpi-phase5-lpd8806-colors-result.md)
+- Guarded HT1632 render gate: [`wiringpi-phase5-ht1632-render.md`](wiringpi-phase5-ht1632-render.md)
+- HT1632 per-edge rejection: [`wiringpi-phase5-ht1632-render-result.md`](wiringpi-phase5-ht1632-render-result.md)
+- **HT1632 burst transport accepted**: [`wiringpi-phase5-ht1632-burst-result.md`](wiringpi-phase5-ht1632-burst-result.md)
+- Whole-application trial gate: [`wiringpi-phase5-application-trial.md`](wiringpi-phase5-application-trial.md)
+- **Whole-application trial result (Phase 5 complete)**: [`wiringpi-phase5-application-trial-result.md`](wiringpi-phase5-application-trial-result.md)
+- Remote maintenance access: [`oclock-remote-access.md`](oclock-remote-access.md)
+- Modern build policy: [`wiringpi-modern-build-policy.md`](wiringpi-modern-build-policy.md)
+- Target selection rationale: [`wiringpi-phase3-target-selection.md`](wiringpi-phase3-target-selection.md)
+- Mapped fast-value backend design: [`wiringpi-phase5-fast-backend.md`](wiringpi-phase5-fast-backend.md)
+- Guarded hardware-trial handoff: [`wiringpi-phase5-hardware-trial.md`](wiringpi-phase5-hardware-trial.md)
+- LPD8806 native build result: [`wiringpi-phase5-lpd8806-build-result.md`](wiringpi-phase5-lpd8806-build-result.md)
+- LPD8806 first-transfer gate: [`wiringpi-phase5-lpd8806-first-transfer.md`](wiringpi-phase5-lpd8806-first-transfer.md)
 - MCP3002 native IIO: [`wiringpi-phase5-mcp3002-iio.md`](wiringpi-phase5-mcp3002-iio.md)
 - MCP3002 first-read result: [`wiringpi-phase5-mcp3002-iio-result.md`](wiringpi-phase5-mcp3002-iio-result.md)
 - MCP3002 controlled light result: [`wiringpi-phase5-mcp3002-calibration-result.md`](wiringpi-phase5-mcp3002-calibration-result.md)
@@ -901,3 +1031,17 @@ backward compatibility.”
   Worth keeping for the article and for any future soak, since it exercises the
   240-pixel strip continuously through the 2 MHz kernel SPI path while the
   matrix and HTTP server are also busy.
+
+- **2026-08-02 (end of session):** Phase 5 closed. Reconciled this notebook with
+  the accepted evidence: the strip at 2 MHz, the colored-frame gate, the HT1632
+  per-edge rejection and its burst replacement, the whole-application trial, the
+  retuned 460/700 dimming thresholds, the harness false pass, the corrected CPU
+  reading, and the deferred service trimming. Updated the editorial snapshot,
+  the Phase 5 and Phase 6/7 chronology, the publication checklist, the article
+  outline, the claims-that-must-wait list, the visuals list, and the source map.
+  Every phase document in `docs/` is now linked from the source map, and every
+  link in this file resolves.
+
+  Two items block Phase 6 and must not be written as done: the strip `spidev`
+  binding does not survive a reboot, and no soak has run. Everything else in the
+  hardware stack is measured and accepted.
