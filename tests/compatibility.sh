@@ -245,6 +245,16 @@ make -n phase5-lpd8806-colors-2mhz \
 grep -Fq -- '-DOCLOCK_STRIP_SPEED_HZ=2000000U' \
     "${test_dir}/phase5-lpd-colors-build.txt"
 
+# The dimming thresholds are measured values, not arbitrary constants, and the
+# trial harness must agree with the application or a gate can pass on the wrong
+# comparison.
+grep -Fq 'darkRoomThresholdLowWaterMark = 460' src/lightSensor.cpp
+grep -Fq 'darkRoomThresholdHighWaterMark = 700' src/lightSensor.cpp
+grep -Fq 'dark_threshold=460' misc/verifyPhase5GpiodHardware.sh
+grep -Fq 'bright_threshold=700' misc/verifyPhase5GpiodHardware.sh
+# The startup sentinel must never count as darkness again.
+grep -Fq 'startup sentinel' misc/verifyPhase5GpiodHardware.sh
+
 # The HT1632 burst path bypasses Gpio::write(). Its test hook replaces the real
 # register store, so it must never reach a hardware or sandbox build.
 make -n hardware >"${test_dir}/burst-hardware-build.txt"

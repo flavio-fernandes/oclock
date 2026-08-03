@@ -19,8 +19,9 @@ mqtt_host=192.168.10.238
 mqtt_port=1883
 service_name=oclock
 output_dir=
-dark_threshold=360
-bright_threshold=500
+# Must track LightSensor::darkRoomThreshold*WaterMark in src/lightSensor.cpp.
+dark_threshold=460
+bright_threshold=700
 
 usage()
 {

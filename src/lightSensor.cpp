@@ -11,8 +11,25 @@ std::thread::id LightSensor::mainThreadId;  // default 'invalid' value
 std::recursive_mutex LightSensor::instanceMutex;
 LightSensor* LightSensor::instance = nullptr;
 const size_t LightSensor::maxLightValuesSize = 10;
-const Int32U LightSensor::darkRoomThresholdLowWaterMark = 360;  // TWEAK ME!
-const Int32U LightSensor::darkRoomThresholdHighWaterMark = 500; // TWEAK ME!
+// Measured on the Zero W/Trixie unit on 2026-08-02 with the real room light
+// switched off, which is the actual condition the clock should dim in rather
+// than a hand or cover over the sensor:
+//
+//   room light on   ~1022
+//   room light off   452 to 478, sustained and fully settled
+//
+// The original 360 was therefore unreachable: the darkest the room ever got
+// still read above it, so dimming could never engage. The operator selected
+// 460 for the low-water mark.
+//
+// The high-water mark had to move too. Entering dark needs one sample below
+// the low-water mark and the plateau dips to 452, so 460 engages. But leaving
+// dark needs a sample at or above the high-water mark, and the old 500 sat
+// only 22 counts above the observed dark maximum of 478 — close enough that a
+// slightly brighter night could oscillate between dim and bright. 700 keeps a
+// wide band while staying far below the ~1022 lit-room reading.
+const Int32U LightSensor::darkRoomThresholdLowWaterMark = 460;  // TWEAK ME!
+const Int32U LightSensor::darkRoomThresholdHighWaterMark = 700; // TWEAK ME!
 
 LightSensor::LightSensor() : lightValues() {
 }
