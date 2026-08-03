@@ -5,16 +5,14 @@
 #include <new>
 #include <string.h>
 
-#ifdef FAKE_WIRING
-#include "fakeWiringPi.h"
-#else
-#include <wiringPi.h>
-#endif // ifdef FAKE_WIRING
+#include "gpio/Gpio.h"
 
 #pragma GCC diagnostic ignored "-Wchar-subscripts"
 
-HT1632Class::HT1632Class(std::recursive_mutex* gpioLockMutexP) :
-  gpioLockMutex(*gpioLockMutexP), brightness(16), _tgtBuffer(-1) {
+HT1632Class::HT1632Class(std::recursive_mutex* gpioLockMutexP, Gpio& gpio) :
+  gpioLockMutex(*gpioLockMutexP), gpio(gpio), brightness(16),
+  _maskCS(0), _maskWR(0), _maskDATA(0), _maskCLK(0), _burstReady(false),
+  _tgtBuffer(-1) {
   memset(_globalNeedsRewriting, 0, sizeof(_globalNeedsRewriting));
   memset(mem, 0, sizeof(mem));
 }
@@ -116,10 +114,25 @@ void HT1632Class::begin(int pinCS, int pinWR, int pinDATA, int pinCLK) {
     if (mem[i] == nullptr) throw std::bad_alloc();
   }
 
-  pinMode(_pinForCS, OUTPUT);
-  pinMode(_pinWR, OUTPUT);
-  pinMode(_pinDATA, OUTPUT);
-  pinMode(_pinCLK, OUTPUT);
+  gpio.configureOutput(_pinForCS, GpioValue::high);
+  gpio.configureOutput(_pinWR, GpioValue::low);
+  gpio.configureOutput(_pinDATA, GpioValue::low);
+  gpio.configureOutput(_pinCLK, GpioValue::low);
+
+  // Ask for the narrow value path only after the backend owns all four lines
+  // as outputs. A backend that declines leaves every write on gpio.write().
+  {
+    const int burstPins[] = {_pinForCS, _pinWR, _pinDATA, _pinCLK};
+    std::uint32_t burstMasks[4] = {0, 0, 0, 0};
+    if (gpio.acquireBurst(burstPins, 4, _burst, burstMasks) &&
+        _burst.valid()) {
+      _maskCS = burstMasks[0];
+      _maskWR = burstMasks[1];
+      _maskDATA = burstMasks[2];
+      _maskCLK = burstMasks[3];
+      _burstReady = true;
+    }
+  }
 
   initialize();
 
@@ -407,17 +420,17 @@ void HT1632Class::transition(int mode, int time){
 	time /= 32;
 	for (int i = 15; i > 0; --i) {
 	  setBrightness(i);
-	  delay(time);
+	  gpio.delayMilliseconds(time);
 	}
 	clear();
 	render();
-	delay(time);
+	gpio.delayMilliseconds(time);
 	transition(TRANSITION_BUFFER_SWAP);
 	render();
-	delay(time);
+	gpio.delayMilliseconds(time);
 	for (int i = 2; i <= 16; ++i) {
 	  setBrightness(i);
-	  delay(time);
+	  gpio.delayMilliseconds(time);
 	}
 	setBrightness(brightnessSave); // restore
       }
@@ -444,51 +457,64 @@ void HT1632Class::writeCommand(int data) {
 void HT1632Class::writeData(int data, int len) {
   std::lock_guard<std::recursive_mutex> guard(gpioLockMutex);
 
+  _burst.begin();
   for (int j=len-1, t = 1 << (len - 1); j>=0; --j, t >>= 1){
     // Set the DATA pin to the correct state
-    digitalWrite(_pinDATA, ((data & t) == 0)?LOW:HIGH);
-    NOP(); // Delay 
+    pinWrite(_pinDATA, _maskDATA,
+             (data & t) == 0 ? GpioValue::low : GpioValue::high);
+    burstSetupDelay(); // >= 50 ns before the WR rising edge
     // Raise the WR momentarily to allow the device to capture the data
-    digitalWrite(_pinWR, HIGH);
-    NOP(); // Delay
+    pinWrite(_pinWR, _maskWR, GpioValue::high);
+    burstSetupDelay(); // Hold WR high long enough to be captured
     // Lower it again, in preparation for the next cycle.
-    digitalWrite(_pinWR, LOW);
+    pinWrite(_pinWR, _maskWR, GpioValue::low);
   }
+  _burst.finish();
 }
 // REVERSED Integer write to display. Used to write cell values.
 // PRECONDITION: WR is LOW
 void HT1632Class::writeDataRev(int data, int len) {
   std::lock_guard<std::recursive_mutex> guard(gpioLockMutex);
 
+  _burst.begin();
   for (int j=0; j<len; ++j){
     // Set the DATA pin to the correct state
-    digitalWrite(_pinDATA, data & 1);
-    NOP(); // Delay
+    pinWrite(_pinDATA, _maskDATA,
+             (data & 1) == 0 ? GpioValue::low : GpioValue::high);
+    burstSetupDelay(); // >= 50 ns before the WR rising edge
     // Raise the WR momentarily to allow the device to capture the data
-    digitalWrite(_pinWR, HIGH);
-    NOP(); // Delay
+    pinWrite(_pinWR, _maskWR, GpioValue::high);
+    burstSetupDelay(); // Hold WR high long enough to be captured
     // Lower it again, in preparation for the next cycle.
-    digitalWrite(_pinWR, LOW);
+    pinWrite(_pinWR, _maskWR, GpioValue::low);
     data >>= 1;
   }
+  _burst.finish();
 }
 // Write single bit to display, used as padding between commands.
 // PRECONDITION: WR is LOW
 void HT1632Class::writeSingleBit() {
   std::lock_guard<std::recursive_mutex> guard(gpioLockMutex);
 
+  _burst.begin();
   // Set the DATA pin to the correct state
-  digitalWrite(_pinDATA, LOW);
-  NOP(); // Delay
+  pinWrite(_pinDATA, _maskDATA, GpioValue::low);
+  burstSetupDelay(); // >= 50 ns before the WR rising edge
   // Raise the WR momentarily to allow the device to capture the data
-  digitalWrite(_pinWR, HIGH);
-  NOP(); // Delay
+  pinWrite(_pinWR, _maskWR, GpioValue::high);
+  burstSetupDelay(); // Hold WR high long enough to be captured
   // Lower it again, in preparation for the next cycle.
-  digitalWrite(_pinWR, LOW);
+  pinWrite(_pinWR, _maskWR, GpioValue::low);
+  _burst.finish();
 }
 
 //Output a clock pulse
-static inline void outputCLK_Pulse(int pinCLK) { digitalWrite(pinCLK, HIGH); digitalWrite(pinCLK, LOW); }
+void HT1632Class::outputCLK_Pulse() {
+  pinWrite(_pinCLK, _maskCLK, GpioValue::high);
+  burstSetupDelay();
+  pinWrite(_pinCLK, _maskCLK, GpioValue::low);
+  burstSetupDelay();
+}
 
 // Choose a chip. This function sets the correct CS line to LOW, and the rest to HIGH
 // Call the function with no arguments to deselect all chips.
@@ -497,18 +523,28 @@ void HT1632Class::select(int mask) {
 
   int tmp = 0;
 
+  _burst.begin();
   if (mask < 0) { // Enable all HT1632C
-    digitalWrite(_pinForCS, LOW);
-    for (tmp = 0; tmp < NUM_ACTIVE_CHIPS; tmp++) outputCLK_Pulse(_pinCLK);
+    pinWrite(_pinForCS, _maskCS, GpioValue::low);
+    for (tmp = 0; tmp < NUM_ACTIVE_CHIPS; tmp++) {
+      outputCLK_Pulse();
+    }
   } else if (mask == 0) { // Disable all HT1632Cs
-    digitalWrite(_pinForCS, HIGH);
-    for (tmp = 0; tmp < NUM_ACTIVE_CHIPS; tmp++) outputCLK_Pulse(_pinCLK);
+    pinWrite(_pinForCS, _maskCS, GpioValue::high);
+    for (tmp = 0; tmp < NUM_ACTIVE_CHIPS; tmp++) {
+      outputCLK_Pulse();
+    }
   } else {
-    digitalWrite(_pinForCS, HIGH);
-    for (tmp = 0; tmp < NUM_ACTIVE_CHIPS; tmp++) outputCLK_Pulse(_pinCLK);
-    digitalWrite(_pinForCS, LOW);
-    outputCLK_Pulse(_pinCLK);
-    digitalWrite(_pinForCS, HIGH);
-    for (tmp = 1 ; tmp < mask; tmp++) outputCLK_Pulse(_pinCLK);
+    pinWrite(_pinForCS, _maskCS, GpioValue::high);
+    for (tmp = 0; tmp < NUM_ACTIVE_CHIPS; tmp++) {
+      outputCLK_Pulse();
+    }
+    pinWrite(_pinForCS, _maskCS, GpioValue::low);
+    outputCLK_Pulse();
+    pinWrite(_pinForCS, _maskCS, GpioValue::high);
+    for (tmp = 1 ; tmp < mask; tmp++) {
+      outputCLK_Pulse();
+    }
   }
+  _burst.finish();
 }

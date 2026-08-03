@@ -4,8 +4,12 @@ endif
 
 .DEFAULT_GOAL := all
 .SUFFIXES:
-.PHONY: all sudo_oclock hardware sandbox compatibility test test-core \
-	check-arm-warnings smoke test-shutdown valgrind clean
+.PHONY: all hardware sandbox hardware-preflight \
+	compatibility gpio-boundary test \
+	test-core test-gpio-protocols test-gpio-burst test-gpio-registers \
+	test-spi-output test-iio-analog test-spi-overlay check-arm-warnings \
+	test-strip-binding \
+	smoke test-shutdown valgrind spi-overlay clean
 
 # Keep the original CC override working even though every source is C++.
 CC = g++
@@ -14,6 +18,14 @@ CPPFLAGS = -I/usr/local/include -I./mcp300x -I./ht1632 -I./lpd8806 -I./src -I./p
 CXXFLAGS ?= -g -O0
 CXXFLAGS += -std=gnu++11 -Winline -pipe -Wall -Wextra
 LDFLAGS ?=
+DTC ?= dtc
+
+ifneq ($(origin GPIO_BACKEND),undefined)
+$(error GPIO_BACKEND was removed; hardware builds use the selected modern GPIO path)
+endif
+ifneq ($(origin STRIP_TRANSPORT),undefined)
+$(error STRIP_TRANSPORT was removed; hardware builds use the selected spidev strip path)
+endif
 
 PULSAR_SRC = \
 	pulsar/logger.c \
@@ -23,11 +35,11 @@ PULSAR_SRC = \
 	pulsar/pulsar.c
 
 CPP_SRC = \
-	mcp300x/mcp300x.cpp \
 	ht1632/HT1632.cpp \
 	lpd8806/LPD8806.cpp \
 	src/webHandlerInternal.cpp \
 	src/dictionary.cpp \
+	src/motionInput.cpp \
 	src/motionSensor.cpp \
 	src/lightSensor.cpp \
 	src/mqttClient.cpp \
@@ -41,30 +53,40 @@ CPP_SRC = \
 	src/main.cpp
 
 SRC = $(PULSAR_SRC) $(CPP_SRC)
-HARDWARE_OBJ = $(addprefix build/hardware/,$(addsuffix .o,$(SRC)))
-SANDBOX_OBJ = $(addprefix build/sandbox/,$(addsuffix .o,$(SRC))) \
-	build/sandbox/src/fakeWiringPi.cpp.o
-ARM_WARNING_OBJ = $(addprefix build/arm-warnings/,$(addsuffix .o,$(SRC))) \
-	build/arm-warnings/src/fakeWiringPi.cpp.o
+HARDWARE_GPIO_SRC = src/gpio/gpiodV2Gpio.cpp \
+	src/gpio/bcm2835GpioRegisters.cpp \
+	src/gpio/bcm2835MmapValueIo.cpp \
+	src/gpio/gpiodMmapFactory.cpp
+HARDWARE_SPI_SRC = src/spi/linuxSpidevOutput.cpp
+HARDWARE_ADC_SRC = src/adc/linuxIioAnalogInput.cpp
+HARDWARE_SRC = $(SRC) $(HARDWARE_GPIO_SRC) $(HARDWARE_SPI_SRC) \
+	$(HARDWARE_ADC_SRC)
+SANDBOX_SRC = $(SRC) src/gpio/fakeGpio.cpp src/spi/noSpiOutput.cpp \
+	src/adc/fakeAnalogInput.cpp
+HARDWARE_OBJ = $(addprefix build/hardware/,$(addsuffix .o,$(HARDWARE_SRC)))
+SANDBOX_OBJ = $(addprefix build/sandbox/,$(addsuffix .o,$(SANDBOX_SRC)))
+ARM_WARNING_OBJ = $(addprefix build/arm-warnings/,$(addsuffix .o,$(SANDBOX_SRC)))
 
-HARDWARE_LIBS = -lwiringPi -lpthread -levent -lmosquitto
+# ARMv6 cannot implement every 64-bit std::atomic operation inline. GCC emits
+# calls into libatomic for the selected Trixie toolchain.
+HARDWARE_LIBS = -lgpiod -latomic -lpthread -levent -lmosquitto
 SANDBOX_LIBS = -lpthread -levent -lmosquitto
 
-all: sudo_oclock
-
-# Keep the original `make` workflow intact for the deployed Raspberry Pi.
-# `make hardware` is the build-only alternative for development and packaging.
-sudo_oclock: oclock
-	$Q sudo chown root:root oclock
-	$Q sudo chmod u+s oclock
+all: hardware
 
 hardware: oclock
+
+hardware-preflight:
+	$Q version=$$(pkg-config --modversion libgpiod 2>/dev/null) || { \
+		echo "error: libgpiod v2 development files are required" >&2; exit 1; }; \
+	case "$${version}" in 2.*) ;; *) \
+		echo "error: libgpiod v2 is required (found $${version})" >&2; exit 1;; esac
 
 sandbox: oclock-sandbox
 
 oclock: $(HARDWARE_OBJ)
 	$Q echo "[Link] $@"
-	$Q $(CXX) -o $@ $^ $(LDFLAGS) $(HARDWARE_LIBS)
+	$Q $(CXX) -o $@ $(HARDWARE_OBJ) $(LDFLAGS) $(HARDWARE_LIBS)
 
 oclock-sandbox: $(SANDBOX_OBJ)
 	$Q echo "[Link] $@"
@@ -72,12 +94,12 @@ oclock-sandbox: $(SANDBOX_OBJ)
 
 # Pulsar's .c sources include the C++ request-handler boundary, so they are
 # intentionally compiled as C++ until that interface is split cleanly.
-build/hardware/%.cpp.o: %.cpp
+build/hardware/%.cpp.o: %.cpp | hardware-preflight
 	$Q echo "[Compile] $<"
 	$Q mkdir -p $(@D)
 	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
 
-build/hardware/%.c.o: %.c
+build/hardware/%.c.o: %.c | hardware-preflight
 	$Q echo "[Compile] $<"
 	$Q mkdir -p $(@D)
 	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
@@ -85,23 +107,23 @@ build/hardware/%.c.o: %.c
 build/sandbox/%.cpp.o: %.cpp
 	$Q echo "[Compile sandbox] $<"
 	$Q mkdir -p $(@D)
-	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -DFAKE_WIRING $< -o $@
+	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
 
 build/sandbox/%.c.o: %.c
 	$Q echo "[Compile sandbox] $<"
 	$Q mkdir -p $(@D)
-	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -DFAKE_WIRING $< -o $@
+	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
 
 build/arm-warnings/%.cpp.o: %.cpp
 	$Q echo "[Compile ARM warning check] $<"
 	$Q mkdir -p $(@D)
-	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -DFAKE_WIRING \
+	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) \
 		-funsigned-char -Werror $< -o $@
 
 build/arm-warnings/%.c.o: %.c
 	$Q echo "[Compile ARM warning check] $<"
 	$Q mkdir -p $(@D)
-	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -DFAKE_WIRING \
+	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) \
 		-funsigned-char -Werror $< -o $@
 
 build/tests/oclock-arm-warnings: $(ARM_WARNING_OBJ)
@@ -110,15 +132,89 @@ build/tests/oclock-arm-warnings: $(ARM_WARNING_OBJ)
 	$Q $(CXX) -o $@ $^ $(LDFLAGS) $(SANDBOX_LIBS)
 
 build/tests/core_tests: tests/core_tests.cpp src/inbox.cpp src/commonUtils.cpp \
-		ht1632/HT1632.cpp lpd8806/LPD8806.cpp src/fakeWiringPi.cpp
+		ht1632/HT1632.cpp lpd8806/LPD8806.cpp src/gpio/fakeGpio.cpp
 	$Q echo "[Build test] $@"
 	$Q mkdir -p $(@D)
-	$Q $(CXX) $(CPPFLAGS) $(CXXFLAGS) -DFAKE_WIRING \
+	$Q $(CXX) $(CPPFLAGS) $(CXXFLAGS) \
 		-fsanitize=address,undefined -fno-omit-frame-pointer \
 		$^ -o $@ -lpthread
 
 test-core: build/tests/core_tests
 	$Q ASAN_OPTIONS=detect_leaks=1 ./build/tests/core_tests
+
+build/tests/gpio_protocol_tests: tests/gpio_protocol_tests.cpp \
+		src/motionInput.cpp mcp300x/mcp300x.cpp ht1632/HT1632.cpp \
+		lpd8806/LPD8806.cpp src/gpio/fakeGpio.cpp
+	$Q echo "[Build test] $@"
+	$Q mkdir -p $(@D)
+	$Q $(CXX) $(CPPFLAGS) $(CXXFLAGS) \
+		-fsanitize=address,undefined -fno-omit-frame-pointer \
+		$^ -o $@ -lpthread
+
+test-gpio-protocols: build/tests/gpio_protocol_tests
+	$Q ASAN_OPTIONS=detect_leaks=1 ./build/tests/gpio_protocol_tests
+
+# The burst path bypasses Gpio::write(), so the test hook is the only way to
+# observe its emitted order. The hook is never defined for hardware builds.
+build/tests/gpio_burst_tests: tests/gpio_burst_tests.cpp \
+		ht1632/HT1632.cpp src/gpio/fakeGpio.cpp
+	$Q echo "[Build test] $@"
+	$Q mkdir -p $(@D)
+	$Q $(CXX) $(CPPFLAGS) $(CXXFLAGS) \
+		-DOCLOCK_GPIO_BURST_TEST_HOOK \
+		-fsanitize=address,undefined -fno-omit-frame-pointer \
+		$^ -o $@ -lpthread
+
+test-gpio-burst: build/tests/gpio_burst_tests
+	$Q ASAN_OPTIONS=detect_leaks=1 ./build/tests/gpio_burst_tests
+
+build/tests/gpio_register_tests: tests/gpio_register_tests.cpp \
+		src/gpio/bcm2835GpioRegisters.cpp
+	$Q echo "[Build test] $@"
+	$Q mkdir -p $(@D)
+	$Q $(CXX) $(CPPFLAGS) $(CXXFLAGS) \
+		-funsigned-char -Werror \
+		-fsanitize=address,undefined -fno-omit-frame-pointer \
+		$^ -o $@
+
+test-gpio-registers: build/tests/gpio_register_tests
+	$Q ASAN_OPTIONS=detect_leaks=1 ./build/tests/gpio_register_tests
+
+build/tests/spi_output_tests: tests/spi_output_tests.cpp \
+		lpd8806/LPD8806.cpp src/gpio/fakeGpio.cpp \
+		src/spi/fakeSpiOutput.cpp
+	$Q echo "[Build test] $@"
+	$Q mkdir -p $(@D)
+	$Q $(CXX) $(CPPFLAGS) $(CXXFLAGS) \
+		-funsigned-char -Werror \
+		-fsanitize=address,undefined -fno-omit-frame-pointer \
+		$^ -o $@ -lpthread
+
+build/tests/linuxSpidevOutput.cpp.o: src/spi/linuxSpidevOutput.cpp
+	$Q echo "[Compile spidev transport] $<"
+	$Q mkdir -p $(@D)
+	$Q $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) \
+		-funsigned-char -Werror $< -o $@
+
+# The Phase 5 standalone measurement tools (all-off, colors, HT1632 render,
+# MCP3002 read) were retired to misc/junk/wiringpi-migration/ once their gates
+# closed. Their measurements live in docs/; see that directory's CATALOG.md.
+
+test-spi-output: build/tests/spi_output_tests \
+		build/tests/linuxSpidevOutput.cpp.o
+	$Q ASAN_OPTIONS=detect_leaks=1 ./build/tests/spi_output_tests
+
+build/tests/iio_analog_input_tests: tests/iio_analog_input_tests.cpp \
+		src/adc/linuxIioAnalogInput.cpp
+	$Q echo "[Build test] $@"
+	$Q mkdir -p $(@D)
+	$Q $(CXX) $(CPPFLAGS) $(CXXFLAGS) \
+		-funsigned-char -Werror \
+		-fsanitize=address,undefined -fno-omit-frame-pointer \
+		$^ -o $@ -lpthread
+
+test-iio-analog: build/tests/iio_analog_input_tests
+	$Q ASAN_OPTIONS=detect_leaks=1 ./build/tests/iio_analog_input_tests
 
 smoke: oclock-sandbox
 	$Q ./tests/smoke.sh ./oclock-sandbox
@@ -129,13 +225,33 @@ test-shutdown: oclock-sandbox
 compatibility: oclock-sandbox
 	$Q ./tests/compatibility.sh ./oclock-sandbox
 
+gpio-boundary:
+	$Q ./tests/gpio-boundary.sh
+
+test-strip-binding:
+	$Q ./tests/strip-binding.sh ./misc/bindOclockStripSpi.sh
+
 check-arm-warnings: build/tests/oclock-arm-warnings
 	$Q ./tests/smoke.sh ./build/tests/oclock-arm-warnings
 
-test: compatibility test-core check-arm-warnings smoke test-shutdown
+test: compatibility gpio-boundary test-core test-gpio-protocols \
+	test-gpio-burst \
+	test-gpio-registers test-spi-output test-iio-analog \
+	test-strip-binding \
+	check-arm-warnings smoke test-shutdown
 
 valgrind: oclock-sandbox
 	$Q ./tests/valgrind-smoke.sh ./oclock-sandbox
+
+spi-overlay: build/oclock-spi-overlay.dtbo
+
+build/oclock-spi-overlay.dtbo: hardware/oclock-spi-overlay.dts
+	$Q echo "[Compile Device Tree overlay] $<"
+	$Q mkdir -p $(@D)
+	$Q $(DTC) -@ -I dts -O dtb -o $@ $<
+
+test-spi-overlay: build/oclock-spi-overlay.dtbo
+	$Q ./tests/spi-overlay.sh $<
 
 clean:
 	$Q echo "[Clean]"

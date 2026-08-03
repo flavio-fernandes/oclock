@@ -7,7 +7,7 @@
 
 #include "stdTypes.h"
 
-class Mcp3002; // FWD
+class AnalogInput; // FWD
 
 class LightSensor
 {
@@ -20,7 +20,7 @@ public:
   static const Int32U darkRoomThresholdHighWaterMark;
   
   static void registerMainThread();  // only needed by one thread
-  void runThreadLoop(std::recursive_mutex* gpioLockMutexPParam);  // to be ran by main thread only
+  void runThreadLoop(AnalogInput& analogInput); // main thread only
 
 private:
   static std::thread::id mainThreadId; // http://en.cppreference.com/w/cpp/thread/thread/id
@@ -29,15 +29,10 @@ private:
   LightValues lightValues;
 
   static const size_t maxLightValuesSize;
-  static const int pinClock;
-  static const int pinDigitalOut;
-  static const int pinDigitalIn;
-  static const int pinChipSelect;
-  
   static std::recursive_mutex instanceMutex;
   static LightSensor* instance;
 
-  void doSensorRead(const Mcp3002& mcp);
+  void doSensorRead(const AnalogInput& analogInput);
   
   LightSensor();
   ~LightSensor();

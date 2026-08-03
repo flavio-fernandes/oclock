@@ -11,6 +11,7 @@
 #include <inttypes.h>
 #include <getopt.h>
 #include <mosquitto.h>
+#include <stdexcept>
 #include <stdlib.h>
 #include <string.h>
 

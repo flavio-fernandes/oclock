@@ -11,7 +11,11 @@
 #ifndef HT1632_h
 #define HT1632_h
 
+#include <cstdint>
 #include <mutex>
+
+#include "gpio/Gpio.h"
+#include "gpio/GpioBurst.h"
 
 /*
  * USER OPTIONS
@@ -99,7 +103,7 @@
 // edge of the WR signal. On a 16MHz processor, this provides 62.5ns per NOP. 
 #define NOP(); __asm__("nop\n\t"); 
 #else
-#define NOP() delay(1)
+#define NOP() gpio.delayMilliseconds(1)
 #endif
 
 // Standard command list.
@@ -134,14 +138,45 @@
 
 class HT1632Class
 {
-  private:  
+  private:
     std::recursive_mutex& gpioLockMutex;
+    Gpio& gpio;
     int brightness;
 
     int _pinForCS;
     int _pinCLK;
     int _pinWR;
     int _pinDATA;
+
+    // Optional pre-resolved value path. When the backend declines, every write
+    // below falls back to gpio.write() and behavior is unchanged.
+    GpioBurstPins _burst;
+    std::uint32_t _maskCS;
+    std::uint32_t _maskWR;
+    std::uint32_t _maskDATA;
+    std::uint32_t _maskCLK;
+    bool _burstReady;
+
+    inline void pinWrite(int bcmGpio, std::uint32_t mask, GpioValue value) {
+      if (_burstReady) {
+        _burst.write(mask, value);
+      } else {
+        gpio.write(bcmGpio, value);
+      }
+    }
+
+    // The burst path needs an explicit setup guarantee. The fallback path
+    // keeps its original single-nop behavior, because a gpio.write() already
+    // costs microseconds and the legacy timing is known good.
+    inline void burstSetupDelay() {
+      if (_burstReady) {
+        gpioBurstSetupDelay();
+      } else {
+        __asm__ __volatile__("nop");
+      }
+    }
+
+    void outputCLK_Pulse();
     int _tgtBuffer;
     bool _globalNeedsRewriting [MAX_BOARDS];
     char * mem [MAX_BOARDS];
@@ -159,7 +194,7 @@ class HT1632Class
     HT1632Class& operator=(const HT1632Class& other) = delete;
   
   public:
-    HT1632Class(std::recursive_mutex* gpioLockMutexP);
+    HT1632Class(std::recursive_mutex* gpioLockMutexP, Gpio& gpio);
     ~HT1632Class();
   
     void begin(int pinCS, int pinWR,  int pinDATA, int pinCLK);

@@ -1,14 +1,21 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <cstddef>
 #include <mutex>
 
 #include "stdTypes.h"
 
+class Gpio;
+class SpiOutput;
+
 class LPD8806 {
 
  public:
-  LPD8806(std::recursive_mutex* gpioLockMutexP, Int16U n, Int8U dpin, Int8U cpin); // Configurable pins
+  LPD8806(std::recursive_mutex* gpioLockMutexP, Gpio& gpio,
+          Int16U n, Int8U dpin, Int8U cpin); // Configurable pins
+  LPD8806(std::recursive_mutex* gpioLockMutexP, Gpio& gpio,
+          SpiOutput& spiOutput, Int16U n); // Kernel SPI output
   ~LPD8806();
   void
     begin(),
@@ -19,6 +26,7 @@ class LPD8806 {
     show(),
     updatePins(Int8U dpin, Int8U cpin), // Change pins, configurable
     updateLength(Int16U n);               // Change strip length
+  void delayMilliseconds(unsigned int duration) const;
   Int16U
     numPixels() const;
   static Int32U Color(Int8U r, Int8U g, Int8U b) /*const*/;
@@ -27,6 +35,8 @@ class LPD8806 {
   static const Int32U nullColor;
  private:
   std::recursive_mutex& gpioLockMutex;
+  Gpio& gpio;
+  SpiOutput* spiOutput;
 
   Int16U numLEDs;    // Number of RGB LEDs in strip (each led needs 3 bytes)
   Int16U largestChangedLed; // last LED changed after show().
@@ -37,6 +47,8 @@ class LPD8806 {
 
   void startBitbang() const;
   void _bitBangLatchSignal() const;
+  std::size_t latchByteCount() const;
+  void transferSpiLatch() const;
   bool begun;       // If 'true', begin() method was previously invoked
 
   // not implemented

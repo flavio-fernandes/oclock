@@ -1,21 +1,35 @@
 #include "lightSensor.h"
 
+#include <stdexcept>
+
 #include "threadsMain.h"
 #include "timerTick.h"
 #include "inbox.h"
-#include "mcp300x.h"
+#include "adc/AnalogInput.h"
 
 std::thread::id LightSensor::mainThreadId;  // default 'invalid' value 
 std::recursive_mutex LightSensor::instanceMutex;
 LightSensor* LightSensor::instance = nullptr;
 const size_t LightSensor::maxLightValuesSize = 10;
-const int LightSensor::pinClock = 17;
-const int LightSensor::pinDigitalOut = 27;
-const int LightSensor::pinDigitalIn = 22;
-const int LightSensor::pinChipSelect = 4;
-
-const Int32U LightSensor::darkRoomThresholdLowWaterMark = 360;  // TWEAK ME!
-const Int32U LightSensor::darkRoomThresholdHighWaterMark = 500; // TWEAK ME!
+// Measured on the Zero W/Trixie unit on 2026-08-02 with the real room light
+// switched off, which is the actual condition the clock should dim in rather
+// than a hand or cover over the sensor:
+//
+//   room light on   ~1022
+//   room light off   452 to 478, sustained and fully settled
+//
+// The original 360 was therefore unreachable: the darkest the room ever got
+// still read above it, so dimming could never engage. The operator selected
+// 460 for the low-water mark.
+//
+// The high-water mark had to move too. Entering dark needs one sample below
+// the low-water mark and the plateau dips to 452, so 460 engages. But leaving
+// dark needs a sample at or above the high-water mark, and the old 500 sat
+// only 22 counts above the observed dark maximum of 478 — close enough that a
+// slightly brighter night could oscillate between dim and bright. 700 keeps a
+// wide band while staying far below the ~1022 lit-room reading.
+const Int32U LightSensor::darkRoomThresholdLowWaterMark = 460;  // TWEAK ME!
+const Int32U LightSensor::darkRoomThresholdHighWaterMark = 700; // TWEAK ME!
 
 LightSensor::LightSensor() : lightValues() {
 }
@@ -52,9 +66,9 @@ void LightSensor::registerMainThread() {
   mainThreadId = caller;
 }
 
-void LightSensor::doSensorRead(const Mcp3002& mcp) {
-  const int currRead0 = mcp.readAnalog(0);
-  const int currRead1 = mcp.readAnalog(1);
+void LightSensor::doSensorRead(const AnalogInput& analogInput) {
+  const int currRead0 = analogInput.readAnalog(0);
+  const int currRead1 = analogInput.readAnalog(1);
 
   if (currRead0 < 0 || currRead1 < 0) {
     throw std::runtime_error( "failed to read analog value for light sensor" );
@@ -87,7 +101,7 @@ Int32U LightSensor::getLightValue() const {
   return lightValueEntries == 0 ? 0 : lightValueSum / lightValueEntries;
 }
 
-void LightSensor::runThreadLoop(std::recursive_mutex* gpioLockMutexPParam) {
+void LightSensor::runThreadLoop(AnalogInput& analogInput) {
   TimerTickServiceCv sensorReadTimer(600); // 0.6 seconds
 
   TimerTick& timerTick = TimerTick::bind();
@@ -97,7 +111,6 @@ void LightSensor::runThreadLoop(std::recursive_mutex* gpioLockMutexPParam) {
   Inbox& inbox = inboxRegistry.getInbox(threadIdLightSensor);
   InboxMsg msg;
 
-  const Mcp3002 mcp(*gpioLockMutexPParam, pinClock, pinDigitalOut, pinDigitalIn, pinChipSelect);
   while (true) {
 
     if (inbox.getMessage(msg)) {
@@ -105,7 +118,7 @@ void LightSensor::runThreadLoop(std::recursive_mutex* gpioLockMutexPParam) {
     }
 
     sensorReadTimer.wait();
-    doSensorRead(mcp);
+    doSensorRead(analogInput);
   }
 
   timerTick.unregisterTimerTickService(sensorReadTimer.getCookie());
@@ -114,5 +127,5 @@ void LightSensor::runThreadLoop(std::recursive_mutex* gpioLockMutexPParam) {
 void lightSensorMain(const ThreadParam& threadParam) {
   LightSensor::registerMainThread();
   LightSensor& lightSensor = LightSensor::bind();
-  lightSensor.runThreadLoop(threadParam.gpioLockMutexP);
+  lightSensor.runThreadLoop(*threadParam.analogInputP);
 }

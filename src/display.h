@@ -10,6 +10,7 @@
 
 class DisplayTodo;  // FWD
 class DisplayInternal;  // FWD
+class Gpio;  // FWD
 
 class Display {
 public:
@@ -17,7 +18,8 @@ public:
   static void shutdown();
   
   static void registerMainThread();  // only needed by one thread
-  void runThreadLoop(std::recursive_mutex* gpioLockMutexP);  // to be ran by main thread only
+  void runThreadLoop(std::recursive_mutex* gpioLockMutexP,
+                     Gpio& gpio);  // to be ran by main thread only
 
   // call-ins from other threads that add async requests to the display thread
   void enqueueMsgModePost(StringMap& postValues);

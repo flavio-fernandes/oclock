@@ -1,14 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#ifdef FAKE_WIRING
-#include "fakeWiringPi.h"
-#else
-#include <wiringPi.h>
-#endif // ifdef FAKE_WIRING
-
+#include <stdexcept>
+#include <string>
 #include <thread>         // std::thread
 
+#include "gpio/Gpio.h"
+#include "spi/SpiOutput.h"
+#include "adc/AnalogInput.h"
 #include "threadsMain.h"
 #include "timerTick.h"
 #include "lightSensor.h"
@@ -84,11 +83,23 @@ int main (int argc, char* argv[])
 {
   InboxRegistry& inboxRegistry = InboxRegistry::bind();
   std::recursive_mutex gpioLockMutex;
+  std::unique_ptr<Gpio> gpio = createGpio();
+  std::unique_ptr<SpiOutput> stripSpiOutput = createStripSpiOutput();
+  std::unique_ptr<AnalogInput> analogInput = createAnalogInput();
   ThreadInfo* threadInfo = 0;
-  ThreadParam threadParam = {argc, argv, &gpioLockMutex};
+  ThreadParam threadParam = {argc, argv, &gpioLockMutex, gpio.get(),
+                             stripSpiOutput.get(), analogInput.get()};
 
-  if (wiringPiSetupGpio() != 0) {
+  if (!gpio->initialize()) {
     fprintf(stderr, "Unable to initialize GPIO access\n");
+    return EXIT_FAILURE;
+  }
+  if (stripSpiOutput && !stripSpiOutput->initialize()) {
+    fprintf(stderr, "Unable to initialize strip SPI output\n");
+    return EXIT_FAILURE;
+  }
+  if (!analogInput || !analogInput->initialize()) {
+    fprintf(stderr, "Unable to initialize analog input\n");
     return EXIT_FAILURE;
   }
   WebHandlerInternal::bind().start();
@@ -96,6 +107,14 @@ int main (int argc, char* argv[])
   // parse args in pulsar before unleashing the other threads, because
   // it uses a non-thread safe parser
   pulsar_parse_args(argc, argv);
+
+  // A startup failure (for example, an invalid bind address) can reach the
+  // termination broadcast immediately after the threads are launched. Create
+  // every inbox first so a thread that has not started running yet cannot miss
+  // that message and make shutdown hang on join.
+  for (int i=0; i < threadIdCount; ++i) {
+    inboxRegistry.getInbox(static_cast<ThreadId>(i));
+  }
   
   allocThreadInfoArray(threadInfo);
   for (int i=0; i < threadIdCount; ++i) {

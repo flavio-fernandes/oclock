@@ -7,6 +7,7 @@
 #include "HT1632.h"
 #include "LPD8806.h"
 #include "commonUtils.h"
+#include "gpio/Gpio.h"
 #include "inbox.h"
 
 static void testPrequeuedInboxMessage() {
@@ -33,7 +34,9 @@ static void testRandomBounds() {
 
 static void testLongTextAndUninitializedDisplayCleanup() {
   std::recursive_mutex gpioMutex;
-  HT1632Class display(&gpioMutex);
+  std::unique_ptr<Gpio> gpio = createGpio();
+  assert(gpio->initialize());
+  HT1632Class display(&gpioMutex, *gpio);
   char font[64] = {};
   char widths[64];
   std::fill(widths, widths + 64, 1);
@@ -53,7 +56,9 @@ static void testLongTextAndUninitializedDisplayCleanup() {
 
 static void testEmptyLedStrip() {
   std::recursive_mutex gpioMutex;
-  LPD8806 strip(&gpioMutex, 0, 1, 2);
+  std::unique_ptr<Gpio> gpio = createGpio();
+  assert(gpio->initialize());
+  LPD8806 strip(&gpioMutex, *gpio, 0, 1, 2);
   strip.clearPixelColors();
   strip.show();
   assert(strip.numPixels() == 0);

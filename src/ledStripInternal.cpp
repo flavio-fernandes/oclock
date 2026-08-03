@@ -1,9 +1,3 @@
-#ifdef FAKE_WIRING
-#include "fakeWiringPi.h"
-#else
-#include <wiringPi.h>
-#endif // ifdef FAKE_WIRING
-
 #include <string>
 
 #include "LPD8806.h"
@@ -222,7 +216,8 @@ static void modeScanMain(LedStripInternalInfo& info) {
       if (i == lpd8806.numPixels()) { i -= 2; i_increment = -1; }
 
       if (++ledsVisited > ledsVisitedPerFrame) break;
-      delay(TimerTick::millisPerTick / ledsVisitedPerFrame);
+      lpd8806.delayMilliseconds(
+        TimerTick::millisPerTick / ledsVisitedPerFrame);
   }
 }
 
