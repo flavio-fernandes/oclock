@@ -19,6 +19,14 @@ std::uint32_t Bcm2835GpioRegisters::maskForOffset(int bcmGpio) {
   return std::uint32_t(1) << static_cast<unsigned int>(bcmGpio);
 }
 
+volatile std::uint32_t *Bcm2835GpioRegisters::setRegister() const {
+  return registers_ + setRegister0;
+}
+
+volatile std::uint32_t *Bcm2835GpioRegisters::clearRegister() const {
+  return registers_ + clearRegister0;
+}
+
 GpioValue Bcm2835GpioRegisters::read(int bcmGpio) const {
   const std::uint32_t mask = maskForOffset(bcmGpio);
   // The mapping is device memory on Raspberry Pi OS. The full barriers keep

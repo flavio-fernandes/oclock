@@ -72,6 +72,15 @@ public:
 
   const char *description() const { return "BCM2835 /dev/gpiomem"; }
 
+  bool burstRegisters(volatile std::uint32_t *&setRegister,
+                      volatile std::uint32_t *&clearRegister) {
+    if (!registers_)
+      return false;
+    setRegister = registers_->setRegister();
+    clearRegister = registers_->clearRegister();
+    return true;
+  }
+
 private:
   void closeMapping() {
     registers_.reset();

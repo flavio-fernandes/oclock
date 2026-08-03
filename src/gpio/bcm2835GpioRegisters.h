@@ -16,14 +16,19 @@ public:
   GpioValue read(int bcmGpio) const;
   void write(int bcmGpio, GpioValue value) const;
 
+  // Direct value-register access for the narrow HT1632 burst path. Direction
+  // and ownership stay with the libgpiod backend; these are value registers
+  // only.
+  volatile std::uint32_t *setRegister() const;
+  volatile std::uint32_t *clearRegister() const;
+  static std::uint32_t maskForOffset(int bcmGpio);
+
   static const std::size_t registerMapBytes = 4096;
 
 private:
   static const std::size_t setRegister0 = 7;   // GPSET0, byte offset 0x1c
   static const std::size_t clearRegister0 = 10; // GPCLR0, byte offset 0x28
   static const std::size_t levelRegister0 = 13; // GPLEV0, byte offset 0x34
-
-  static std::uint32_t maskForOffset(int bcmGpio);
 
   volatile std::uint32_t *registers_;
 };

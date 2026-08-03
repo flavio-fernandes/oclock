@@ -21,6 +21,15 @@ public:
   virtual int write(gpiod_line_request *request, int bcmGpio,
                     GpioValue value) = 0;
   virtual const char *description() const = 0;
+
+  // Only the mapped backend can expose value registers directly. The plain
+  // libgpiod backend keeps the default and forces callers onto write().
+  virtual bool burstRegisters(volatile std::uint32_t *&setRegister,
+                              volatile std::uint32_t *&clearRegister) {
+    (void)setRegister;
+    (void)clearRegister;
+    return false;
+  }
 };
 
 std::unique_ptr<Gpio>

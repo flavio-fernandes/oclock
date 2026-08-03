@@ -245,6 +245,32 @@ make -n phase5-lpd8806-colors-2mhz \
 grep -Fq -- '-DOCLOCK_STRIP_SPEED_HZ=2000000U' \
     "${test_dir}/phase5-lpd-colors-build.txt"
 
+# The HT1632 burst path bypasses Gpio::write(). Its test hook replaces the real
+# register store, so it must never reach a hardware or sandbox build.
+make -n hardware >"${test_dir}/burst-hardware-build.txt"
+if grep -Fq 'OCLOCK_GPIO_BURST_TEST_HOOK' "${test_dir}/burst-hardware-build.txt"; then
+    echo "the burst test hook leaked into the hardware build" >&2
+    exit 1
+fi
+make -n sandbox >"${test_dir}/burst-sandbox-build.txt"
+if grep -Fq 'OCLOCK_GPIO_BURST_TEST_HOOK' "${test_dir}/burst-sandbox-build.txt"; then
+    echo "the burst test hook leaked into the sandbox build" >&2
+    exit 1
+fi
+make -n test-gpio-burst >"${test_dir}/burst-test-build.txt"
+grep -Fq -- '-DOCLOCK_GPIO_BURST_TEST_HOOK' "${test_dir}/burst-test-build.txt"
+
+# Declining a burst must remain valid: the default returns false and the
+# matrix must keep a working gpio.write() fallback.
+grep -Fq 'return false;' src/gpio/Gpio.h
+grep -Fq 'gpio.write(bcmGpio, value);' ht1632/HT1632.h
+# The datasheet setup guarantee must survive; the old per-write cost provided
+# it incidentally and a direct register store does not.
+grep -Fq 'OCLOCK_GPIO_BURST_SETUP_NOPS' src/gpio/GpioBurst.h
+grep -Fq 'gpioBurstSetupDelay();' ht1632/HT1632.h
+# Only lines already configured as outputs may be handed out.
+grep -Fq 'GPIOD_LINE_DIRECTION_OUTPUT' src/gpio/gpiodV2Gpio.cpp
+
 # The HT1632 matrix keeps its own narrow transport. Its GPIOs are outside the
 # SPI overlay, so its gate must not create a spidev binding or touch the ADC.
 bash -n misc/verifyPhase5Ht1632Render.sh

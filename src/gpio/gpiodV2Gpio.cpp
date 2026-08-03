@@ -1,4 +1,6 @@
 #include "Gpio.h"
+#include "GpioBurst.h"
+#include "bcm2835GpioRegisters.h"
 #include "gpiodValueIo.h"
 
 #include <gpiod.h>
@@ -115,6 +117,37 @@ public:
 
   void delayMilliseconds(unsigned int duration) {
     std::this_thread::sleep_for(std::chrono::milliseconds(duration));
+  }
+
+  // Hand out a pre-resolved value path only for lines this object has already
+  // claimed as outputs, and only if the value backend can expose registers.
+  // Ownership, direction, and cleanup stay here; the caller gets values only.
+  bool acquireBurst(const int *bcmGpios, std::size_t count,
+                    GpioBurstPins &pins, std::uint32_t *masks) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (bcmGpios == NULL || masks == NULL || count == 0)
+      return false;
+
+    volatile std::uint32_t *setRegister = NULL;
+    volatile std::uint32_t *clearRegister = NULL;
+    if (!valueIo_->burstRegisters(setRegister, clearRegister))
+      return false;
+
+    // Refuse rather than partially succeed: a caller that got a half-filled
+    // mask array would drive the wrong pin.
+    for (std::size_t i = 0; i < count; ++i) {
+      const int bcmGpio = bcmGpios[i];
+      std::map<int, Line>::iterator line = lines_.find(bcmGpio);
+      if (line == lines_.end() ||
+          line->second.direction != GPIOD_LINE_DIRECTION_OUTPUT)
+        return false;
+      if (!Bcm2835GpioRegisters::supportsOffset(bcmGpio))
+        return false;
+      masks[i] = Bcm2835GpioRegisters::maskForOffset(bcmGpio);
+    }
+
+    pins = GpioBurstPins(setRegister, clearRegister);
+    return true;
   }
 
 private:

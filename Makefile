@@ -6,7 +6,7 @@ endif
 .SUFFIXES:
 .PHONY: all hardware sandbox hardware-preflight \
 	compatibility gpio-boundary test \
-	test-core test-gpio-protocols test-gpio-registers \
+	test-core test-gpio-protocols test-gpio-burst test-gpio-registers \
 	test-spi-output test-iio-analog test-spi-overlay check-arm-warnings \
 	smoke test-shutdown valgrind spi-overlay \
 	phase5-lpd8806-all-off phase5-lpd8806-all-off-2mhz \
@@ -156,6 +156,20 @@ build/tests/gpio_protocol_tests: tests/gpio_protocol_tests.cpp \
 test-gpio-protocols: build/tests/gpio_protocol_tests
 	$Q ASAN_OPTIONS=detect_leaks=1 ./build/tests/gpio_protocol_tests
 
+# The burst path bypasses Gpio::write(), so the test hook is the only way to
+# observe its emitted order. The hook is never defined for hardware builds.
+build/tests/gpio_burst_tests: tests/gpio_burst_tests.cpp \
+		ht1632/HT1632.cpp src/gpio/fakeGpio.cpp
+	$Q echo "[Build test] $@"
+	$Q mkdir -p $(@D)
+	$Q $(CXX) $(CPPFLAGS) $(CXXFLAGS) \
+		-DOCLOCK_GPIO_BURST_TEST_HOOK \
+		-fsanitize=address,undefined -fno-omit-frame-pointer \
+		$^ -o $@ -lpthread
+
+test-gpio-burst: build/tests/gpio_burst_tests
+	$Q ASAN_OPTIONS=detect_leaks=1 ./build/tests/gpio_burst_tests
+
 build/tests/gpio_register_tests: tests/gpio_register_tests.cpp \
 		src/gpio/bcm2835GpioRegisters.cpp
 	$Q echo "[Build test] $@"
@@ -271,6 +285,7 @@ check-arm-warnings: build/tests/oclock-arm-warnings
 	$Q ./tests/smoke.sh ./build/tests/oclock-arm-warnings
 
 test: compatibility gpio-boundary test-core test-gpio-protocols \
+	test-gpio-burst \
 	test-gpio-registers test-spi-output test-iio-analog \
 	check-arm-warnings smoke test-shutdown
 
