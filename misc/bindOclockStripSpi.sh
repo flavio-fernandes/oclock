@@ -181,6 +181,14 @@ await_strip_device()
 # character device do not necessarily appear in the same instant the write
 # returns, and this runs on a single-core ARMv6 during boot. Poll briefly for
 # the expected end state rather than sampling it once.
+#
+# This is also why a settle timeout is only a warning. settle waits on the
+# *global* udev queue, so an unrelated slow or failing probe holds it open and
+# has nothing to do with whether our bind succeeded. That is not hypothetical:
+# binding spi4.0 makes udev run raspberrypi-sys-mods/i2cprobe against it, which
+# fails and keeps running well past the settle timeout, and treating that as
+# fatal took the whole clock down at every boot. This function measures the end
+# state we actually require, so it — not settle — is the authority.
 await_bind_result()
 {
     local want=$1
@@ -277,7 +285,8 @@ case "${action}" in
             die "could not set strip driver_override"
         printf '%s\n' "${strip_name}" >"${spidev_driver_dir}/bind" ||
             die "could not bind ${strip_name} to spidev"
-        settle_udev || die "udev did not settle after binding"
+        settle_udev ||
+            echo "warning: udev queue did not drain; verifying the end state" >&2
 
         await_bind_result bound || {
             [[ $(driver_name) == spidev ]] ||
@@ -310,7 +319,7 @@ case "${action}" in
         printf '\n' >"${strip_device}/driver_override" ||
             die "could not clear strip driver_override"
         settle_udev ||
-            die "udev did not settle after unbinding"
+            echo "warning: udev queue did not drain; verifying the end state" >&2
 
         await_bind_result unbound || {
             [[ $(driver_name) == none ]] || die "strip child remains bound"
