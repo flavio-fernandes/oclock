@@ -458,10 +458,19 @@ and preserved all hardware/service state. The subsequent
 recorded a 997.3 uncovered mean, 179.0 fully covered mean, and 995.0 restored
 mean. The 360/500 thresholds remained unchanged at that point, pending
 representative room-light behavior during a later guarded application run.
-**That run happened and changed them to a measured 460/700**: with the room
-light actually off the sensor only falls to 355-478, so the original 360
-low-water mark was unreachable. See
+**That run happened and changed them to a measured 460/700**, on the reasoning
+that with the room light off the sensor only fell to 355-478 and the original
+360 low-water mark was therefore unreachable. See
 [the trial result](wiringpi-phase5-application-trial-result.md).
+
+**Both the value and that reasoning were later revised.** Sixty days of
+published sensor telemetry showed the 360 mark was reachable all along — 32.9%
+of pre-migration samples sat below it — and that what the migration actually
+changed was the top of the range, not the bottom. The high-water mark moved to
+**600** because 700 sat above the daytime floor and held the clock dim until
+mid-morning. The thresholds are now **460/600**. See
+[the dimming recalibration](wiringpi-phase6-dimming-recalibration.md), which
+supersedes the threshold reasoning in every Phase 5 document.
 
 Run every follow-up modern transport profile on the Zero W and compare it with
 Phase 0, Phase 1, and protocol-trace evidence from the preserved Zero/Jessie

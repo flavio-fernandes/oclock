@@ -11,25 +11,35 @@ std::thread::id LightSensor::mainThreadId;  // default 'invalid' value
 std::recursive_mutex LightSensor::instanceMutex;
 LightSensor* LightSensor::instance = nullptr;
 const size_t LightSensor::maxLightValuesSize = 10;
-// Measured on the Zero W/Trixie unit on 2026-08-02 with the real room light
-// switched off, which is the actual condition the clock should dim in rather
-// than a hand or cover over the sensor:
+// Set from 60 days of published sensor telemetry rather than from a bench
+// observation. What the feed records is getLightValue() itself — the ten-sample
+// moving average — so the history is directly comparable to these constants.
 //
-//   room light on   ~1022
-//   room light off   452 to 478, sustained and fully settled
+// Zero W/Trixie unit, measured over 2026-08-03..04:
 //
-// The original 360 was therefore unreachable: the darkest the room ever got
-// still read above it, so dimming could never engage. The operator selected
-// 460 for the low-water mark.
+//   night, 01-05h    median 196, p95 408, max 476
+//   day,   09-17h    min 587, p05 614, median 781
+//   room light on    1022, i.e. clipped at the 10-bit ceiling
 //
-// The high-water mark had to move too. Entering dark needs one sample below
-// the low-water mark and the plateau dips to 452, so 460 engages. But leaving
-// dark needs a sample at or above the high-water mark, and the old 500 sat
-// only 22 counts above the observed dark maximum of 478 — close enough that a
-// slightly brighter night could oscillate between dim and bright. 700 keeps a
-// wide band while staying far below the ~1022 lit-room reading.
+// The two bands are cleanly separated, so the hysteresis pair belongs inside
+// the ~180-count gap between them. 460 sits above the night p95, so nights
+// reliably engage dimming, and 127 counts below the daytime minimum, so
+// daylight never trips it.
+//
+// The high-water mark was 700 until 2026-08-04. That was above the daytime
+// floor of 587, so a naturally lit morning crossed it only slowly: replaying
+// 08-04 shows the clock held dim until 09:52, hours after the room was plainly
+// bright. 600 brightens at 07:24 on that same data while still leaving 124
+// counts of margin above the brightest night sample.
+//
+// An earlier revision claimed the original 360 was unreachable because the room
+// never got that dark. That was wrong: across 15,357 pre-migration samples,
+// 32.9% were below 360, and replaying the old 360/500 pair over them produces
+// 106 dim events in 57 days. The migration moved the top of the range, not the
+// bottom — the bright plateau went from ~640 to a clipped 1022 while the dark
+// floor stayed near 150. See docs/wiringpi-phase6-dimming-recalibration.md.
 const Int32U LightSensor::darkRoomThresholdLowWaterMark = 460;  // TWEAK ME!
-const Int32U LightSensor::darkRoomThresholdHighWaterMark = 700; // TWEAK ME!
+const Int32U LightSensor::darkRoomThresholdHighWaterMark = 600; // TWEAK ME!
 
 LightSensor::LightSensor() : lightValues() {
 }

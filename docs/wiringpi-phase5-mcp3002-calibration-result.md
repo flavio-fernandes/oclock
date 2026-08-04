@@ -13,11 +13,16 @@ dimming under representative room conditions before any recalibration.
 
 **That caution was justified.** The trial did observe representative room
 conditions and the thresholds changed to a measured **460/700**. A hand over
-the sensor reads 179; the room with its light off only reaches 355 to 478. The
-original 360 low-water mark was below anything this room actually produces, so
-dimming could never have engaged — which this covered-sensor capture, on its
-own, could not have revealed. See
+the sensor reads 179; the room with its light off reached 355 to 478 in that
+window, which was taken as evidence that the original 360 low-water mark was
+below anything the room produces. See
 [the trial result](wiringpi-phase5-application-trial-result.md).
+
+**That inference was wrong**, and the caution above was justified twice over:
+neither a covered sensor *nor a single evening window* is a calibrated room.
+Sixty days of feed history put 32.9% of pre-migration samples below 360. The
+thresholds are now **460/600** — see
+[the dimming recalibration](wiringpi-phase6-dimming-recalibration.md).
 
 ## Evidence
 

@@ -112,10 +112,16 @@ controlled capture measured 997.3 uncovered, 179.0 fully covered, and 995.0
 restored, which proves the sensor responds but says nothing about representative
 room light: a hand over the sensor is not dusk.
 
-**Outcome:** the question was answered and the answer was that 360 was
-unreachable. See
+**Outcome:** the question was answered, and the answer recorded at the time was
+that 360 was unreachable. See
 [the trial result](wiringpi-phase5-application-trial-result.md); the thresholds
-are now 460/700. The rest of this section is the gate as it was written.
+became 460/700.
+
+**That answer did not survive contact with the feed history.** 360 was
+reachable; the trial simply never observed the room at its darkest. The
+thresholds are now **460/600** — see
+[the dimming recalibration](wiringpi-phase6-dimming-recalibration.md). The rest
+of this section is the gate as it was written.
 
 This trial is the first opportunity to observe a real bright-to-dark transition.
 Record the observed values and whether dimming engaged naturally. Do not change

@@ -132,10 +132,12 @@ if grep -Eq '/sys/bus/iio/devices/iio:device[0-9]+' \
     exit 1
 fi
 
-# The dimming thresholds are measured values, not arbitrary constants. The
-# original 360 was unreachable on this unit, so dimming could never engage.
+# The dimming thresholds are measured values, not arbitrary constants. They
+# come from 60 days of published telemetry: the night and day bands are cleanly
+# separated on this unit and the pair sits inside that gap. See
+# docs/wiringpi-phase6-dimming-recalibration.md before changing either.
 grep -Fq 'darkRoomThresholdLowWaterMark = 460' src/lightSensor.cpp
-grep -Fq 'darkRoomThresholdHighWaterMark = 700' src/lightSensor.cpp
+grep -Fq 'darkRoomThresholdHighWaterMark = 600' src/lightSensor.cpp
 
 # The HT1632 burst path bypasses Gpio::write(). Its test hook replaces the real
 # register store, so it must never reach a hardware or sandbox build.

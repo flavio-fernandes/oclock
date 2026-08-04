@@ -87,8 +87,11 @@ light thresholds against representative room light.
 
 **Both of those resolved.** The trial
 [passed 13 of 13](wiringpi-phase5-application-trial-result.md), and the light
-thresholds did not survive contact with a genuinely dark room: 360 turned out
-to be unreachable on this unit, and they are now the measured 460/700.
+thresholds did not survive contact with a genuinely dark room: 360 was judged
+unreachable on this unit and they became 460/700. That judgement was itself
+later overturned by 60 days of feed telemetry, and the thresholds are now
+**460/600** — see
+[the dimming recalibration](wiringpi-phase6-dimming-recalibration.md).
 
 ~~The strip `spidev` binding persistence question remains a separate Phase 6
 blocker.~~ **Closed 2026-08-03**; see

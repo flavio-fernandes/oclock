@@ -39,10 +39,13 @@ deterministic fake-hardware tests. Historical WiringPi, pure-libgpiod, and
 bit-banged implementations remain in the source for diagnosis, but the current
 tree supports only the selected modern build. The first pure-libgpiod and
 mapped hardware trials were functional but too slow, especially for the
-240-pixel LPD8806 strip. Automatic dimming also did not pass, and the cause
-turned out to be neither the transport nor the migration: the original 360 dark
-threshold was unreachable on this unit, so dimming could never have engaged on
-any candidate. It is now measured and retuned to 460/700, and passes.
+240-pixel LPD8806 strip. Automatic dimming also did not pass. The cause was
+first diagnosed as an unreachable 360 dark threshold and the thresholds were
+retuned to 460/700 on that basis. Sixty days of published sensor telemetry
+later showed that diagnosis was wrong and replaced it with a better one: the
+migration moved the *top* of the sensor's range, not the bottom. The thresholds
+are now **460/600**. This is the most interesting story in the project and is
+developed in full below.
 
 The selected next architecture is mixed:
 
@@ -573,7 +576,9 @@ tested command or file before drafting the article:
 - [x] Controlled uncovered/covered/restored samples captured with both channels
   separate.
 - [x] Dimming thresholds retuned against measured room darkness and verified
-  live: 460 low-water and 700 high-water, replacing an unreachable 360/500.
+  live: 460 low-water and 700 high-water, replacing 360/500.
+- [x] Thresholds revised again to **460/600** against 60 days of published feed
+  telemetry, which also corrected the reason recorded for the first change.
 - [x] HT1632 per-edge path measured and rejected at 19.2 ms against the 12 ms
   tick, which is what justified building the bulk transport rather than
   assuming it.
@@ -818,16 +823,61 @@ separation mattered: the transport was proven first, by reading both MCP3002
 IIO raw channels and recording controlled covered and uncovered values, and
 only then was the threshold questioned.
 
-The answer was that **the old threshold simply did not fit**, and it never had.
-With the real room light switched off, the reported value settles between 355
-and 478 depending on conditions — always above the original 360 low-water mark.
-Dimming could not have engaged on any candidate, including the Phase 0
-baseline on the original clock. A decade-old constant had been quietly wrong,
-and only a migration that forced someone to stand and watch the hardware
-surfaced it.
+The first answer was that **the old threshold simply did not fit**, and never
+had. With the room light switched off the value settled between 355 and 478 —
+always above the original 360 low-water mark. The conclusion drawn was that a
+decade-old constant had been quietly wrong and only a migration forced someone
+to stand and watch the hardware.
 
-This is the strongest argument in the whole project for separating transport
-correctness from calibration. Had they been debugged together, the obvious and
+**That answer was wrong, and finding out why is the better story.**
+
+The clock has published its light reading to a public Adafruit IO feed since
+2020, and that feed is the ten-sample moving average the dimming logic actually
+compares — not a proxy for it. Sixty days of it say:
+
+- 32.9% of pre-migration samples were below 360. The room reached it constantly.
+- Replaying the original 360/500 hysteresis over 57 days of pre-migration data
+  produces 106 dim events and 105 bright events. It worked, every night.
+- The dark floor did not move across the migration at all: overall p05 went 187
+  to 150, deep-night median 253 to 196.
+- What moved was the ceiling. Pre-migration the bright plateau peaked at 725
+  with *zero* samples above 750 in 15,357 readings. Post-migration it pins at
+  1022 — the 10-bit rail — for 36% of samples.
+
+So the 355-478 bench window was a real measurement of a condition that simply
+was not the darkest the room gets. The migration changed the sensor's top of
+range; the retune compensated in roughly the right direction for entirely the
+wrong reason.
+
+The genuinely useful finding is what the range change did to *separation*.
+Splitting by hour of day:
+
+| | night 01-05h p95 | day 09-17h p05 | separation |
+| --- | ---: | ---: | ---: |
+| Pre-migration | 630 | 420 | **-210, overlapping** |
+| Post-migration | 408 | 615 | **+207, clean** |
+
+Before the migration, a bright night could read *higher* than a dull day. No
+threshold pair could have been reliable, which is the real reason dimming felt
+temperamental for a decade. Afterwards the two conditions are cleanly
+separated. The clipping at the top — which looks like a regression, and which
+does ruin the feed as a lux *measurement* — costs nothing for a two-state
+decision and is what bought the separation.
+
+The lesson for the article is sharper than the original one: **a bench
+measurement told a plausible story, and only long-run production telemetry
+falsified it.** The instinct to trust the thing you just watched with your own
+eyes over sixty days of boring logged numbers is exactly the wrong instinct.
+
+The mechanism behind the top-end shift is still open. The retired bit-bang in
+`mcp300x.cpp` is a correct 10-bit read, so it is not an arithmetic bug; the
+leading hypothesis is that it sampled Dout too soon after the falling clock
+edge, an error that grows with the number of set bits and so hits 1022 hard and
+150 barely. Say it as a hypothesis or leave it out — the hardware to settle it
+is retired.
+
+This is also the strongest argument in the whole project for separating
+transport correctness from calibration. Had they been debugged together, the obvious and
 wrong conclusion would have been that the new transport broke dimming.
 
 ## Proposed article outline
@@ -882,8 +932,12 @@ wrong conclusion would have been that the new transport broke dimming.
   libgpiod, mapped, and final SPI paths.
 - CPU/HTTP latency comparison under the same animation workload.
 - The light-sensor trace with the **room light** switched off and back on,
-  annotated with the 460/700 thresholds. This is better evidence than a covered
-  sensor, and it is the plot that shows why 360 was unreachable.
+  annotated with the 460/600 thresholds. Better evidence than a covered sensor.
+- **The before/after feed plot.** Daily 5th-to-95th percentile bars spanning the
+  cutover, showing the dark floor flat near 150 while the ceiling jumps to the
+  1023 rail. One image carries the entire threshold story. Source data is
+  archived at `docs/data/home-lux-office-2026-06-05-to-2026-08-04.csv.gz`,
+  because the upstream feed is going private and expires after 60 days.
 - Before/after matrix render timing: 19.2 ms per-edge versus 4.1 ms burst,
   against the 12 ms tick line.
 - Before/after strip frame timing: 20.5 ms at 1 MHz versus 3.0 ms at 2 MHz,
@@ -911,9 +965,14 @@ Do not write any of these in past tense until their gates pass:
 Four claims previously on this list are now supported by evidence and may be
 written carefully:
 
-- **Dimming.** It is accurate to say the dimming behavior now works and that
-  the root cause was an unreachable threshold rather than the migration. Be
-  precise: the constant was wrong before the migration too.
+- **Dimming.** It is accurate to say the dimming behavior now works. It is
+  **not** accurate to say the root cause was an unreachable threshold — that
+  was the first diagnosis and the feed history falsified it. The accurate
+  version: the pre-migration sensor had night and day bands that overlapped by
+  ~210 counts, so no threshold pair was dependable; the migration changed the
+  top of the range and separated them. Do not repeat the "decade-old constant
+  was quietly wrong" line, which was in earlier drafts of these notes and is
+  wrong.
 - **Speed.** It is accurate to say the strip meets the 12 ms application tick
   with better than 2x margin at 2 MHz, and that the operator rated response
   times better than production. It is **not** accurate to say kernel software
@@ -1333,3 +1392,42 @@ backward compatibility.”
   installing the strip binding unit, and — worth saying out loud because it is
   the contrast that makes the point — doing nothing at all for the ADC, which
   the kernel claims on sight.
+
+- **2026-08-04 (dimming recalibration):** The operator asked whether the retired
+  code had been halving the light value, because the before/after step in the
+  published feed was so stark. It had not — and answering it properly overturned
+  the threshold story this notebook had been carrying.
+
+  The office lux reading has gone to a public Adafruit IO feed since 2020, and
+  that feed records `LightSensor::getLightValue()` itself, the ten-sample moving
+  average the dimming logic compares. It is the decision variable, not a proxy,
+  so the hysteresis can be replayed over it exactly. All 15,884 samples of the
+  60-day retention window were pulled and archived at
+  `docs/data/home-lux-office-2026-06-05-to-2026-08-04.csv.gz`, because the feed
+  is being made private and expires in October 2026. That archive is a
+  deliberate exception to keeping evidence out of Git: the upstream will not
+  exist, and it is the sole basis for these constants.
+
+  A divide-by-two is ruled out — the dark floor did not move (overall p05 187 to
+  150; deep-night median 253 to 196). What moved was the ceiling: a
+  pre-migration plateau peaking at 725, with zero samples above 750 in 15,357,
+  became a clipped 1022 for 36% of samples. Reading the retired bit-bang
+  confirmed it is a correct 10-bit capture, so the cause is physical rather than
+  arithmetic and remains an open question.
+
+  The correction that matters: **360 was never unreachable.** 32.9% of
+  pre-migration samples were below it, and replaying 360/500 over 57 days yields
+  106 dim events. The 355-478 bench window that justified 460/700 was a real
+  reading of a condition that simply was not the darkest the room gets. The
+  better explanation is separation — pre-migration night p95 630 against day p05
+  420, overlapping by 210 counts, which is why dimming felt temperamental for a
+  decade. Post-migration those bands separate by 207.
+
+  The high-water mark moved 700 to **600**: 700 sat above the daytime floor of
+  587, and replaying 08-04 shows the clock held dim until 09:52 on a naturally
+  lit morning where 600 releases at 07:24. 460 was checked and kept.
+
+  Corrected in `src/lightSensor.cpp`, `tests/compatibility.sh`, and seven
+  documents that had propagated the unreachable-threshold claim. The "decade-old
+  constant was quietly wrong" line is retracted and flagged in the claims
+  section so it does not reach the article.

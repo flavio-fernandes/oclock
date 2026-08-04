@@ -69,7 +69,8 @@ the dedicated strip cadence gate, which rejected 1 MHz and accepted
 [HT1632 burst transport](wiringpi-phase5-ht1632-burst-result.md); and
 representative-room dimming observation, which
 [retuned the thresholds](wiringpi-phase5-application-trial-result.md) to a
-measured 460/700.
+measured 460/700, later revised to
+[460/600](wiringpi-phase6-dimming-recalibration.md).
 
 The whole application then passed its
 [trial](wiringpi-phase5-application-trial-result.md) 13 checks to 0, and
@@ -86,5 +87,13 @@ What this policy still forbids, and what has genuinely not changed:
 - **Rollback is still the preserved Zero/Jessie unit**, powered off and
   physically intact. Swapping it back has not been rehearsed.
 
-Threshold changes are no longer forbidden but are still evidence-gated: 460/700
-replaced 360/500 only after the values were measured in the actual room.
+Threshold changes are no longer forbidden but are still evidence-gated, and the
+bar for what counts as evidence went up. 460/700 replaced 360/500 after a single
+evening's observation in the actual room — and the reasoning recorded for it
+turned out to be wrong. The current **460/600** replaced that only after 60 days
+of published telemetry, which is now the archived
+[feed history](data/home-lux-office-2026-06-05-to-2026-08-04.csv.gz).
+
+A bench window showing the room at 355-478 is no longer sufficient on its own to
+move a threshold. Show the distribution over days, split by hour, or do not move
+it. See [the dimming recalibration](wiringpi-phase6-dimming-recalibration.md).

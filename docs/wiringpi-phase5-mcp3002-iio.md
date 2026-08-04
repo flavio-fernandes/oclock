@@ -33,8 +33,8 @@ Reads accept only strict decimal values from 0 through 1023.
 `LightSensor` still reads both channels every 600 ms, averages each pair, and
 retains the ten-sample moving average. This transport change deliberately did
 not recalibrate dimming, so it kept the existing 360/500 hysteresis thresholds.
-They were later replaced with a measured **460/700** — see the note at the end
-of this document.
+They were later replaced with a measured **460/700**, and then revised again to
+**460/600** — see the note at the end of this document.
 
 ## Build boundary
 
@@ -78,5 +78,10 @@ That observation happened during the
 [whole-application trial](wiringpi-phase5-application-trial-result.md) and
 changed the answer. A covered sensor reads far darker than a dark room: the
 covered average here was 179.0, while the room with its light actually off
-plateaus between 355 and 478. The original 360 low-water mark was therefore
-unreachable in practice, and the thresholds are now the measured **460/700**.
+plateaus between 355 and 478. That was read at the time as proving the original
+360 low-water mark unreachable, and the thresholds became **460/700**.
+
+Sixty days of published telemetry later showed that conclusion was wrong: the
+room does reach below 360 regularly, and the bench window that produced the
+355-478 figure was not deep-night dark. The thresholds are now **460/600**. See
+[the dimming recalibration](wiringpi-phase6-dimming-recalibration.md).
