@@ -1,5 +1,0 @@
-build-essential
-g++
-libevent-dev
-libmosquitto-dev
-libmosquittopp1

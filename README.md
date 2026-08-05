@@ -1,12 +1,18 @@
-[![Build Status](https://travis-ci.org/flavio-fernandes/oclock.svg?branch=master)](https://travis-ci.org/flavio-fernandes/oclock)
-
 # oclock
 c++11 codebase to control led matrix display, running in a Raspberry Pi
 
-For more info, check out [these links](http://www.flaviof.com/blog/category/hacks.html):
+For more info, check out [these links](https://www.flaviof.com/blog/category/hacks.html):
 
-    http://www.flaviof.com/blog/hacks/office-clock-part1.html
-    http://www.flaviof.com/blog/hacks/office-clock-part2.html
+- [Office Clock Part 1: the hardware](https://www.flaviof.com/blog/hacks/office-clock-part1.html)
+- [Office Clock Part 2: the software](https://www.flaviof.com/blog/hacks/office-clock-part2.html)
+- [Office Clock Part 3: a new brain, ten years later](https://www.flaviof.com/blog2/post/hacks/office-clock-part3/)
+- [Read-only Raspberry Pi gotchas](https://www.flaviof.com/blog2/post/hacks/readonly-rpi-gotchas/)
+
+Part 3 covers the 2026 rebuild: Raspberry Pi OS Trixie, WiringPi replaced by
+libgpiod and the kernel SPI subsystem, and a read-only root filesystem, without
+moving a single wire. The gotchas post is its companion, collecting the things
+that broke along the way and why none of them were where the error message
+pointed.
 
 #### Adafruit Show and Tell
 
