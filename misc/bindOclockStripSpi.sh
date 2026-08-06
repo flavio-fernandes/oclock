@@ -185,10 +185,15 @@ await_strip_device()
 # This is also why a settle timeout is only a warning. settle waits on the
 # *global* udev queue, so an unrelated slow or failing probe holds it open and
 # has nothing to do with whether our bind succeeded. That is not hypothetical:
-# binding spi4.0 makes udev run raspberrypi-sys-mods/i2cprobe against it, which
-# fails and keeps running well past the settle timeout, and treating that as
-# fatal took the whole clock down at every boot. This function measures the end
-# state we actually require, so it — not settle — is the authority.
+# binding the strip's SPI child makes udev run raspberrypi-sys-mods/i2cprobe
+# against it, which fails and keeps running well past the settle timeout, and
+# treating that as fatal took the whole clock down at every boot. This function
+# measures the end state we actually require, so it — not settle — is the
+# authority.
+#
+# Note the deliberate absence of a literal device name above: compatibility.sh
+# greps this file for one to catch a hard-coded dynamic path, and a comment
+# trips that guard exactly like real code would. It caught this.
 await_bind_result()
 {
     local want=$1
