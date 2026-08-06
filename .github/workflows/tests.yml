@@ -1,0 +1,101 @@
+# Replaces the retired Travis configuration.
+#
+# Two jobs, because they need different distributions:
+#
+#   tests     — the hardware-free suite. Builds against fakeGpio, so it needs
+#               no libgpiod at all and runs on the stock Ubuntu runner.
+#   hardware  — compiles the real Zero W profile. Needs libgpiod *v2*, which
+#               Ubuntu does not ship (24.04 has 1.6.x, the v1 API), so it runs
+#               in a Debian 13 Trixie container. That also matches the clock
+#               itself: Trixie, libgpiod 2.2.1, GCC 14.2.
+#
+# The split matters more than it looks. `make test` never compiles
+# src/gpio/gpiodV2Gpio.cpp — every test target uses the fake — so without the
+# second job the real GPIO backend has no CI coverage whatsoever.
+
+name: tests
+
+on:
+  push:
+    branches: [master, rpi-2.0.y]
+  pull_request:
+    branches: [master, rpi-2.0.y]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: hardware-free suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build and test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config \
+            libevent-dev libmosquitto-dev \
+            device-tree-compiler valgrind curl
+        # device-tree-compiler supplies dtc, fdtoverlay and fdtget for
+        # test-spi-overlay; curl drives the smoke and shutdown-stress tests.
+
+      - name: Widen ASan's shadow-memory headroom
+        run: sudo sysctl -w vm.mmap_rnd_bits=28
+        # The six C++ test binaries are built with AddressSanitizer. Recent
+        # kernels default to 32 bits of mmap randomisation, which collides with
+        # ASan's shadow mapping and aborts with "Shadow memory range interleaves
+        # with an existing memory mapping". Harmless to set, and the run dies
+        # without it.
+
+      - name: make test
+        run: make test
+
+      - name: make test-spi-overlay
+        run: make test-spi-overlay
+        # Not part of `make test` because it needs device-tree-compiler. Asserts
+        # that all six BCM pin numbers in the merged overlay are the deployed
+        # wiring — the no-rewiring contract, checked here rather than on a clock
+        # that no longer lights up.
+
+      - name: make valgrind
+        run: make valgrind
+        # Runs the whole sandbox application under --leak-check=full with
+        # --errors-for-leak-kinds=definite,possible and --error-exitcode=99.
+        # The sanitizers above cover test binaries in isolation; this covers the
+        # real application with its threads, event loop, MQTT client and
+        # shutdown path running together. About 10 seconds.
+
+  hardware:
+    name: Zero W hardware profile (Trixie)
+    runs-on: ubuntu-latest
+    container: debian:13
+    timeout-minutes: 25
+
+    steps:
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential pkg-config git ca-certificates \
+            libevent-dev libmosquitto-dev libgpiod-dev
+        # git and ca-certificates come first so actions/checkout can use git
+        # rather than falling back to a tarball download.
+
+      - uses: actions/checkout@v4
+
+      - name: Show the toolchain actually in use
+        run: |
+          echo "libgpiod: $(pkg-config --modversion libgpiod)"
+          gcc --version | head -1
+        # Printed rather than asserted: hardware-preflight already fails the
+        # build if libgpiod is missing or not 2.x. This is here so a version
+        # drift shows up in the log before it shows up as a mystery.
+
+      - name: make hardware
+        run: make hardware
