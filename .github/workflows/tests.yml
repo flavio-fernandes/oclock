@@ -33,7 +33,7 @@ jobs:
     timeout-minutes: 25
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install build and test dependencies
         run: |
@@ -87,7 +87,7 @@ jobs:
         # git and ca-certificates come first so actions/checkout can use git
         # rather than falling back to a tarball download.
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Show the toolchain actually in use
         run: |
