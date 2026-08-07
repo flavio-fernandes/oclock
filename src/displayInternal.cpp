@@ -17,6 +17,7 @@
 #include "lightSensor.h"
 #include "inbox.h"
 
+#include <atomic>
 #include <cassert>
 #include <time.h>
 #include <string.h>
@@ -730,8 +731,14 @@ static void updateMotionDetectedPixel(DisplayInternalInfo& displayInternalInfo, 
   if (invokeRender) HT1632.renderAll();
 }
 
+// The matrix brightness state, and the hysteresis state updateDim() runs on.
+// At file scope and atomic rather than a local static purely so that /status,
+// /status.json and the MQTT report can read it from their own threads. False
+// is the correct initial value: the HT1632 comes up bright.
+static std::atomic_bool roomIsDark(false);
+
 static void updateDim(DisplayInternalInfo& displayInternalInfo) {
-  static bool lastRoomIsDark = false;
+  const bool lastRoomIsDark = roomIsDark;
   const LightSensor& lightSensor = displayInternalInfo.lightSensor;
   const Int32U lightValue = lightSensor.getLightValue();
   InboxRegistry& inboxRegistry = displayInternalInfo.inboxRegistry;
@@ -749,7 +756,7 @@ static void updateDim(DisplayInternalInfo& displayInternalInfo) {
   if (lastRoomIsDark == currRoomIsDark) return;  // no change: done
 
   displayInternalInfo.ht1632.setBrightness(currRoomIsDark ? 1 : 16);
-  lastRoomIsDark = currRoomIsDark;
+  roomIsDark = currRoomIsDark;
 
   inboxRegistry.broadcast(currRoomIsDark ? inboxMsgTypeDisplayBrightLow : inboxMsgTypeDisplayBrightHigh,
 			  threadIdDisplay);
@@ -1239,6 +1246,10 @@ void DisplayInternal::doHandleMsgBackgroundPost(const StringMap& postValues) {
 
 const char* DisplayInternal::getDisplayModeStr() const {
   return allModes[currModeIndex].displayModeStr;
+}
+
+bool DisplayInternal::getDisplayDimmed() const {
+  return roomIsDark;
 }
 
 DisplayInternal::DisplayInternal(HT1632Class& ht1632) {

@@ -95,6 +95,13 @@ const char* Display::getInternalDisplayMode() {
   return internal == nullptr ? "starting" : internal->getDisplayModeStr();
 }
 
+bool Display::getInternalDisplayDimmed() {
+  std::lock_guard<std::recursive_mutex> guard(instanceMutex);
+  // Not dimmed is the honest answer before the display thread is up: the
+  // matrix has not been told to dim, whatever the room looks like.
+  return internal == nullptr ? false : internal->getDisplayDimmed();
+}
+
 const DisplayTodo* Display::dequeueDisplayTodo() {
   std::lock_guard<std::recursive_mutex> guard(instanceMutex);
 

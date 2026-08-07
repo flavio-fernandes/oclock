@@ -26,6 +26,7 @@ public:
   void doHandleImgBackgroundPost(const StringMap& postValues);
   void doHandleMsgBackgroundPost(const StringMap& postValues);
   const char* getDisplayModeStr() const;
+  bool getDisplayDimmed() const;
 
 private:
   DisplayInternal(HT1632Class& ht1632);
