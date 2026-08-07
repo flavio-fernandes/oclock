@@ -6,6 +6,7 @@
 #include "timerTick.h"
 #include "inbox.h"
 #include "lightSensor.h"
+#include "statusReport.h"
 
 #include <atomic>
 #include <inttypes.h>
@@ -25,6 +26,7 @@ MqttClient* MqttClient::instance = nullptr;
 /*static*/ const std::string MqttClient::topicDisplayMode(MqttClient::topicPrefix + "display_mode");
 /*static*/ const std::string MqttClient::topicMotion(MqttClient::topicPrefix + "motion");
 /*static*/ const std::string MqttClient::topicMotionDetected(MqttClient::topicPrefix + "last_motion");
+/*static*/ const std::string MqttClient::topicStatus(MqttClient::topicPrefix + "status");
 
 MqttClient::MqttClient() : inbox(InboxRegistry::bind().getInbox(threadIdMqttClient)),
                            lightSensor(LightSensor::bind())
@@ -287,6 +289,18 @@ void MqttClient::doPeriodicReport(struct mosquitto* mosq) {
   char lightValueBuffer[6];
   snprintf(lightValueBuffer, sizeof(lightValueBuffer), "%d", (int) lightSensor.getLightValue());
   doPublish(mosq, topicLightSensor, lightValueBuffer, false /*retain*/);
+
+  // The same document /status.json serves. Not retained, for the same reason
+  // the light value is not: a snapshot that arrives hours late is misleading,
+  // and a subscriber that wants the current one can ask the web server.
+  //
+  // doPublish() measures the payload with strlen(), which is safe here because
+  // jsonEscape() renders every byte below 0x20 -- NUL included -- as \u00XX.
+  // tests/status_tests.cpp asserts that property rather than assuming it.
+  StatusSnapshot snapshot;
+  gatherStatusSnapshot(snapshot);
+  const std::string statusJson = renderStatusJson(snapshot);
+  doPublish(mosq, topicStatus, statusJson.c_str(), false /*retain*/);
 }
 
 void MqttClient::doPublish(struct mosquitto* mosq, const std::string& topic, const char* payload,

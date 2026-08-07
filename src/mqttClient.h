@@ -71,6 +71,7 @@ private:
   static const std::string topicDisplayMode;
   static const std::string topicMotion;
   static const std::string topicMotionDetected;
+  static const std::string topicStatus;
 
   // not implemented
   MqttClient(const MqttClient& other) = delete;
