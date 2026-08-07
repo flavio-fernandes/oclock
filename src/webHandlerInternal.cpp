@@ -21,6 +21,7 @@
 #include "motionSensor.h"
 #include "lightSensor.h"
 #include "mqttClient.h"
+#include "statusReport.h"
 
 // Helper web page macro nad string operator
 #define ADD_BODY(__STRPRM)  addBody(requestOutput, __STRPRM)
@@ -287,17 +288,15 @@ HandleRequestReply WebHandlerInternal::process(const RequestInfo& requestInfo, R
   return webHandlerPtr == nullptr ? WebHandler::replyNotFound : webHandlerPtr->process(requestInfo, requestOutput);
 }
 
-std::string WebHandlerInternal::getHandlerStats() {
-  std::string buff;
+void WebHandlerInternal::getHandlerHits(HandlerHits& handlerHits) {
+  handlerHits.clear();
 
-  std::lock_guard<std::recursive_mutex> guard(instanceMutex);  
+  std::lock_guard<std::recursive_mutex> guard(instanceMutex);
   for (const auto& kvp : webHandlers) {
     const WebHandlerKey& webHandlerKey = kvp.first;  // using operator() trick to get string
     const WebHandler& webHandler = *(kvp.second);
-    buff << "hitCount: " << webHandlerKey() << " = "
-	 << std::to_string(webHandler.getHits()) << "\n";
+    handlerHits.push_back(std::make_pair(webHandlerKey(), webHandler.getHits()));
   }
-  return buff;
 }
 
 WebHandlerInternal::WebHandlerInternal() : webHandlers() {
@@ -371,82 +370,32 @@ public:
   }
 };
 
+// The legacy text page. Its existing lines are a compatibility contract, so
+// the rendering lives in statusReport.cpp where a unit test can pin it to an
+// exact expected buffer.
 class WebHandlerStatus : public WebHandler {
 public:
-  WebHandlerStatus() : motionSensor(MotionSensor::bind()), lightSensor(LightSensor::bind()),
-		       display(Display::bind()), ledStrip(LedStrip::bind()),
-		       dictionary(Dictionary::bind()), mqttClient(MqttClient::bind()) {}
   virtual HandleRequestReply process(const RequestInfo& /*requestInfo*/, RequestOutput& requestOutput) {
-    std::string buff("Stats and status\n\n");
+    StatusSnapshot snapshot;
+    gatherStatusSnapshot(snapshot);
 
-    WebHandlerInternal* const webHandlerInternal = WebHandlerInternal::bindIfExists();
-    if (webHandlerInternal) {
-      buff << webHandlerInternal->getHandlerStats() << "\n";
-    }
-
-    MotionInfo motionInfo;
-    motionSensor.getMotionValue(&motionInfo);
-    buff << "motion: " << (motionInfo.currMotionDetected ? "y" : "n") << "\n";
-    buff << "motion_last_change: ";
-    INT2BUFF(motionInfo.lastChangedHour); buff << ":";
-    INT2BUFF(motionInfo.lastChangedMin); buff << ":";
-    INT2BUFF(motionInfo.lastChangedSec); buff << "\n";
-    
-    buff << "light_sensor: "; INT2BUFF(lightSensor.getLightValue()); buff << "\n";
-    buff << "display_mode: " << display.getInternalDisplayMode() << "\n";
-    buff << "led_strip_mode: " << ledStrip.getInternalLedStripMode() << "\n";
-
-    MqttClientInfo mqttClientInfo;
-    mqttClient.getMqttClientInfo(&mqttClientInfo);
-    buff << "\n";
-    buff << "mqttBrokerConnected: " << (mqttClientInfo.mqttBrokerConnected ? "yes" : "no") << "\n";
-    buff << "mqttLastLoopRc: "; INT2BUFF(mqttClientInfo.last_loop_rc);
-    buff << " (" << mqttClient.getStrError(mqttClientInfo.last_loop_rc) << ")" << "\n";
-    buff << "mqttBrokerIp: " << mqttClientInfo.mqttBrokerIp << "\n";
-    buff << "mqttBrokerPort: "; INT2BUFF(mqttClientInfo.mqttBrokerPort); buff << "\n";
-    buff << "mqttKeepAlive (secs): "; INT2BUFF(mqttClientInfo.mqttKeepAlive); buff << "\n";
-    buff << "mqttConnectAttempts: "; INT2BUFF(mqttClientInfo.connectAttempts); buff << "\n";
-    buff << "mqttConnects: "; INT2BUFF(mqttClientInfo.connects); buff << "\n";
-    buff << "mqttDisconnects: "; INT2BUFF(mqttClientInfo.disconnects); buff << "\n";
-    buff << "mqttPublishes: "; INT2BUFF(mqttClientInfo.publishes); buff << "\n";
-    buff << "mqttPublishedMotions: "; INT2BUFF(mqttClientInfo.publishedMotions); buff << "\n";
-    buff << "mqttPublishesDropped: "; INT2BUFF(mqttClientInfo.publishesDropped); buff << "\n";
-    buff << "mqttPublishCallbacks: "; INT2BUFF(mqttClientInfo.publishCallbacks); buff << "\n";
-    buff << "mqttMessages: "; INT2BUFF(mqttClientInfo.messages); buff << "\n";
-    buff << "mqttTicks: "; INT2BUFF(mqttClientInfo.ticks); buff << "\n";
-
-    DictionaryStatus dictionaryStatus;
-    dictionary.getDictionaryStatus(dictionaryStatus);
-    buff << "\n";
-    buff << "dictSize: "; INT2BUFF(dictionary.size()); buff << "\n";
-    buff << "dictTicks: "; INT2BUFF(dictionaryStatus.ticks); buff << "\n";
-    buff << "dictAdds: "; INT2BUFF(dictionaryStatus.entriesAdded); buff << "\n";
-    buff << "dictRemoves: "; INT2BUFF(dictionaryStatus.entriesRemoved); buff << "\n";
-    buff << "dictExpires: "; INT2BUFF(dictionaryStatus.entriesExpired); buff << "\n";
-
-    if (!dictionary.empty()) {
-      buff << "\n";
-      bool found;
-      std::string currKey;
-      std::string currData = dictionary.getFirst(currKey, &found);
-      while (found) {
-	buff << "dict: " << currKey << " => " << currData << "\n";
-	currData = dictionary.getNext(currKey, &found);
-      }
-    }
-    
     setHeaderContentTypeText(requestOutput);
-    ADD_BODY(buff);
+    ADD_BODY(renderStatusText(snapshot));
     return replyOk;
   }
+};
 
-private:
-  MotionSensor& motionSensor;
-  LightSensor& lightSensor;
-  Display& display;
-  LedStrip& ledStrip;
-  Dictionary& dictionary;
-  MqttClient& mqttClient;
+// Same snapshot, machine-readable. See docs/status-api.md.
+class WebHandlerStatusJson : public WebHandler {
+public:
+  virtual HandleRequestReply process(const RequestInfo& /*requestInfo*/, RequestOutput& requestOutput) {
+    StatusSnapshot snapshot;
+    gatherStatusSnapshot(snapshot);
+
+    setHeaderContentType(requestOutput, "application/json");
+    ADD_BODY(renderStatusJson(snapshot));
+    return replyOk;
+  }
 };
 
 class WebHandlerImgBackground : public WebHandler {
@@ -842,6 +791,7 @@ public:
     buff << "<h1>Office Clock main page</h1><p>";
 
     buff << "<br/><a href='status'>status</a>"
+	 << "<br/><a href='status.json'>status (json)</a>"
 	 << "<br/><a href='msgMode'>msg mode</a>"
 	 << "<br/><a href='imgBackground'>image background</a>"
 	 << "<br/><a href='msgBackground'>message background</a>"
@@ -865,6 +815,7 @@ void WebHandlerInternal::_start() {
   webHandlers[ WebHandlerKey("/index.html") ] = webHandlerRoot;
 
   webHandlers[ WebHandlerKey("/status") ] = new WebHandlerStatus;
+  webHandlers[ WebHandlerKey("/status.json") ] = new WebHandlerStatusJson;
 
   webHandlers[ WebHandlerKey("/msgMode") ] = new WebHandlerMsgMode;
   webHandlers[ WebHandlerKey(EVHTTP_REQ_POST, "/msgMode") ] = new WebHandlerMsgModePost;

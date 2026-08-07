@@ -139,6 +139,25 @@ fi
 grep -Fq 'darkRoomThresholdLowWaterMark = 460' src/lightSensor.cpp
 grep -Fq 'darkRoomThresholdHighWaterMark = 600' src/lightSensor.cpp
 
+# The status surfaces are consumed from outside this tree, so their names are
+# a contract rather than an implementation detail. The exact legacy /status
+# layout is pinned byte for byte by tests/status_tests.cpp; these are the keys
+# that must not be renamed, and the shape promise made to JSON readers.
+grep -Fq '"light_sensor: "' src/statusReport.cpp
+grep -Fq '"display_mode: "' src/statusReport.cpp
+grep -Fq '"led_strip_mode: "' src/statusReport.cpp
+grep -Fq '"display_dimmed: "' src/statusReport.cpp
+grep -Fq '"mqttBrokerConnected: "' src/statusReport.cpp
+grep -Fq '"dictSize: "' src/statusReport.cpp
+grep -Fq 'cpu_load' src/statusReport.cpp
+grep -Fq 'mem_free_kb' src/statusReport.cpp
+grep -Fq 'statusJsonVersion = 1' src/statusReport.h
+grep -Fq 'WebHandlerKey("/status.json")' src/webHandlerInternal.cpp
+grep -Fq '"application/json"' src/webHandlerInternal.cpp
+# Adding a key must not force a version bump, so JSON readers are told to
+# ignore what they do not recognise. Documented rather than enforceable here.
+grep -Fq 'Ignore unknown keys' docs/status-api.md
+
 # The HT1632 burst path bypasses Gpio::write(). Its test hook replaces the real
 # register store, so it must never reach a hardware or sandbox build.
 make -B -n hardware >"${test_dir}/burst-hardware-build.txt"

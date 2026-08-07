@@ -306,6 +306,26 @@
 			"helperAttributes": {}
 		},
 		{
+			"id": "6d1a4c22-0f3b-4d55-9a41-2b0f5c7e8d10",
+			"headers": "",
+			"url": "http://{{rpiAddr}}:{{rpiPort}}/status.json",
+			"pathVariables": {},
+			"preRequestScript": null,
+			"method": "GET",
+			"collectionId": "0aef6de0-11f6-ab82-01f9-71dc85bf003d",
+			"data": [],
+			"dataMode": "params",
+			"name": "Get status (json)",
+			"description": "same status and stats as /status, as JSON. See docs/status-api.md",
+			"descriptionFormat": "html",
+			"time": 1460045947128,
+			"version": 2,
+			"responses": [],
+			"tests": "",
+			"currentHelper": "normal",
+			"helperAttributes": {}
+		},
+		{
 			"id": "3872efd4-4e2f-7778-6942-4c20103d0992",
 			"headers": "",
 			"url": "http://{{rpiAddr}}:{{rpiPort}}/msgMode",

@@ -7,7 +7,8 @@ endif
 .PHONY: all hardware sandbox hardware-preflight \
 	compatibility gpio-boundary test \
 	test-core test-gpio-protocols test-gpio-burst test-gpio-registers \
-	test-spi-output test-iio-analog test-spi-overlay check-arm-warnings \
+	test-spi-output test-iio-analog test-status \
+	test-spi-overlay check-arm-warnings \
 	test-strip-binding \
 	smoke test-shutdown valgrind spi-overlay clean
 
@@ -44,6 +45,8 @@ CPP_SRC = \
 	src/lightSensor.cpp \
 	src/mqttClient.cpp \
 	src/inbox.cpp \
+	src/statusReport.cpp \
+	src/statusReportGather.cpp \
 	src/timerTick.cpp \
 	src/display.cpp \
 	src/displayInternal.cpp \
@@ -216,6 +219,19 @@ build/tests/iio_analog_input_tests: tests/iio_analog_input_tests.cpp \
 test-iio-analog: build/tests/iio_analog_input_tests
 	$Q ASAN_OPTIONS=detect_leaks=1 ./build/tests/iio_analog_input_tests
 
+# statusReport.cpp is deliberately free of the application's singletons, so the
+# status renderers can be tested without libevent, mosquitto or any thread.
+build/tests/status_tests: tests/status_tests.cpp src/statusReport.cpp
+	$Q echo "[Build test] $@"
+	$Q mkdir -p $(@D)
+	$Q $(CXX) $(CPPFLAGS) $(CXXFLAGS) \
+		-funsigned-char -Werror \
+		-fsanitize=address,undefined -fno-omit-frame-pointer \
+		$^ -o $@
+
+test-status: build/tests/status_tests
+	$Q ASAN_OPTIONS=detect_leaks=1 ./build/tests/status_tests
+
 smoke: oclock-sandbox
 	$Q ./tests/smoke.sh ./oclock-sandbox
 
@@ -236,7 +252,7 @@ check-arm-warnings: build/tests/oclock-arm-warnings
 
 test: compatibility gpio-boundary test-core test-gpio-protocols \
 	test-gpio-burst \
-	test-gpio-registers test-spi-output test-iio-analog \
+	test-gpio-registers test-spi-output test-iio-analog test-status \
 	test-strip-binding \
 	check-arm-warnings smoke test-shutdown
 

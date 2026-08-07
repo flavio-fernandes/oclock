@@ -4,6 +4,8 @@
 #include <mutex>
 #include <string>
 #include <map>
+#include <utility>
+#include <vector>
 
 #include "webHandler.h"
 #include "commonTypes.h"
@@ -117,8 +119,13 @@ public:
   static void shutdown();
 
   HandleRequestReply process(const RequestInfo& requestInfo, RequestOutput& requestOutput);
-  std::string getHandlerStats();
-  
+
+  // Per-handler hit counts, in registration-map order. Formatting is left to
+  // the status renderers so that the text page and the JSON document are built
+  // from one set of numbers.
+  typedef std::vector<std::pair<std::string, Int32U> > HandlerHits;
+  void getHandlerHits(HandlerHits& handlerHits);
+
 private:
   WebHandler* findWebHandler(const WebHandlerKey& webHandlerKey);
   void _start();

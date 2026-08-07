@@ -109,9 +109,9 @@ runs it for you.
 
 | Target | What it does |
 | --- | --- |
-| `test` | The aggregate, and what to run before a commit. Runs the twelve targets below in order, all hardware-free. Stops at the first failure. |
+| `test` | The aggregate, and what to run before a commit. Runs the thirteen targets below in order, all hardware-free. Stops at the first failure. |
 
-Those twelve, in the order `test` runs them:
+Those thirteen, in the order `test` runs them:
 
 | Target | What it protects |
 | --- | --- |
@@ -123,12 +123,13 @@ Those twelve, in the order `test` runs them:
 | `test-gpio-registers` | BCM2835 register offset and mask arithmetic. |
 | `test-spi-output` | The SPI transport against a deterministic fake, and separately compiles `linuxSpidevOutput.cpp` with `-Werror` so the real transport cannot rot. |
 | `test-iio-analog` | The IIO analog input against fixture sysfs trees, including Device Tree identity discovery. |
+| `test-status` | The status renderers: `/proc/loadavg` and `/proc/meminfo` parsing against fixture files, JSON escaping of the attacker-shaped strings that reach the document from dictionary POSTs, and the legacy `/status` page pinned to an exact expected buffer. Links `src/statusReport.cpp` alone — it has no dependency on the application's singletons, which is the whole reason the gathering lives in a separate file. See [`docs/status-api.md`](status-api.md). |
 | `test-strip-binding` | The boot-time strip binder against a fake sysfs tree: every refusal path, the idempotent re-run, and the exact writes performed. See [`tests/strip-binding.sh`](../tests/strip-binding.sh). |
 | `check-arm-warnings` | Compiles every source with `-funsigned-char` and warnings as errors, links it, and runs the smoke test on the result. Catches ARM signedness bugs from an x86-64 dev box, where plain `char` is signed and ARM's is not. |
 | `smoke` | Starts the sandbox, exercises it over HTTP, and shuts it down. |
 | `test-shutdown` | Twenty start/stop cycles, checking for a clean exit each time. Threading and shutdown-ordering bugs are intermittent; twenty iterations is what makes them show up. |
 
-The six C++ test binaries are built with **AddressSanitizer and
+The seven C++ test binaries are built with **AddressSanitizer and
 UndefinedBehaviorSanitizer** and run with `ASAN_OPTIONS=detect_leaks=1`, so
 memory errors in the tested code fail the run rather than being reported as a
 passing test.

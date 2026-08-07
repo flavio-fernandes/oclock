@@ -47,7 +47,7 @@ jobs:
 
       - name: Widen ASan's shadow-memory headroom
         run: sudo sysctl -w vm.mmap_rnd_bits=28
-        # The six C++ test binaries are built with AddressSanitizer. Recent
+        # The seven C++ test binaries are built with AddressSanitizer. Recent
         # kernels default to 32 bits of mmap randomisation, which collides with
         # ASan's shadow mapping and aborts with "Shadow memory range interleaves
         # with an existing memory mapping". Harmless to set, and the run dies
