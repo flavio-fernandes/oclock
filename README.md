@@ -68,9 +68,10 @@ make test-spi-overlay  # merge and verify the Device Tree overlay
 Every target is described in
 [docs/development.md](docs/development.md#make-targets).
 
-The clock reports itself at `GET /status` (human-readable) and
-`GET /status.json` (the same data as JSON), including CPU load, free memory,
-and whether the matrix is currently dimmed. See
+The clock reports itself at `GET /status` (human-readable),
+`GET /status.json` (the same data as JSON), and over MQTT on
+`/officeClock/status` every 5m13s, carrying that same JSON document. That
+includes CPU load, free memory, and whether the matrix is currently dimmed. See
 [docs/status-api.md](docs/status-api.md) for the schema and its compatibility
 rules.
 

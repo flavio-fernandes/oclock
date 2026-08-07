@@ -158,6 +158,13 @@ grep -Fq '"application/json"' src/webHandlerInternal.cpp
 # ignore what they do not recognise. Documented rather than enforceable here.
 grep -Fq 'Ignore unknown keys' docs/status-api.md
 
+# The periodic MQTT report carries that same document. Not retained, matching
+# the light value it is published alongside: a status snapshot delivered hours
+# after the fact would be read as current.
+grep -Fq 'topicStatus(MqttClient::topicPrefix + "status")' src/mqttClient.cpp
+grep -Fq 'doPublish(mosq, topicStatus, statusJson.c_str(), false /*retain*/)' \
+    src/mqttClient.cpp
+
 # The HT1632 burst path bypasses Gpio::write(). Its test hook replaces the real
 # register store, so it must never reach a hardware or sandbox build.
 make -B -n hardware >"${test_dir}/burst-hardware-build.txt"

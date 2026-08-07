@@ -1,14 +1,15 @@
 # Status API
 
-The clock reports itself two ways, both built from one snapshot taken by
+The clock reports itself three ways, all built from one snapshot taken by
 `gatherStatusSnapshot()` in [`src/statusReportGather.cpp`](../src/statusReportGather.cpp):
 
 | Surface | Format | When |
 | --- | --- | --- |
 | `GET /status` | `text/plain` | On request |
 | `GET /status.json` | `application/json` | On request |
+| MQTT `/officeClock/status` | `application/json`, same document | Every 5m13s |
 
-One gather, two renderers, so the two cannot disagree about what the clock is
+One gather, two renderers, so the three cannot disagree about what the clock is
 doing. The renderers live in [`src/statusReport.cpp`](../src/statusReport.cpp), which
 deliberately depends on nothing from the running application — that is what lets
 [`tests/status_tests.cpp`](../tests/status_tests.cpp) pin both output formats without
@@ -115,9 +116,26 @@ current names so that has to be a deliberate act.
 
 Dictionary keys and values reach this document verbatim from HTTP POSTs, so
 every string is escaped by `jsonEscape()`. Bytes below `0x20` become `\u00XX`,
-NUL included, so the rendered document never contains one — which keeps it safe
-to hand to a C API that measures its payload with `strlen()`.
+NUL included — which is what makes the document safe to hand to
+`mosquitto_publish()`, an API that measures its payload with `strlen()`.
 `tests/status_tests.cpp` asserts that property directly rather than assuming it,
 and `tests/smoke.sh` POSTs a dictionary value full of quotes, backslashes and
 braces and checks what comes back out.
+
+## MQTT `/officeClock/status`
+
+Published by `MqttClient::doPeriodicReport()` on the existing 5m13s tick, the
+same one that publishes `/officeClock/light`, with the identical payload
+`/status.json` returns.
+
+**Not retained**, deliberately, and for the same reason the light value is not:
+a status snapshot is only true at the moment it was taken. A retained copy
+handed to a subscriber that connects hours after the clock stopped would read as
+current. A subscriber that wants the status *now* can ask the web server for it.
+
+The other MQTT topics are unchanged: `/officeClock/light`,
+`/officeClock/display_intensity`, `/officeClock/display_mode`,
+`/officeClock/motion` and `/officeClock/last_motion`. The status document
+duplicates several of those values; that is intended, so a single message is
+enough to know the whole state.
 
