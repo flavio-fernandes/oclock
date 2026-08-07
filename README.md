@@ -56,7 +56,7 @@ make sandbox
 make test
 ```
 
-`make test` runs twelve hardware-free targets and is what to run before a
+`make test` runs thirteen hardware-free targets and is what to run before a
 commit. Two more sit outside it only because they need tools that are not in
 the base build dependencies. Neither is slow:
 
@@ -67,6 +67,12 @@ make test-spi-overlay  # merge and verify the Device Tree overlay
 
 Every target is described in
 [docs/development.md](docs/development.md#make-targets).
+
+The clock reports itself at `GET /status` (human-readable) and
+`GET /status.json` (the same data as JSON), including CPU load, free memory,
+and whether the matrix is currently dimmed. See
+[docs/status-api.md](docs/status-api.md) for the schema and its compatibility
+rules.
 
 For compatibility with the deployed clock, the runtime defaults remain
 `0.0.0.0:80` and MQTT broker `192.168.10.238:1883`. Use `-b`, `-p`, `-M`,

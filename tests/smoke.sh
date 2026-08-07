@@ -56,9 +56,24 @@ for _ in $(seq 1 100); do
 done
 
 grep -q "Stats and status" "${test_dir}/status.txt"
+# The system block and the dim flag are additions to the legacy page; the lines
+# above them are asserted by tests/status_tests.cpp against an exact buffer.
+grep -q '^display_dimmed: \(yes\|no\)$' "${test_dir}/status.txt"
+grep -q '^cpu_load: ' "${test_dir}/status.txt"
+grep -q '^mem_free_kb: [0-9]\+$' "${test_dir}/status.txt"
 [[ -f "${test_dir}/pulsar.log" ]]
 curl --fail --silent --show-error "${base_url}/" >"${test_dir}/root.html"
 grep -q "href='stop'" "${test_dir}/root.html"
+grep -q "href='status.json'" "${test_dir}/root.html"
+
+# The JSON representation, served as JSON rather than as text.
+curl --fail --silent --show-error --dump-header "${test_dir}/status-json.headers" \
+    "${base_url}/status.json" >"${test_dir}/status.json"
+grep -qi '^Content-Type: application/json' "${test_dir}/status-json.headers"
+grep -q '"version": 1' "${test_dir}/status.json"
+grep -q '"cpu_load"' "${test_dir}/status.json"
+grep -q '"mem_free_kb"' "${test_dir}/status.json"
+grep -q '"dimmed": \(true\|false\)' "${test_dir}/status.json"
 
 request_pids=()
 for _ in $(seq 1 32); do
@@ -92,6 +107,18 @@ empty_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
 [[ ${empty_status} == 204 ]]
 curl --fail --silent --show-error "${base_url}/status" |
     grep -q 'dict: empty-value =>'
+
+# Dictionary values arrive from POSTs and land verbatim in the JSON document.
+# Anything that would break out of a JSON string has to come back escaped.
+hostile_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+    --request POST "${base_url}/dictionary" \
+    --data-urlencode 'dictionaryOperation=add' \
+    --data-urlencode 'dictionaryKey=hostile' \
+    --data-urlencode 'dictionaryData=quote" backslash\ brace}' \
+    --data-urlencode 'dictionaryTimeout=-1')
+[[ ${hostile_status} == 204 ]]
+curl --fail --silent --show-error "${base_url}/status.json" >"${test_dir}/hostile.json"
+grep -Fq '"hostile": "quote\" backslash\\ brace}"' "${test_dir}/hostile.json"
 
 get_stop_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
     "${base_url}/stop")
