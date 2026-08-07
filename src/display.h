@@ -27,6 +27,7 @@ public:
   void enqueueMsgBackgroundPost(StringMap& postValues);
   
   const char* getInternalDisplayMode();
+  bool getInternalDisplayDimmed();
 
 private:
   static std::thread::id mainThreadId; // http://en.cppreference.com/w/cpp/thread/thread/id
