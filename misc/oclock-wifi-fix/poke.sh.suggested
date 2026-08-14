@@ -1,0 +1,157 @@
+#!/bin/bash
+#
+# poke.sh -- outer backstop for oclock. Runs on dock every 15 min.
+#
+# SUGGESTED REWRITE. Review before adopting; this has not been run.
+# Differences from poke.sh.real are explained at the bottom.
+#
+# Role after 2026-08-10: oclock now runs its own wifi watchdog which reloads the
+# brcmfmac driver after 4 minutes of no gateway. poke is the LAST resort, for the
+# case where that watchdog cannot bring wifi back. It must therefore be patient
+# enough to let the watchdog work, and must not fire on the brief 1-22 s outages
+# that self-recover. See oclock-wifi-fix/RUNBOOK.md.
+
+set -x
+set -u
+
+OCLOCK_IP=192.168.10.236
+STATUS_URL="http://${OCLOCK_IP}/status.json"
+MQTT=192.168.10.238
+LATCH=/tmp/badoclock
+SSH_KEY=/home/ff/.ssh/id_rsa
+SSH_OPTS=(-o ConnectTimeout=15 -o ConnectionAttempts=1 -o BatchMode=yes -i "$SSH_KEY")
+
+# How long to keep trying before committing to a power cycle.
+# The on-box watchdog escalates at 2 min (re-associate) and 4 min (driver reload),
+# so this must comfortably exceed 4 min or poke will power cycle the box while the
+# watchdog is midway through fixing it for free.
+PROBE_ATTEMPTS=14
+PROBE_GAP=30            # 14 x 30 s = 7 min
+
+cd "$(dirname "$0")"
+
+# --- health probe ------------------------------------------------------------
+# One HTTP GET replaces two of the three old SSH checks: /status.json is served BY
+# the clock application, so a valid response proves the network stack, the web
+# server and the clock app are all alive. It also cannot hang for 90 s the way
+# three sequential ConnectTimeout=30 SSH connections can.
+probe_ok() {
+    curl -fsS --max-time 10 "$STATUS_URL" \
+        | jq -e 'has("system") and has("mqtt")' >/dev/null 2>&1
+}
+
+power_cycle_oclock() {
+    /usr/bin/mosquitto_pub -h "$MQTT" -t '/office-clock/light_switch' -m off
+    sleep 10
+    /usr/bin/mosquitto_pub -h "$MQTT" -t '/office-clock/light_switch' -m on
+    sleep 135
+}
+
+# --- fast path ---------------------------------------------------------------
+# The overwhelmingly common case: healthy on the first probe, exit in well under a
+# second, no SSH, no latch, nothing touched.
+if probe_ok; then
+    echo "happy oclock"
+    exit 0
+fi
+
+# --- patient path ------------------------------------------------------------
+# Not healthy on the first try. That is NOT yet a reason to power cycle: brief
+# outages of 1-22 s are known to self-recover, and the on-box watchdog gets 4 min
+# to reload the driver. Keep probing.
+echo "oclock did not answer on first probe; entering patient retry window"
+for i in $(seq 2 "$PROBE_ATTEMPTS"); do
+    sleep "$PROBE_GAP"
+    if probe_ok; then
+        echo "happy oclock (recovered after $(( (i-1) * PROBE_GAP ))s -- watchdog or self-healed)"
+        exit 0
+    fi
+done
+
+# --- committed to recovery ---------------------------------------------------
+# The latch prevents a second run from starting a recovery while this one is still
+# in progress. The trap is the important part: without it, ANY failure below leaves
+# the latch set forever, and every subsequent run skips the health check entirely
+# and power cycles immediately. That is the bug in poke.sh.real.
+# A latch with no live owner must expire, or it silently disables recovery forever.
+# Found exactly this on 2026-08-10: a latch left over from an earlier run was still
+# present hours later. Under the OLD script that caused perpetual power cycling;
+# under this one it would do the opposite and block recovery entirely. Both are bad,
+# so the latch is now self-expiring and does not depend on anyone noticing it.
+LATCH_MAX_AGE=1200      # 20 min, comfortably longer than any legitimate recovery
+if [ -e "$LATCH" ]; then
+    latch_age=$(( $(date +%s) - $(stat -c %Y "$LATCH") ))
+    if [ "$latch_age" -lt "$LATCH_MAX_AGE" ]; then
+        echo "recovery already in progress (latch age ${latch_age}s); leaving it alone"
+        exit 0
+    fi
+    echo "WARNING: stale latch, age ${latch_age}s exceeds ${LATCH_MAX_AGE}s -- ignoring and proceeding"
+    rm -f "$LATCH"
+fi
+touch "$LATCH"
+# EXIT alone is not enough: bash does not run an EXIT trap when killed by an
+# untrapped SIGTERM, which is how a long-running recovery would most likely die.
+trap 'rm -f "$LATCH"' EXIT INT TERM
+
+echo "WARNING ERROR DETECTED FAILURE ON OCLOCK AFTER $(( PROBE_ATTEMPTS * PROBE_GAP ))s. POWER REBOOTING IT NOW"
+
+# Before pulling power, grab whatever the box will still tell us. If SSH answers,
+# the wifi is fine and the fault is elsewhere -- and the on-box journal is about to
+# be destroyed by the power cycle, so this is the only chance to capture it.
+if ssh "${SSH_OPTS[@]}" oclock -- true 2>/dev/null; then
+    echo "NOTE: SSH answers but /status.json does not -- this is NOT a wifi wedge."
+    ssh "${SSH_OPTS[@]}" oclock -- 'systemctl is-active oclock mqtt2cmd; journalctl -u oclock -n 50 --no-pager' \
+        > "/tmp/oclock-diag-$(date +%Y%m%d-%H%M%S).log" 2>&1
+    echo "diagnostics saved to /tmp/oclock-diag-*.log"
+else
+    echo "SSH also unreachable -- consistent with a wifi wedge; nothing to capture"
+fi
+
+power_cycle_oclock
+
+# Verify the power cycle actually worked, rather than assuming it.
+for i in $(seq 1 10); do
+    if probe_ok; then
+        echo "oclock is back after power cycle"
+        exit 0
+    fi
+    sleep 15
+done
+
+echo "ERROR: oclock did NOT come back after a power cycle. Manual attention needed."
+exit 1
+
+# =============================================================================
+# WHAT CHANGED, AND WHY
+# =============================================================================
+#
+# 1. FIXED: the latch is now cleared by `trap ... EXIT`.
+#    In poke.sh.real, `set -o errexit` + `touch /tmp/badoclock` before three
+#    fallible network operations means one git failure leaves the latch set. Every
+#    later run then fails `[ ! -e /tmp/badoclock ]`, skips the health check
+#    entirely, and power cycles. Every 15 minutes, indefinitely.
+#
+# 2. REMOVED: `file /var/log/syslog`.
+#    `file` exits 0 whether or not the path exists, so that check always passed and
+#    validated nothing.
+#
+# 3. REPLACED: three sequential SSH connections -> one curl of /status.json.
+#    Faster, cannot hang for 90 s, does not depend on sshd or ssh keys, and proves
+#    more: the endpoint is served by the clock app itself. Also matches what Uptime
+#    Kuma polls, so the two agree instead of disagreeing.
+#
+# 4. ADDED: a 7-minute patient retry window before committing.
+#    Brief 1-22 s outages are known to self-recover, and the on-box watchdog needs
+#    4 minutes. Firing on a single failed probe power cycles the box for a blip, and
+#    can pre-empt the watchdog mid-repair.
+#
+# 5. MOVED OUT: refresh_oclock_repos and oclock_use_latest.
+#    Recovering from a wifi wedge should not also `git checkout master` and restart
+#    services. Coupling them means a deploy failure aborts the recovery (see 1), and
+#    an unrelated network fault silently redeploys code. Keep those two functions,
+#    run them on their own schedule or by hand. They are a deployment tool, not a
+#    health check.
+#
+# 6. ADDED: capture diagnostics before pulling power, and verify recovery after.
+#    If SSH answers while HTTP does not, it is not a wifi wedge and the journal is
+#    worth saving -- the power cycle is about to destroy it.

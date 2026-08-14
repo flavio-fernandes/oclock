@@ -1,0 +1,26 @@
+[Unit]
+Description=oclock wifi watchdog (recovers the brcmfmac wedge)
+Documentation=file:/opt/oclock-wifi-fix/RUNBOOK.md
+After=NetworkManager.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/opt/oclock-wifi-fix/oclock-wifi-watchdog.sh
+Restart=always
+RestartSec=30
+
+# Tiny box: one ARMv6 core, 437 MB RAM. Stay out of the clock application's way.
+Nice=10
+CPUQuota=5%
+MemoryMax=24M
+TasksMax=16
+
+# Needs root for modprobe and ip link. Everything else is locked down.
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+
+[Install]
+WantedBy=multi-user.target
