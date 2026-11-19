@@ -31,7 +31,12 @@ MODULE="${MODULE:-brcmfmac}"
 PROBE_INTERVAL=30     # seconds between probes
 FAIL_SOFT=4           # 4 x 30 s = 2 min  -> ask NetworkManager to re-associate
 FAIL_HARD=8           # 8 x 30 s = 4 min  -> reload the wifi driver and firmware
-COOLDOWN=600          # min seconds between two hard recoveries
+# Min seconds between two hard recoveries. Was 600. On 2026-11-17 and 2026-11-18 the
+# soft path failed every time (5/5) and only a driver reload brought wifi back -- the
+# 2nd and 3rd reload respectively -- so the 10 min wait between reloads is what made
+# those outages last 15 and 25 min. At 240 the cooldown no longer binds: after a hard
+# recovery the fail count restarts, so reloads repeat every FAIL_HARD probes (~4 min).
+COOLDOWN=240
 GRACE=120             # seconds after start before the watchdog may act at all
 
 # Log to journald AND to a file. journald here is capped at RuntimeMaxUse=16M and
@@ -51,8 +56,22 @@ probe() {
     ping -n -c1 -W5 "$GATEWAY" >/dev/null 2>&1
 }
 
+# One line describing the radio: the AP it is associated with (if any) and every AP
+# NetworkManager can currently see. This is what tells "the APs vanished / signal
+# collapsed" (RF interference) apart from "APs visible and strong but refusing us"
+# (wedge or AP side). Read-only and cheap: uses NetworkManager's cached scan results
+# and never triggers a scan of its own.
+wifi_state() {
+    local link aps
+    link=$(iw dev "$IFACE" link 2>/dev/null \
+        | awk '/^Connected to/ {printf "%s ", $3} /signal:/ {printf "%sdBm", $2}')
+    aps=$(nmcli -t -f BSSID,CHAN,SIGNAL device wifi list --rescan no ifname "$IFACE" 2>/dev/null \
+        | sed 's/\\:/-/g' | tr '\n' ' ')
+    printf 'link=[%s] seen=[%s]' "${link:-none}" "${aps% }"
+}
+
 soft_recover() {
-    log "SOFT RECOVERY: no gateway for $((FAIL_SOFT * PROBE_INTERVAL))s, re-associating $IFACE"
+    log "SOFT RECOVERY: no gateway for $1s, re-associating $IFACE"
     nmcli device disconnect "$IFACE" >/dev/null 2>&1
     sleep 2
     nmcli connection up "$CONN" >/dev/null 2>&1
@@ -61,7 +80,7 @@ soft_recover() {
 }
 
 hard_recover() {
-    log "HARD RECOVERY: no gateway for $((FAIL_HARD * PROBE_INTERVAL))s, reloading $MODULE"
+    log "HARD RECOVERY: no gateway for $1s, reloading $MODULE; $(wifi_state)"
     ip link set "$IFACE" down 2>/dev/null
     sleep 2
 
@@ -110,11 +129,12 @@ log "started: gateway=$GATEWAY iface=$IFACE module=$MODULE probe=${PROBE_INTERVA
 
 sleep "$GRACE"
 
-fails=0
+fails=0          # failed probes since the outage began or since the last hard recovery
 armed=0
-soft_done=0
+soft_done=0      # at most one soft recovery per outage
 last_hard=0
-was_down=0
+down_since=0     # epoch of the first failed probe of the current outage; 0 = link up
+hard_count=0     # hard recoveries during the current outage
 
 while true; do
     if probe; then
@@ -122,26 +142,37 @@ while true; do
             armed=1
             log "armed: gateway reachable, watchdog is now active"
         fi
-        if [ "$was_down" = "1" ]; then
-            log "RECOVERED: gateway reachable again after $((fails * PROBE_INTERVAL))s"
+        if [ "$down_since" != "0" ]; then
+            # Measured from the first failed probe, not from $fails: a hard recovery
+            # resets $fails, which made this line report "after 0s" for outages that
+            # had lasted 15-25 min.
+            log "RECOVERED: gateway reachable again after $(( $(date +%s) - down_since ))s," \
+                "$hard_count hard recoveries; $(wifi_state)"
         fi
         fails=0
         soft_done=0
-        was_down=0
+        down_since=0
+        hard_count=0
     else
         fails=$(( fails + 1 ))
-        [ "$was_down" = "0" ] && log "gateway unreachable (probe 1)"
-        was_down=1
+        if [ "$down_since" = "0" ]; then
+            down_since=$(date +%s)
+            log "gateway unreachable (probe 1); $(wifi_state)"
+        fi
 
         if [ "$armed" = "1" ]; then
             now=$(date +%s)
             if [ "$fails" -ge "$FAIL_HARD" ] && [ $(( now - last_hard )) -ge "$COOLDOWN" ]; then
-                hard_recover
+                hard_recover $(( now - down_since ))
                 last_hard=$now
                 fails=0
-                soft_done=0
+                hard_count=$(( hard_count + 1 ))
+                # soft_done is deliberately NOT reset. hard_recover already finishes
+                # with `nmcli connection up`, and a second soft pass between reloads
+                # never helped (0 of 3 on 2026-11-17/18) -- it only delays the next
+                # reload.
             elif [ "$fails" -ge "$FAIL_SOFT" ] && [ "$soft_done" = "0" ]; then
-                soft_recover
+                soft_recover $(( now - down_since ))
                 soft_done=1
             fi
         fi
