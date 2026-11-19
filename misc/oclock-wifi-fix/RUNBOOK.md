@@ -158,9 +158,14 @@ Probes the gateway (`192.168.10.1`) every 30 s.
 | Elapsed with no gateway | Action |
 |---|---|
 | 0–2 min | nothing — observed brief outages are 1–22 s and self-recover |
-| 2 min | **soft**: `nmcli device disconnect` + `connection up` |
+| 2 min | **soft**: `nmcli device disconnect` + `connection up` (once per outage) |
 | 4 min | **hard**: `ip link down`, `modprobe -r brcmfmac`, `modprobe brcmfmac`, reconnect |
-| after a hard recovery | 10 min cooldown before another one |
+| still down | another hard recovery every ~4 min (`COOLDOWN=240`) until the gateway answers |
+
+Every `gateway unreachable`, `HARD RECOVERY` and `RECOVERED` line ends with
+`link=[…] seen=[…]`: the AP wlan0 is associated with and every AP NetworkManager can
+currently see, with channel and signal. If APs vanish or their signal collapses, suspect RF
+interference. If they stay visible and strong while refusing us, suspect the radio or the APs.
 
 Safety properties, on purpose:
 
@@ -180,6 +185,15 @@ ssh oclock 'journalctl -t oclock-wifi-watchdog --no-pager | tail -40'
 
 Quiet is correct — it only logs state changes and actions, never routine probes. A healthy boot
 logs `started:` then `armed:` and nothing more.
+
+journald on this box only keeps hours of history, so the watchdog also appends every line to
+an event file that lasts until reboot. The unit runs with `PrivateTmp=yes`, so the file is
+**not** at `/tmp/oclock-watchdog-events.log` from a login shell. It is in the service's private
+tmp:
+
+```bash
+ssh oclock 'sudo sh -c "cat /tmp/systemd-private-*-oclock-wifi-watchdog.service-*/tmp/oclock-watchdog-events.log"'
+```
 
 ### Did it ever save us?
 
@@ -254,3 +268,31 @@ oclock-wifi-watchdog` was empty because journald's `RuntimeMaxUse=16M` is nearly
 rotated past them; retention was only ~10 hours. Until fixed, check the watchdog log the same day
 as any incident, or its evidence is gone. Fix under consideration: append recoveries to a file in
 `/tmp` as well as journald.
+
+### 2026-11-17 / 2026-11-18 — first real recoveries, and why they were slow
+
+The hard path worked on this hardware for the first time, but slowly. Uptime Kuma showed
+`EHOSTUNREACH` both evenings.
+
+| Outage | Started | Back | Soft attempts | Hard reloads | Fixed by |
+|---|---|---|---|---|---|
+| 2026-11-17 | 17:57 | 18:13:37 (~16 min) | 2, both failed (`nmcli` rc 4) | 2 | 2nd reload |
+| 2026-11-18 | 18:34 | 18:59:06 (~25 min) | 3, all failed (`nmcli` rc 4) | 3 | 3rd reload |
+
+During both outages the radio saw both `ffiot` APs (channel 6) but they refused it
+(`ASSOC-REJECT status_code=16`, auth timeouts, and on 11-18 `reason=15` 4-way-handshake
+timeouts). Each time it connected within a second after the reload that worked. The 10 min
+`COOLDOWN` between reloads, plus a futile soft pass in each gap, made up most of the downtime.
+There were also 30 s drops (06:19 and 12:56 on 11-18) that recovered without help.
+
+Changes: `COOLDOWN` 600 → 240, at most one soft recovery per outage, `RECOVERED` measures
+from the first failed probe (it used to print "after 0s" after a hard recovery), and the AP
+scan state is logged at each step. The one soft recovery is kept on purpose: it fixed
+five earlier outages in about a minute each (10-23, 10-25 twice, 11-12 twice).
+
+The event file saved before the restart covers 2026-10-16 → 2026-11-18. It shows 68 outages,
+which are spread across the day, not clustered in the evening. The trend is worse, though: one
+or two per day until 11-12, then a storm of 38 drops of about 30 s on 11-14 and 11-15, then the
+two long outages above. The only earlier hard recovery (11-01) worked on the first reload.
+Something changed around 11-12 to 11-14. Check the APs (firmware, channel, a node moved) and
+new 2.4 GHz neighbours. The new `seen=[…]` field should show which.
